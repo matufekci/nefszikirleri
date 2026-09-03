@@ -1,0 +1,389 @@
+
+
+@Composable
+fun DhikrListScreen(
+    state: DhikrUiState,
+    viewModel: ZikirViewModel,
+    modifier: Modifier = Modifier
+) {
+    val colors = LocalAppColors.current
+    val strings = AppStrings.get(state.settings.lang)
+    var selectedTerkipForDialog by remember { mutableStateOf<Zikir?>(null) }
+
+    val totalZikirsCount = state.zikirs.size
+    val totalProgressPercent = if (totalZikirsCount > 0) {
+        (state.completedCount.toFloat() / totalZikirsCount.toFloat()).coerceIn(0f, 1f)
+    } else 0f
+
+    val animatedOverallProgress by animateFloatAsState(
+        targetValue = totalProgressPercent,
+        animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing),
+        label = "overall_progress"
+    )
+
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        contentPadding = PaddingValues(bottom = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // 1. ZARİF BAŞLIK VE GENEL MANEVİ YOLCULUK ÖZETİ
+        item {
+            Surface(
+                shape = RoundedCornerShape(22.dp),
+                color = colors.card,
+                border = androidx.compose.foundation.BorderStroke(1.dp, colors.border),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 640.dp)
+                    .padding(bottom = 12.dp)
+                    .shadow(4.dp, RoundedCornerShape(22.dp))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = strings.listTitle,
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 0.5.sp
+                                ),
+                                color = colors.text
+                            )
+                            Text(
+                                text = "${state.completedCount} / $totalZikirsCount ${strings.completedSummary}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.textMuted
+                            )
+                        }
+
+                        // Toplam Çekim Sayısı Rozeti
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = colors.primary.copy(alpha = 0.15f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, colors.primary.copy(alpha = 0.5f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "✦ ${NumberFormatter.format(state.totalDone, state.settings.lang)}",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = FontWeight.Black,
+                                        color = colors.primary
+                                    )
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Genel İlerleme Çubuğu
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = strings.totalSummary,
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = colors.textMuted
+                        )
+                        Text(
+                            text = "%${(totalProgressPercent * 100).toInt()}",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Black,
+                                color = colors.primary
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(colors.border.copy(alpha = 0.5f))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(animatedOverallProgress)
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(colors.primary, colors.gold)
+                                    )
+                                )
+                        )
+                    }
+                }
+            }
+        }
+
+        // 2. 15 MERTEBE KARTI (ZARİF & SIRALI YAPI)
+        items(state.zikirs, key = { it.id }) { zikir ->
+            val zName = ZikirContent.getZikirName(zikir.id, state.settings.lang)
+            val zikirDef = ZikirContent.getZikirDefinition(zikir.id)
+            val arabicText = zikirDef.arabicText
+            val isSelected = zikir.id == state.selectedId
+            val isCompleted = zikir.count >= zikir.target
+            val isUnlocked = viewModel.isZikirUnlocked(zikir.id)
+            val progress = if (zikir.target > 0) (zikir.count.toFloat() / zikir.target.toFloat()).coerceIn(0f, 1f) else 0f
+            val remainingCount = (zikir.target - zikir.count).coerceAtLeast(0L)
+
+            // Kalan gün ve tahmini bitiş hesabı (Özellik 2)
+            val estDaysBadge: String? = if (isUnlocked && !isCompleted && zikir.count > 0) {
+                val dailyAvg = if (state.currentAveragePerDay > 0) state.currentAveragePerDay else state.settings.dailyTarget.coerceAtLeast(1000L)
+                val daysLeft = if (dailyAvg > 0) (remainingCount + dailyAvg - 1) / dailyAvg else 0L
+                if (daysLeft in 1..999) {
+                    "~${NumberFormatter.formatNumber(daysLeft, state.settings.lang)} ${strings.dayUnit}"
+                } else null
+            } else null
+
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = when {
+                    isSelected -> colors.primary.copy(alpha = 0.08f)
+                    isCompleted -> colors.card
+                    isUnlocked -> colors.card
+                    else -> colors.card.copy(alpha = 0.5f)
+                },
+                border = androidx.compose.foundation.BorderStroke(
+                    width = if (isSelected) 1.8.dp else 1.dp,
+                    color = when {
+                        isSelected -> colors.primary
+                        isCompleted -> colors.gold.copy(alpha = 0.6f)
+                        isUnlocked -> colors.border
+                        else -> colors.border.copy(alpha = 0.35f)
+                    }
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 640.dp)
+                    .padding(vertical = 4.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .clickable {
+                        selectedTerkipForDialog = zikir
+                    }
+                    .testTag("list_zikir_card_${zikir.id}")
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp)
+                ) {
+                    // Üst Satır: Mertebe No + Zikir Adı + Durum Rozeti + Bilgi Butonu
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            // Mertebe Numarası Rozeti
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = when {
+                                    isSelected -> colors.primary
+                                    isCompleted -> colors.gold
+                                    isUnlocked -> colors.inputBg
+                                    else -> colors.border.copy(alpha = 0.4f)
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = "${zikir.id}",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = FontWeight.Black,
+                                            color = if (isSelected || isCompleted) colors.bg else colors.text
+                                        )
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(10.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = zName,
+                                        style = MaterialTheme.typography.titleSmall.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp
+                                        ),
+                                        color = if (isUnlocked) colors.text else colors.textMuted,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+
+                                    if (isCompleted) {
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = "Completed",
+                                            tint = colors.gold,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    } else if (!isUnlocked) {
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.Lock,
+                                            contentDescription = "Locked",
+                                            tint = colors.textMuted.copy(alpha = 0.6f),
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                    }
+                                }
+
+                                Text(
+                                    text = arabicText,
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isUnlocked) colors.primary else colors.textMuted.copy(alpha = 0.6f)
+                                    ),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        // Sağ Alan: Tahmini Bitiş Rozeti + Seçili Rozeti + Bilgi İkonu
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            // Özellik 2: Kalan Gün / Tahmini Bitiş Rozeti
+                            if (estDaysBadge != null) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = colors.inputBg,
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.primary.copy(alpha = 0.35f))
+                                ) {
+                                    Text(
+                                        text = "⏳ $estDaysBadge",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 10.sp,
+                                            color = colors.primary
+                                        ),
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                    )
+                                }
+                            }
+
+                            if (isSelected) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = colors.primary.copy(alpha = 0.15f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.primary)
+                                ) {
+                                    Text(
+                                        text = strings.tabZikir,
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = FontWeight.Black,
+                                            color = colors.primary
+                                        ),
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                    )
+                                }
+                            }
+
+                            // Bilgi / Terkip Detayı Butonu
+                            IconButton(
+                                onClick = { selectedTerkipForDialog = zikir },
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(colors.inputBg)
+                                    .testTag("info_btn_${zikir.id}")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = "Detail",
+                                    tint = if (isUnlocked) colors.primary else colors.textMuted,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // İlerleme ve Sayı Göstergesi
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "${NumberFormatter.format(zikir.count, state.settings.lang)} / ${NumberFormatter.format(zikir.target, state.settings.lang)}",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = colors.textMuted
+                        )
+                        Text(
+                            text = "%${(progress * 100).toInt()}",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Black,
+                                color = if (isCompleted) colors.gold else colors.primary
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // İlerleme Çubuğu
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(colors.border.copy(alpha = 0.4f))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(progress)
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(
+                                    if (isCompleted) colors.gold else colors.primary
+                                )
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // Terkip Detay Modalı
+    selectedTerkipForDialog?.let { zikir ->
+        TerkipDetailDialog(
+            zikir = zikir,
+            activeLevelId = state.selectedId,
+            lang = state.settings.lang,
+            onSelectZikir = { id ->
+                viewModel.selectZikir(id)
+                viewModel.setTab("zikir")
+                selectedTerkipForDialog = null
+            },
+            onDismiss = { selectedTerkipForDialog = null }
+        )
+    }
+}
+

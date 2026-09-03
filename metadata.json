@@ -1,0 +1,7 @@
+{
+  "name": "Nefs Zikirleri",
+  "description": "Ultra gelişmiş, 15 Nefs Zikri takip, istatistik, manevi faziletler, hatırlatıcı bildirimler ve çok dilli profesyonel zikirmatik uygulaması.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
