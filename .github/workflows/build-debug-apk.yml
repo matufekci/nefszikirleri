@@ -1,0 +1,68 @@
+name: Build Debug APK
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
+jobs:
+  build-debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Create missing env files
+      run: |
+        touch .env.example
+        touch .env
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Run Unit Tests
+      run: ./gradlew testDebugUnitTest --no-daemon
+
+    - name: Run Android Lint
+      run: ./gradlew lintDebug --no-daemon
+
+    - name: Ensure fixed debug.keystore
+      run: |
+        if [ ! -f "debug.keystore" ]; then
+          keytool -genkeypair -alias androiddebugkey -keypass android -keystore debug.keystore -storepass android -dname "CN=Android Debug,O=Android,C=US" -keyalg RSA -keysize 2048 -validity 10000
+        fi
+        echo "=== SHA-1 FINGERPRINT FOR FIREBASE ==="
+        keytool -list -v -keystore debug.keystore -alias androiddebugkey -storepass android | grep -E "SHA1|SHA256" || true
+        echo "======================================"
+
+    - name: Build Debug APK
+      run: ./gradlew assembleDebug --no-daemon
+
+    - name: Validate Generated Debug Artifact
+      run: |
+        APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
+        if [ ! -s "$APK_PATH" ]; then
+          echo "::error::Debug APK was not generated or is empty at $APK_PATH"
+          exit 1
+        fi
+        echo "Debug APK File Size: $(du -h $APK_PATH | cut -f1)"
+
+    - name: Upload Debug APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: Nefs-Zikirleri-Debug-APK
+        path: app/build/outputs/apk/debug/app-debug.apk
+        if-no-files-found: error
+        retention-days: 14
+
