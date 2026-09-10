@@ -85,8 +85,19 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
                         return@launch
                     }
                 } else if (type == TYPE_INACTIVITY) {
+                    // Gerçek hareketsizlik kontrolü: eşik gün sayısı içinde manuel zikir
+                    // kaydı varsa kullanıcı aktiftir, bildirim gönderilmez.
+                    val inactivitySince = System.currentTimeMillis() -
+                        (AdaptiveReminderManager.INACTIVITY_THRESHOLD_DAYS * 24L * 60 * 60 * 1000L)
+                    val recentManual = db.historyDao().getRecentManualHistoryDirect(inactivitySince)
+                    if (recentManual.isNotEmpty()) {
+                        com.example.util.NotificationScheduler(context).scheduleInactivityAlert(true)
+                        return@launch
+                    }
+                    // 5 uyarı + 5 müjde ayeti sırayla dönüşümlü gösterilir.
+                    val verse = AdaptiveReminderManager.getInactivityVerse(context)
                     title = strings.inactivityNotifTitle
-                    content = strings.inactivityNotifBody
+                    content = "${verse.surah}\n\"${verse.verseText}\""
                     notificationId = 9999
                 } else if (type == TYPE_TARGET_REMINDER) {
                     if (settings?.targetReminderEnabled != true) {
@@ -158,8 +169,8 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
                     AdaptiveReminderManager.schedulePeriodicEvaluation(context)
                 }
 
-                // If inactivity alarm was triggered, schedule the next cycle if still enabled
-                if (type == TYPE_INACTIVITY && settings?.inactivityAlertEnabled == true) {
+                // Hareketsizlik alarmı tetiklendiyse bir sonraki döngüyü kur
+                if (type == TYPE_INACTIVITY) {
                     com.example.util.NotificationScheduler(context).scheduleInactivityAlert(true)
                 }
             } catch (e: Exception) {

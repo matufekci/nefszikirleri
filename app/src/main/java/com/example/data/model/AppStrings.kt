@@ -184,7 +184,6 @@ interface IUiTranslationsPart3 {
     val activeLevel: String
     val general: String
     val levelFinished: String
-    val timeDensity: String
     val badgeTitle: String
     val recordCount: String
     val streakDay: String
@@ -238,12 +237,6 @@ interface IUiTranslationsPart3 {
     val range6Months: String
     val chartTitle: String
     val chartSubtitle: String
-    val timeDistTitle: String
-    val timeDistSubtitle: String
-    val timeSlotDawn: String
-    val timeSlotDay: String
-    val timeSlotEvening: String
-    val timeSlotNight: String
     val sequenceWarningTitle: String
     val sequenceWarningDesc: String
     val goToRequiredZikir: String
@@ -495,7 +488,6 @@ data class UiTranslationsPart3(
     override val activeLevel: String,
     override val general: String,
     override val levelFinished: String,
-    override val timeDensity: String,
     override val badgeTitle: String,
     override val recordCount: String,
     override val streakDay: String,
@@ -549,12 +541,6 @@ data class UiTranslationsPart3(
     override val range6Months: String,
     override val chartTitle: String,
     override val chartSubtitle: String,
-    override val timeDistTitle: String,
-    override val timeDistSubtitle: String,
-    override val timeSlotDawn: String,
-    override val timeSlotDay: String,
-    override val timeSlotEvening: String,
-    override val timeSlotNight: String,
     override val sequenceWarningTitle: String,
     override val sequenceWarningDesc: String,
     override val goToRequiredZikir: String,
@@ -803,7 +789,6 @@ object AppStrings {
             activeLevel = "Aktif Zikir",
             general = "Genel",
             levelFinished = "Tamamlananlar",
-            timeDensity = "Yoğunluk & Alışkanlık",
             badgeTitle = "Zikir & İstikrar Nişanları",
             recordCount = "Kayıt",
             streakDay = "Gün",
@@ -857,12 +842,6 @@ object AppStrings {
             range6Months = "6 Ay",
             chartTitle = "İlerleme Grafiği",
             chartSubtitle = "Dönemsel vird yoğunluğu",
-            timeDistTitle = "Vakit Dağılımı",
-            timeDistSubtitle = "Günün saatlerine göre dağılım",
-            timeSlotDawn = "Seher / Fecr (04:00 - 08:00)",
-            timeSlotDay = "Gündüz / İkindi (08:00 - 17:00)",
-            timeSlotEvening = "Akşam / Yatsı (17:00 - 23:00)",
-            timeSlotNight = "Gece / Teheccüd (23:00 - 04:00)",
             sequenceWarningTitle = "Zikir Sırası Uyarısı",
             sequenceWarningDesc = "{0}. zikre geçmeden evvel, önceki zikirlerin tamamlanması gereklidir.",
             goToRequiredZikir = "Kaldığım Zikre Git ({0})",
@@ -1157,7 +1136,6 @@ object AppStrings {
             activeLevel = "الذكر النشط",
             general = "عام",
             levelFinished = "أذكار مكتملة",
-            timeDensity = "كثافة الوقت وعادات الذكر",
             badgeTitle = "أوسمة الاستمرار والتسلسل",
             recordCount = "سجلات",
             streakDay = "أيام",
@@ -1211,12 +1189,6 @@ object AppStrings {
             range6Months = "٦ أشهر",
             chartTitle = "رسم التقدم",
             chartSubtitle = "كثافة الورد اليومي",
-            timeDistTitle = "توزيع الأوقات",
-            timeDistSubtitle = "توزيع الأذكار حسب أوقات اليوم",
-            timeSlotDawn = "السحر والفجر (٠٤:٠٠ - ٠٨:٠٠)",
-            timeSlotDay = "النهار والضحى (٠٨:٠٠ - ١٧:٠٠)",
-            timeSlotEvening = "المساء والمغرب (١٧:٠٠ - ٢٣:٠٠)",
-            timeSlotNight = "الليل والتهجد (٢٣:٠٠ - ٠٤:٠٠)",
             sequenceWarningTitle = "تنبيه ترتيب الأذكار والمقامات",
             sequenceWarningDesc = "وفقاً للآداب والترتيب الروحي المبارك، كل مرتبة هي تمهيد لما بعدها. يرجى إتمام الأوراد السابقة قبل الانتقال إلى المرتبة رقم {0}.",
             goToRequiredZikir = "الانتقال إلى الذكر المطلوب ({0})",
@@ -1511,7 +1483,6 @@ object AppStrings {
             activeLevel = "Active Dhikr",
             general = "Overall",
             levelFinished = "Finished Dhikrs",
-            timeDensity = "Time Density & Dhikr Habit",
             badgeTitle = "Sequence & Consistency Badges",
             recordCount = "Records",
             streakDay = "Days",
@@ -1565,12 +1536,6 @@ object AppStrings {
             range6Months = "6 Months",
             chartTitle = "Progress Chart",
             chartSubtitle = "Recitation volume",
-            timeDistTitle = "Time Distribution",
-            timeDistSubtitle = "Distribution by time of day",
-            timeSlotDawn = "Dawn / Fajr (04:00 - 08:00)",
-            timeSlotDay = "Daytime / Asr (08:00 - 17:00)",
-            timeSlotEvening = "Evening / Maghrib (17:00 - 23:00)",
-            timeSlotNight = "Night / Tahajjud (23:00 - 04:00)",
             sequenceWarningTitle = "Sequence Order Required",
             sequenceWarningDesc = "Before reciting Dhikr {0}, previous dhikrs must be completed.",
             goToRequiredZikir = "Go to Active Dhikr ({0})",
@@ -1865,7 +1830,6 @@ object AppStrings {
             activeLevel = "Aktiver Dhikr",
             general = "Gesamt",
             levelFinished = "Beendete Dhikrs",
-            timeDensity = "Zeitdichte & Dhikr-Gewohnheit",
             badgeTitle = "Sequenz- & Beständigkeitsabzeichen",
             recordCount = "Einträge",
             streakDay = "Tage",
@@ -1919,12 +1883,6 @@ object AppStrings {
             range6Months = "6 Monate",
             chartTitle = "Fortschrittsdiagramm",
             chartSubtitle = "Rezitationsvolumen",
-            timeDistTitle = "Zeitverteilung",
-            timeDistSubtitle = "Verteilung nach Tageszeiten",
-            timeSlotDawn = "Morgengrauen (04:00 - 08:00)",
-            timeSlotDay = "Tagsüber (08:00 - 17:00)",
-            timeSlotEvening = "Abend (17:00 - 23:00)",
-            timeSlotNight = "Nacht (23:00 - 04:00)",
             sequenceWarningTitle = "Reihenfolge-Warnung",
             sequenceWarningDesc = "In der spirituellen Disziplin baut jede Stufe auf der vorherigen auf. Bevor Sie Stufe {0} rezitieren, müssen vorherige Stufen abgeschlossen sein.",
             goToRequiredZikir = "Zu aktiver Stufe gehen ({0})",
@@ -2219,7 +2177,6 @@ object AppStrings {
             activeLevel = "Dhikr Actif",
             general = "Général",
             levelFinished = "Dhikrs terminés",
-            timeDensity = "Densité Temporelle & Habitude de Dhikr",
             badgeTitle = "Badges de Séquence et de Régularité",
             recordCount = "Enregistrements",
             streakDay = "Jours",
@@ -2273,12 +2230,6 @@ object AppStrings {
             range6Months = "6 Mois",
             chartTitle = "Graphique de progression",
             chartSubtitle = "Volume de récitation",
-            timeDistTitle = "Distribution horaire",
-            timeDistSubtitle = "Répartition selon les heures du jour",
-            timeSlotDawn = "Aube (04:00 - 08:00)",
-            timeSlotDay = "Journée (08:00 - 17:00)",
-            timeSlotEvening = "Soirée (17:00 - 23:00)",
-            timeSlotNight = "Nuit (23:00 - 04:00)",
             sequenceWarningTitle = "Avertissement d'Ordre de Séquence",
             sequenceWarningDesc = "Selon la convenance spirituelle, chaque étape prépare à la suivante. Veuillez compléter les niveaux précédents avant le niveau {0}.",
             goToRequiredZikir = "Aller au Dhikr requis ({0})",

@@ -56,7 +56,6 @@ fun CounterSection(
         // 1. SAYICI, VİRD VE HATIRLATICILAR (SAYIM, EKRAN VE GÜNLÜK BİLDİRİMLER)
         SettingsCollapsibleCard(
             title = strings.counterPrefsTitle.toTitleCase(),
-            summary = getSettingsSummary("counter_and_reminders", settings.lang),
             icon = Icons.Rounded.Tune,
             isExpanded = counterExpanded,
             onToggle = { counterExpanded = !counterExpanded },
@@ -295,7 +294,6 @@ fun CounterSection(
         // 2. TAMAMLANAN TUR VE TUR YÖNETİMİ
         SettingsCollapsibleCard(
             title = strings.roundsTitle.toTitleCase(),
-            summary = getSettingsSummary("rounds", settings.lang),
             icon = Icons.Rounded.EmojiEvents,
             isExpanded = roundsExpanded,
             onToggle = { roundsExpanded = !roundsExpanded },

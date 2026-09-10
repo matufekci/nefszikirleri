@@ -33,9 +33,8 @@ class BootReceiver : BroadcastReceiver() {
                         scheduler.scheduleDailyReminders(emptyList(), false)
                     }
 
-                    if (settings?.inactivityAlertEnabled == true) {
-                        scheduler.scheduleInactivityAlert(true)
-                    }
+                    // Manevi hatırlatıcı ayarlardan bağımsız olarak her açılışta kurulur.
+                    scheduler.scheduleInactivityAlert(true)
 
                     if (settings?.targetReminderEnabled == true) {
                         scheduler.scheduleTargetReminder(true)

@@ -20,6 +20,13 @@ import java.util.Random
  */
 object AdaptiveReminderManager {
 
+    /** Kullanıcı bu kadar gün zikir çekmediyse hareketsiz sayılır. */
+    const val INACTIVITY_THRESHOLD_DAYS = 3
+
+    /** Alarm, son zikirden bu kadar gün sonrasına kurulur (3-5 gün aralığının ortası). */
+    const val INACTIVITY_TRIGGER_DAYS = 4
+
+
     private const val PREFS_NAME = "adaptive_spiritual_reminder_prefs"
     private const val KEY_LAST_SENT_DATE = "last_notification_sent_date"
     private const val KEY_WEEKLY_SENT_COUNT = "weekly_notification_sent_count"
@@ -79,6 +86,33 @@ object AdaptiveReminderManager {
         }
         val index = Random().nextInt(verses.size)
         return verses[index]
+    }
+
+    /**
+     * Hareketsizlik hatırlatıcısı için sırayla ayet döndürür: önce 5 uyarı ayeti,
+     * ardından 5 müjde ayeti; liste bitince başa sarar. Böylece kullanıcı aynı
+     * ayeti üst üste görmez ve uyarı/müjde dengesi korunur.
+     */
+    fun getInactivityVerse(context: Context): SpiritualVerse {
+        val lang = getAppLanguage(context)
+        val verses = AppStrings.get(lang).spiritualVerses
+            .ifEmpty { AppStrings.get("tr").spiritualVerses }
+
+        val warnings = verses.filter { it.type == "warning" }
+        val gladTidings = verses.filter { it.type == "glad_tidings" }
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val total = (warnings.size + gladTidings.size).coerceAtLeast(1)
+        val index = prefs.getInt("inactivity_verse_index", 0).mod(total)
+
+        val verse = when {
+            warnings.isNotEmpty() && index < warnings.size -> warnings[index]
+            gladTidings.isNotEmpty() -> gladTidings[(index - warnings.size).mod(gladTidings.size)]
+            verses.isNotEmpty() -> verses[index.mod(verses.size)]
+            else -> getRandomSpiritualVerse(lang)
+        }
+
+        prefs.edit { putInt("inactivity_verse_index", (index + 1).mod(total)) }
+        return verse
     }
 
     /**

@@ -237,22 +237,10 @@ fun SettingsScreen(
             )
         }
 
-        item { Spacer(modifier = Modifier.height(14.dp)) }
-
-        // 4. DOKUNSAL TİTREŞİM VE HAPTİK AYARLARI
-        item {
-            HapticSection(
-                settings = state.settings,
-                onToggleHaptic = { viewModel.toggleHaptic() },
-                onSetHapticTapMode = { viewModel.setHapticTapMode(it) },
-                onSetHapticMilestoneMode = { viewModel.setHapticMilestoneMode(it) },
-                onIncrementUsage = { viewModel.incrementSettingUsage(it) }
-            )
-        }
 
         item { Spacer(modifier = Modifier.height(14.dp)) }
 
-        // 5. UYGULAMA HAKKINDA VE SÜRÜM
+        // 4. UYGULAMA HAKKINDA VE SÜRÜM
         item {
             AboutSection(
                 lang = state.settings.lang

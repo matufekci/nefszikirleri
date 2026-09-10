@@ -21,7 +21,12 @@ data class AppSettings(
     val counterTexture: String = "geometric", // "none", "geometric", "kaaba", "floral", "tasbih", "stars"
     val fontScale: Float = 1.15f, // 1.0f (Küçük), 1.15f (Normal - Varsayılan), 1.30f (Büyük), 1.45f (Çok Büyük)
     val hapticTapMode: String = "light", // "light", "medium", "strong"
-    val hapticMilestoneMode: String = "double", // "double", "long", "triple"
+    /**
+     * Merhale (33/100 katları) titreşim ayarı kaldırıldı; zikir ekranındaki 3 kademeli
+     * titreşim modu (`hapticTapMode`) yeterli. Kolon, Room şema/migration uyumluluğu
+     * bozulmasın ve eski yedekler doğrulanabilsin diye bilerek muhafaza ediliyor.
+     */
+    val hapticMilestoneMode: String = "double", // "double", "long", "triple" — artık UI'da yok
     val targetReminderEnabled: Boolean = false, // Hedef hatırlatıcısı
     val acknowledgedBadges: String = "", // Comma-separated acknowledged badge IDs
     /**

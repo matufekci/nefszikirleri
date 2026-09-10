@@ -62,6 +62,29 @@ class NefsApplication : Application(), Configuration.Provider {
         super.onCreate()
         initializeAppCheck()
         scheduleDailyEvaluation(this)
+        scheduleInactivityVerseAlert()
+    }
+
+    /**
+     * Manevi hareketsizlik hatırlatıcısını yürürlüğe sokar: kullanıcı
+     * [com.example.util.AdaptiveReminderManager.INACTIVITY_TRIGGER_DAYS] gün boyunca
+     * zikir çekmezse 5 uyarı + 5 müjde ayetinden sıradaki ayet bildirim olarak gider.
+     * Alarm her zikirde tazelenir; alıcı tarafında gerçek hareketsizlik ayrıca doğrulanır.
+     */
+    private fun scheduleInactivityVerseAlert() {
+        try {
+            Class.forName("org.robolectric.RobolectricTestRunner")
+            return // Robolectric testlerinde alarm kurma
+        } catch (_: ClassNotFoundException) {
+            // normal çalışma
+        }
+        try {
+            com.example.util.NotificationScheduler(this).scheduleInactivityAlert(true)
+        } catch (e: Exception) {
+            if (BuildConfig.DEBUG) {
+                Log.e("NefsApplication", "Failed to schedule inactivity verse alert", e)
+            }
+        }
     }
 
     private fun initializeAppCheck() {

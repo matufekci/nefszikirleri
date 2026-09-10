@@ -65,10 +65,11 @@ fun CloudSection(
             else -> "Yedekleme ve Senkronizasyon"
         }
     }
+    // Ayarlar başlıklarında alt başlık gösterilmiyor; sadece bağlı hesap bilgisi kalır.
     val headerSubtitle = if (currentUser != null) {
         currentUser.email ?: "Bağlandı"
     } else {
-        getSettingsSummary("backup_and_sync", lang)
+        ""
     }
 
     Surface(
@@ -129,13 +130,15 @@ fun CloudSection(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Text(
-                            text = headerSubtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.textMuted,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        if (headerSubtitle.isNotBlank()) {
+                            Text(
+                                text = headerSubtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.textMuted,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
 

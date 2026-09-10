@@ -59,7 +59,6 @@ fun AppearanceSection(
         // 1. TEMA SEÇİMİ
         SettingsCollapsibleCard(
             title = strings.themeTitle.toTitleCase(),
-            summary = getSettingsSummary("theme", settings.lang),
             icon = Icons.Rounded.Palette,
             isExpanded = themeExpanded,
             onToggle = { themeExpanded = !themeExpanded },
@@ -139,7 +138,6 @@ fun AppearanceSection(
         // 2. DİL SEÇİMİ
         SettingsCollapsibleCard(
             title = strings.language.toTitleCase(),
-            summary = getSettingsSummary("lang", settings.lang),
             icon = Icons.Rounded.Language,
             isExpanded = languageExpanded,
             onToggle = { languageExpanded = !languageExpanded },
@@ -196,7 +194,6 @@ fun AppearanceSection(
         // 3. YAZI BOYUTU (FONT SCALE)
         SettingsCollapsibleCard(
             title = strings.fontScaleTitle.toTitleCase(),
-            summary = getSettingsSummary("font", settings.lang),
             icon = Icons.Rounded.FormatSize,
             isExpanded = fontScaleExpanded,
             onToggle = { fontScaleExpanded = !fontScaleExpanded },

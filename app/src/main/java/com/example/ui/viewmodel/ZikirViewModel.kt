@@ -80,14 +80,6 @@ data class UndoSnapshot(
     val historyId: Long?
 )
 
-data class TimeSlotItem(
-    val title: String,
-    val rangeText: String,
-    val icon: String,
-    val amount: Long,
-    val percentage: Float
-)
-
 data class SequenceWarningData(
     val attemptedZikirId: Int,
     val requiredZikirId: Int
@@ -107,7 +99,6 @@ data class DhikrUiState(
     val last7Days: List<DayChartItem> = emptyList(),
     val last30Days: List<DayChartItem> = emptyList(),
     val last6Months: List<MonthChartItem> = emptyList(),
-    val timeSlots: List<TimeSlotItem> = emptyList(),
     val totalDone: Long = 0L,
     val completedCount: Int = 0,
     val overallRemaining: Long = 0L,
@@ -133,6 +124,11 @@ class ZikirViewModel(
     application: Application,
     private val savedStateHandle: SavedStateHandle
 ) : AndroidViewModel(application) {
+
+    private companion object {
+        const val KEY_FAST_JUMP_COMPLETED_OFFSET = "fast_jump_completed_offset"
+        const val KEY_FAST_JUMP_TOTAL_OFFSET = "fast_jump_total_offset"
+    }
 
     private val settingsMutex = Mutex()
 
@@ -176,6 +172,29 @@ class ZikirViewModel(
      */
     @Volatile
     private var pendingSelection: SelectedZikirResolver.Pending? = null
+
+    /**
+     * Hızlı intikal ("Öncekileri Tamamla") ile otomatik tamamlanan basamaklar rozet
+     * kazandırmamalı. Bu prefs, atlama sırasında eklenen basamak/zikir sayısını biriktirir
+     * ve rozet değerlendirmesi gerçek (sırayla) ilerlemeye göre yapılır.
+     */
+    private val badgeProgressPrefs by lazy {
+        getApplication<Application>().getSharedPreferences("badge_progress_prefs", Context.MODE_PRIVATE)
+    }
+
+    private fun addFastJumpBadgeOffset(completedZikirs: Int, addedCount: Long) {
+        if (completedZikirs <= 0 && addedCount <= 0L) return
+        badgeProgressPrefs.edit {
+            putInt(
+                KEY_FAST_JUMP_COMPLETED_OFFSET,
+                badgeProgressPrefs.getInt(KEY_FAST_JUMP_COMPLETED_OFFSET, 0) + completedZikirs
+            )
+            putLong(
+                KEY_FAST_JUMP_TOTAL_OFFSET,
+                badgeProgressPrefs.getLong(KEY_FAST_JUMP_TOTAL_OFFSET, 0L) + addedCount
+            )
+        }
+    }
 
     private val _uiState: MutableStateFlow<DhikrUiState>
     val uiState: StateFlow<DhikrUiState>
@@ -364,57 +383,18 @@ class ZikirViewModel(
                 val max6 = sixMonthsList.maxOfOrNull { it.amount }?.coerceAtLeast(1L) ?: 1L
                 val sixMonthsWithRatio = sixMonthsList.map { it.copy(ratio = (it.amount.toFloat() / max6.toFloat()).coerceIn(0.04f, 1f)) }
 
-                // Time of Day distribution (Son aktiviteler üzerinden hafif hesaplama)
-                var seherAmt = 0L
-                var daytimeAmt = 0L
-                var eveningAmt = 0L
-                var nightAmt = 0L
-                val addHistory = recentHistory.filter { it.type == "add" }
-                addHistory.forEach { h ->
-                    val hCal = Calendar.getInstance().apply { timeInMillis = h.timestamp }
-                    val hour = hCal.get(Calendar.HOUR_OF_DAY)
-                    when (hour) {
-                        in 4..7 -> seherAmt += h.amount
-                        in 8..16 -> daytimeAmt += h.amount
-                        in 17..22 -> eveningAmt += h.amount
-                        else -> nightAmt += h.amount
-                    }
-                }
-                val langStrings = AppStrings.get(settings.lang)
-                val timeSlotsTotal = (seherAmt + daytimeAmt + eveningAmt + nightAmt).coerceAtLeast(1L).toFloat()
-                val timeSlots = listOf(
-                    TimeSlotItem(
-                        title = langStrings.timeSlotDawn,
-                        rangeText = "04:00 - 08:00",
-                        icon = "🌅",
-                        amount = seherAmt,
-                        percentage = (seherAmt / timeSlotsTotal)
-                    ),
-                    TimeSlotItem(
-                        title = langStrings.timeSlotDay,
-                        rangeText = "08:00 - 17:00",
-                        icon = "☀️",
-                        amount = daytimeAmt,
-                        percentage = (daytimeAmt / timeSlotsTotal)
-                    ),
-                    TimeSlotItem(
-                        title = langStrings.timeSlotEvening,
-                        rangeText = "17:00 - 23:00",
-                        icon = "🌙",
-                        amount = eveningAmt,
-                        percentage = (eveningAmt / timeSlotsTotal)
-                    ),
-                    TimeSlotItem(
-                        title = langStrings.timeSlotNight,
-                        rangeText = "23:00 - 04:00",
-                        icon = "✨",
-                        amount = nightAmt,
-                        percentage = (nightAmt / timeSlotsTotal)
-                    )
-                )
-
                 // Badges & Unlocked Badge Detection
-                val allBadges = BadgeManager.getAllBadges(totalDone, completedCount, bestStreak, settings.lang)
+                // Hızlı intikalle otomatik tamamlanan basamaklar rozet kazandırmaz:
+                // offset, güncel değeri aşamaz (sıfırlama/yeni tur sonrası kendini onarır).
+                val badgeCompletedCount = BadgeProgress.badgeCompletedCount(
+                    completedCount = completedCount,
+                    storedOffset = badgeProgressPrefs.getInt(KEY_FAST_JUMP_COMPLETED_OFFSET, 0)
+                )
+                val badgeTotalDone = BadgeProgress.badgeTotalDone(
+                    totalDone = totalDone,
+                    storedOffset = badgeProgressPrefs.getLong(KEY_FAST_JUMP_TOTAL_OFFSET, 0L)
+                )
+                val allBadges = BadgeManager.getAllBadges(badgeTotalDone, badgeCompletedCount, bestStreak, settings.lang)
                 val acknowledgedBadges = settings.acknowledgedBadges.split(",").filter { it.isNotBlank() }.toSet()
                 val newlyUnlockedBadge = allBadges.firstOrNull { it.isUnlocked && !acknowledgedBadges.contains(it.id) }
 
@@ -443,7 +423,6 @@ class ZikirViewModel(
                         last7Days = sevenDaysWithRatio,
                         last30Days = thirtyDaysWithRatio,
                         last6Months = sixMonthsWithRatio,
-                        timeSlots = timeSlots,
                         totalDone = totalDone,
                         completedCount = completedCount,
                         overallRemaining = overallRemaining,
@@ -455,7 +434,7 @@ class ZikirViewModel(
                         canUndo = true,
                         badges = allBadges,
                         badgeCelebrationData = badgeToCelebrate,
-                        showRoundModal = if (completedCount == 15 && !current.showRoundModal) true else current.showRoundModal,
+                        showRoundModal = if (badgeCompletedCount == 15 && !current.showRoundModal) true else current.showRoundModal,
                         isHydrated = true
                     )
                 }
@@ -562,9 +541,8 @@ class ZikirViewModel(
             }
         }
 
-        if (state.settings.inactivityAlertEnabled) {
-            notificationScheduler.scheduleInactivityAlert(true)
-        }
+        // Her zikirden sonra hareketsizlik sayacını sıfırla (4 gün sonra tekrar kurulsun).
+        notificationScheduler.scheduleInactivityAlert(true)
 
         val opId = UUID.randomUUID().toString()
         val now = com.example.util.MonotonicTime.now()
@@ -666,6 +644,15 @@ class ZikirViewModel(
         savedStateHandle["selectedZikirId"] = validId
         pendingSelection = SelectedZikirResolver.Pending(validId, MonotonicTime.now())
         savedStateHandle["currentTab"] = "zikir"
+
+        // Atlamanın otomatik tamamlayacağı basamakları DB yazımından önce hesapla ve
+        // rozet offset'ini hemen işle; aksi halde ara emission rozet kutlaması tetikler.
+        val jumpedZikirs = _uiState.value.zikirs.filter { it.id < validId && it.count < it.target }
+        addFastJumpBadgeOffset(
+            completedZikirs = jumpedZikirs.size,
+            addedCount = jumpedZikirs.sumOf { (it.target - it.count).coerceAtLeast(0L) }
+        )
+
         viewModelScope.launch {
             repository.fastJumpToZikir(validId)
             _uiState.update {
@@ -919,15 +906,6 @@ class ZikirViewModel(
             val safe = if (mode in allowed) mode else "light"
             updateSettingsSafely { it.copy(hapticTapMode = safe) }
             hapticHelper.tap(safe)
-        }
-    }
-
-    fun setHapticMilestoneMode(mode: String) {
-        viewModelScope.launch {
-            val allowed = setOf("double", "long", "triple")
-            val safe = if (mode in allowed) mode else "double"
-            updateSettingsSafely { it.copy(hapticMilestoneMode = safe) }
-            hapticHelper.milestone33(safe)
         }
     }
 

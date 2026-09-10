@@ -153,7 +153,9 @@ class NotificationScheduler(private val context: Context) {
         pendingIntent.cancel()
 
         if (isEnabled) {
-            val triggerTime = System.currentTimeMillis() + (24 * 60 * 60 * 1000L)
+            // 3-5 gün zikir çekilmeyince ayet hatırlatması gitsin diye 4 güne kurulur.
+            val triggerTime = System.currentTimeMillis() +
+                (AdaptiveReminderManager.INACTIVITY_TRIGGER_DAYS * 24L * 60 * 60 * 1000L)
             try {
                 alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
             } catch (e: Exception) {
