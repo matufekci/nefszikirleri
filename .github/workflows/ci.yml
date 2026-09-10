@@ -121,6 +121,10 @@ jobs:
             app/build/outputs/apk/debug/output-metadata.json
             build-debug.log
 
+      - name: Fail loudly if no APK was produced
+        if: always()
+        run: ./.github/scripts/assert-apk.sh app/build/outputs/apk/debug build-debug.log debug-apk
+
   build-apk-only:
     runs-on: ubuntu-latest
     if: always()
@@ -163,3 +167,7 @@ jobs:
           path: |
             app/build/outputs/apk/debug/*.apk
             build-apk-only.log
+
+      - name: Fail loudly if no APK was produced
+        if: always()
+        run: ./.github/scripts/assert-apk.sh app/build/outputs/apk/debug build-apk-only.log debug-apk-no-tests
