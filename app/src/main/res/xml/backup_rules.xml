@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Yalnızca kritik olmayan UI ve genel ayarlar dahil ediliyor. Include kullanıldığı için diğer her şey (veritabanı, sync_prefs) otomatik olarak hariç tutulacaktır. -->
+    <include domain="sharedpref" path="nefs_app_prefs.xml" />
+    <include domain="sharedpref" path="spiritual_virtues_prefs.xml" />
+    <include domain="sharedpref" path="adaptive_spiritual_reminder_prefs.xml" />
+</full-backup-content>
