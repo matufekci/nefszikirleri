@@ -1,0 +1,124 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidZikir(zikir) {
+      return zikir.keys().hasAll(['id', 'target', 'count'])
+          && zikir.keys().hasOnly(['id', 'target', 'count', 'startedAt', 'completedAt'])
+          && zikir.id is int && zikir.id >= 1 && zikir.id <= 15
+          && (zikir.target is int || zikir.target is float) && zikir.target >= 100 && zikir.target <= 5000000
+          && (zikir.count is int || zikir.count is float) && zikir.count >= 0 && zikir.count <= zikir.target
+          && (!('startedAt' in zikir) || zikir.startedAt == null || ((zikir.startedAt is int || zikir.startedAt is float) && zikir.startedAt > 0))
+          && (!('completedAt' in zikir) || zikir.completedAt == null || ((zikir.completedAt is int || zikir.completedAt is float) && zikir.completedAt > 0));
+    }
+
+    function isValidSlot(slot) {
+      return slot.keys().hasAll(['id', 'hour', 'minute', 'isEnabled'])
+          && slot.keys().hasOnly(['id', 'hour', 'minute', 'isEnabled'])
+          && (slot.id is int || slot.id is float)
+          && slot.hour is int && slot.hour >= 0 && slot.hour <= 23
+          && slot.minute is int && slot.minute >= 0 && slot.minute <= 59
+          && slot.isEnabled is bool;
+    }
+
+    function isValidSlots(slots) {
+      return slots is list
+          && slots.size() <= 50
+          && slots.all(s, isValidSlot(s))
+          && slots.map(s, s.id).toSet().size() == slots.size();
+    }
+
+    function isValidSettings(settings) {
+      return settings.keys().hasAll([
+            'lang', 'themeName', 'counterTexture', 'hapticTapMode', 'hapticMilestoneMode',
+            'dailyTarget', 'completedRounds', 'fontScale', 'selectedZikirId',
+            'countdownMode', 'fullScreenTap', 'reminderEnabled', 'inactivityAlertEnabled',
+            'keepAwakeEnabled', 'targetReminderEnabled', 'autoReorderSettings',
+            'settingsUsageStats', 'acknowledgedBadges'
+          ])
+          && settings.lang in ['tr', 'ar', 'en', 'de', 'fr']
+          && settings.themeName in ['emerald', 'night', 'rose', 'olive', 'light', 'obsidian', 'kisve', 'turq', 'amethyst', 'sahara']
+          && settings.counterTexture in ['none', 'geometric', 'kaaba', 'floral', 'tasbih', 'stars']
+          && settings.hapticTapMode in ['light', 'medium', 'strong']
+          && settings.hapticMilestoneMode in ['double', 'long', 'triple']
+          && (settings.dailyTarget is int || settings.dailyTarget is float) && settings.dailyTarget >= 1 && settings.dailyTarget <= 5000000
+          && settings.completedRounds is int && settings.completedRounds >= 0
+          && (settings.fontScale is int || settings.fontScale is float) && settings.fontScale >= 0.7 && settings.fontScale <= 1.5
+          && settings.selectedZikirId is int && settings.selectedZikirId >= 1 && settings.selectedZikirId <= 15
+          && settings.countdownMode is bool
+          && settings.fullScreenTap is bool
+          && settings.reminderEnabled is bool
+          && settings.inactivityAlertEnabled is bool
+          && settings.keepAwakeEnabled is bool
+          && settings.targetReminderEnabled is bool
+          && settings.autoReorderSettings is bool
+          && settings.acknowledgedBadges is string
+          && settings.settingsUsageStats is string;
+    }
+
+    function isValidHistoryEntry(entry) {
+      return entry.keys().hasAll(['zikirId', 'amount', 'type', 'timestamp', 'dateKey'])
+          && entry.keys().hasOnly(['zikirId', 'amount', 'type', 'timestamp', 'dateKey'])
+          && entry.zikirId is int
+          && entry.zikirId >= 1
+          && entry.zikirId <= 15
+          && (entry.amount is int || entry.amount is float)
+          && entry.amount > 0
+          && entry.type is string
+          && (entry.type == 'add' || entry.type == 'remove')
+          && (entry.timestamp is int || entry.timestamp is float)
+          && entry.timestamp > 0
+          && entry.dateKey is string;
+    }
+
+    function isValidHistoryChunk() {
+      return request.resource.data.keys().hasAll(['entries', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['entries', 'updatedAt'])
+          && request.resource.data.entries is list
+          && request.resource.data.entries.size() <= 500
+          && request.resource.data.entries.all(entry, isValidHistoryEntry(entry))
+          && (request.resource.data.updatedAt is int || request.resource.data.updatedAt is float);
+    }
+
+    function isValidHistoryMeta() {
+      return request.resource.data.keys().hasAll(['chunkCount', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['chunkCount', 'updatedAt'])
+          && request.resource.data.chunkCount is int
+          && request.resource.data.chunkCount >= 0
+          && (request.resource.data.updatedAt is int || request.resource.data.updatedAt is float);
+    }
+
+    function isValidUserDoc() {
+      return request.resource.data.keys().hasAll(['zikirs', 'slots', 'settings', 'updatedAt'])
+          && request.resource.data.zikirs is list
+          && request.resource.data.zikirs.all(z, isValidZikir(z))
+          && isValidSlots(request.resource.data.slots)
+          && request.resource.data.settings is map
+          && isValidSettings(request.resource.data.settings)
+          && (request.resource.data.updatedAt is int || request.resource.data.updatedAt is float);
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidUserDoc();
+      allow delete: if isOwner(userId);
+
+      match /history/{docId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && (
+          (docId == 'meta' && isValidHistoryMeta()) ||
+          (docId.matches('chunk_[0-9]+') && isValidHistoryChunk())
+        );
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}

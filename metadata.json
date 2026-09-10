@@ -1,0 +1,6 @@
+{
+  "name": "Nefs",
+  "description": "Zikir ve Alışkanlık Takip Uygulaması",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
