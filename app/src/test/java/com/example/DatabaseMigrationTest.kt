@@ -115,10 +115,20 @@ class DatabaseMigrationTest {
             val entity = entities.getJSONObject(i)
             val table = entity.getString("tableName")
 
-            val expectedCols = (0 until entity.getJSONArray("fields").length())
-                .map { entity.getJSONArray("fields").getJSONObject(it).getString("columnName") }
+            val fields = entity.getJSONArray("fields")
+            val expectedCols = (0 until fields.length())
+                .map { fields.getJSONObject(it).getString("columnName") }
             val actualCols = columns(db, table)
-            assertEquals("$table tablosunun kolonlari semayla ortusmeli", expectedCols, actualCols)
+            // Siraya duyarsiz karsilastirma: Room'un kendi semasi da kolonlari
+            // kume olarak dogrular. Bu sart, cunku ALTER TABLE ADD COLUMN kolonu
+            // fiziksel olarak EN SONA ekler; ornek: 7->8 migration'i eventId'yi
+            // ekler, oysa 8.json onu 2. sirada listeler.
+            assertEquals("$table tablosunun kolon SAYISI semayla ortusmeli", expectedCols.size, actualCols.size)
+            assertEquals(
+                "$table tablosunun kolonlari semayla ortusmeli",
+                expectedCols.sorted(),
+                actualCols.sorted()
+            )
 
             val actualIdx = indices(db, table)
             val expectedIdx = entity.optJSONArray("indices")
