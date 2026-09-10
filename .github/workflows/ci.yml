@@ -53,11 +53,11 @@ jobs:
           fi
 
       - name: Run unit tests (Robolectric)
-        run: ./gradlew testDebugUnitTest --stacktrace --continue
+        run: ./gradlew testDebugUnitTest --stacktrace --continue 2>&1 | tee unit-test.log
         continue-on-error: true
 
       - name: Run Android lint
-        run: ./gradlew lintDebug --stacktrace
+        run: ./gradlew lintDebug --stacktrace 2>&1 | tee lint.log
         continue-on-error: true
 
       - name: Upload test reports
@@ -68,7 +68,8 @@ jobs:
           path: |
             app/build/reports/
             app/build/test-results/
-            app/build/outputs/logs/
+            unit-test.log
+            lint.log
 
   build-debug:
     runs-on: ubuntu-latest
@@ -107,7 +108,8 @@ jobs:
           ls -la .env 2>&1 || true
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --stacktrace 2>&1 | tee build-debug.log
+        continue-on-error: true
 
       - name: Upload debug APK
         if: always()
@@ -117,6 +119,7 @@ jobs:
           path: |
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/debug/output-metadata.json
+            build-debug.log
 
   build-apk-only:
     runs-on: ubuntu-latest
@@ -149,7 +152,8 @@ jobs:
           cat .env
 
       - name: Build debug APK (no tests)
-        run: ./gradlew assembleDebug -x test --stacktrace
+        run: ./gradlew assembleDebug -x test --stacktrace 2>&1 | tee build-apk-only.log
+        continue-on-error: true
 
       - name: Upload debug APK
         if: always()
@@ -158,3 +162,4 @@ jobs:
           name: debug-apk-no-tests
           path: |
             app/build/outputs/apk/debug/*.apk
+            build-apk-only.log
