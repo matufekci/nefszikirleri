@@ -83,8 +83,6 @@ interface IUiTranslationsPart1 {
     val counterUp: String
     val dailyTargetTitle: String
     val dailyTargetLabel: String
-    val hapticFeedback: String
-    val hapticFeedbackDesc: String
     val keepAwake: String
     val keepAwakeDesc: String
     val remindersTitle: String
@@ -111,7 +109,6 @@ interface IUiTranslationsPart2 {
     val inactivityAlertOn: String
     val inactivityAlertOff: String
     val inactivityNotifTitle: String
-    val inactivityNotifBody: String
     val hapticTitle: String
     val hapticDesc: String
     val hapticOn: String
@@ -385,8 +382,6 @@ data class UiTranslationsPart1(
     override val counterUp: String,
     override val dailyTargetTitle: String,
     override val dailyTargetLabel: String,
-    override val hapticFeedback: String,
-    override val hapticFeedbackDesc: String,
     override val keepAwake: String,
     override val keepAwakeDesc: String,
     override val remindersTitle: String,
@@ -413,7 +408,6 @@ data class UiTranslationsPart2(
     override val inactivityAlertOn: String,
     override val inactivityAlertOff: String,
     override val inactivityNotifTitle: String,
-    override val inactivityNotifBody: String,
     override val hapticTitle: String,
     override val hapticDesc: String,
     override val hapticOn: String,
@@ -690,8 +684,6 @@ object AppStrings {
             counterUp = "İleri Sayım (0'dan Hedefe)",
             dailyTargetTitle = "Günlük Hedef",
             dailyTargetLabel = "Günlük Zikir Miktarı",
-            hapticFeedback = "Dokunsal Titreşim",
-            hapticFeedbackDesc = "Her dokunuşta ve 33/100 katlarında tesbih hissi verir",
             keepAwake = "Ekranı Sürekli Açık Tut",
             keepAwakeDesc = "Zikir sekmesindeyken ekranın kararmasını önler",
             remindersTitle = "Bildirim ve Hatırlatıcılar",
@@ -717,7 +709,6 @@ object AppStrings {
             inactivityAlertOn = "24 Saat Uyarısını Aç",
             inactivityAlertOff = "24 Saat Uyarısını Kapat",
             inactivityNotifTitle = "⚠️ Zikir Vaktiniz Geçiyor",
-            inactivityNotifBody = "Son zikrinizin üzerinden 24 saat geçti. Günlük virdinizi aksatmamak için zikrinizi tamamlayınız.",
             hapticTitle = "Titreşimli Tesbih Hissi",
             hapticDesc = "Her dokunuşta ve 33/100 katlarında dokunsal titreşim verir.",
             hapticOn = "Titreşimi Aç",
@@ -1037,8 +1028,6 @@ object AppStrings {
             counterUp = "عد تصاعدي (من الصفر إلى الهدف)",
             dailyTargetTitle = "هدف الورد اليومي",
             dailyTargetLabel = "كمية الذكر اليومية",
-            hapticFeedback = "الاهتزاز اللمسي",
-            hapticFeedbackDesc = "اهتزاز لطيف مع كل تسبيحة وعند الـ 33 والـ 100",
             keepAwake = "إبقاء الشاشة مفعلة",
             keepAwakeDesc = "يمنع انطفاء الشاشة أثناء التلاوة",
             remindersTitle = "التنبيهات والمواعيد",
@@ -1064,7 +1053,6 @@ object AppStrings {
             inactivityAlertOn = "تفعيل تنبيه ٢٤ ساعة",
             inactivityAlertOff = "إيقاف تنبيه ٢٤ ساعة",
             inactivityNotifTitle = "⚠️ مضى وقت الذكر",
-            inactivityNotifBody = "مضت 24 ساعة منذ آخر ورد. لا تدع الغفلة تقطعك وأكمل وردك اليومي.",
             hapticTitle = "الاهتزاز اللمسي للسبحة",
             hapticDesc = "اهتزاز خفيف مع كل تسبيحة وعند الـ 33 والـ 100.",
             hapticOn = "تفعيل الاهتزاز",
@@ -1384,8 +1372,6 @@ object AppStrings {
             counterUp = "Forward Count (0 to Target)",
             dailyTargetTitle = "Daily Vird Target",
             dailyTargetLabel = "Daily Dhikr Target",
-            hapticFeedback = "Haptic Vibration",
-            hapticFeedbackDesc = "Tactile pulse on every tap and intervals of 33/100",
             keepAwake = "Keep Screen Awake",
             keepAwakeDesc = "Prevents screen sleep while on Dhikr counter",
             remindersTitle = "Notifications & Reminders",
@@ -1411,7 +1397,6 @@ object AppStrings {
             inactivityAlertOn = "Enable 24h Alert",
             inactivityAlertOff = "Disable 24h Alert",
             inactivityNotifTitle = "⚠️ Dhikr Reminder",
-            inactivityNotifBody = "24 hours have passed since your last dhikr. Open the app to complete your daily vird.",
             hapticTitle = "Haptic Vibration Feedback",
             hapticDesc = "Vibrates on every tap and pulses at multiples of 33 and 100.",
             hapticOn = "Enable Haptics",
@@ -1731,8 +1716,6 @@ object AppStrings {
             counterUp = "Vorwärts (0 zum Ziel)",
             dailyTargetTitle = "Tagesziel",
             dailyTargetLabel = "Tägliche Dhikr-Menge",
-            hapticFeedback = "Haptisches Feedback",
-            hapticFeedbackDesc = "Vibriert bei jedem Tastendruck und bei 33/100",
             keepAwake = "Bildschirm anlassen",
             keepAwakeDesc = "Verhindert die Bildschirmsperre",
             remindersTitle = "Benachrichtigungen",
@@ -1758,7 +1741,6 @@ object AppStrings {
             inactivityAlertOn = "24h-Warnung Aktivieren",
             inactivityAlertOff = "24h-Warnung Deaktivieren",
             inactivityNotifTitle = "⚠️ Dhikr-Zeit verstreicht",
-            inactivityNotifBody = "Seit Ihrem letzten Dhikr sind 24 Stunden vergangen. Setzen Sie Ihren Vird fort.",
             hapticTitle = "Haptisches Feedback",
             hapticDesc = "Vibriert bei jedem Tastendruck und bei 33/100.",
             hapticOn = "Vibration Aktivieren",
@@ -2078,8 +2060,6 @@ object AppStrings {
             counterUp = "Compte Progressif (0 à Objectif)",
             dailyTargetTitle = "Objectif Quotidien",
             dailyTargetLabel = "Objectif Quotidien de Dhikr",
-            hapticFeedback = "Vibration Haptique",
-            hapticFeedbackDesc = "Impulsion tactile à chaque tap et aux multiples de 33/100",
             keepAwake = "Garder l'écran allumé",
             keepAwakeDesc = "Empêche l'extinction de l'écran pendant le dhikr",
             remindersTitle = "Notifications et Rappels",
@@ -2105,7 +2085,6 @@ object AppStrings {
             inactivityAlertOn = "Activer l'Alerte 24h",
             inactivityAlertOff = "Désactiver l'Alerte 24h",
             inactivityNotifTitle = "⚠️ Rappel de Vird",
-            inactivityNotifBody = "24 heures se sont écoulées depuis votre dernier dhikr. Complétez votre vird quotidien.",
             hapticTitle = "Vibration Haptique",
             hapticDesc = "Vibre à chaque tap et par pulsation à 33 et 100.",
             hapticOn = "Activer la Vibration",

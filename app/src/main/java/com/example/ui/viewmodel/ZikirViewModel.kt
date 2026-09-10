@@ -766,17 +766,6 @@ class ZikirViewModel(
         setDailyTarget(current + delta)
     }
 
-    fun toggleHaptic() {
-        viewModelScope.launch {
-            var newHaptic = false
-            updateSettingsSafely { 
-                newHaptic = !it.hapticEnabled
-                it.copy(hapticEnabled = newHaptic) 
-            }
-            if (newHaptic) hapticHelper.tap()
-        }
-    }
-
     fun cycleHapticMode() {
         viewModelScope.launch {
             val currentEnabled = _uiState.value.settings.hapticEnabled
@@ -815,13 +804,6 @@ class ZikirViewModel(
         viewModelScope.launch {
             updateSettingsSafely { it.copy(reminderEnabled = enabled) }
             notificationScheduler.scheduleDailyReminders(_uiState.value.reminderSlots, enabled)
-        }
-    }
-
-    fun toggleInactivityAlert(enabled: Boolean) {
-        viewModelScope.launch {
-            updateSettingsSafely { it.copy(inactivityAlertEnabled = enabled) }
-            notificationScheduler.scheduleInactivityAlert(enabled)
         }
     }
 
@@ -897,15 +879,6 @@ class ZikirViewModel(
         viewModelScope.launch {
             val clamped = scale.coerceIn(0.7f, 1.5f)
             updateSettingsSafely { it.copy(fontScale = clamped) }
-        }
-    }
-
-    fun setHapticTapMode(mode: String) {
-        viewModelScope.launch {
-            val allowed = setOf("light", "medium", "strong")
-            val safe = if (mode in allowed) mode else "light"
-            updateSettingsSafely { it.copy(hapticTapMode = safe) }
-            hapticHelper.tap(safe)
         }
     }
 
