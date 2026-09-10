@@ -739,13 +739,21 @@ class ZikirViewModel(
 
     fun setLanguage(lang: String) {
         viewModelScope.launch {
-            updateSettingsSafely { it.copy(lang = lang) }
+            val allowed = setOf("tr", "ar", "en", "de", "fr")
+            val safe = if (lang in allowed) lang else "tr"
+            updateSettingsSafely { it.copy(lang = safe) }
         }
     }
 
     fun setTheme(themeName: String) {
         viewModelScope.launch {
-            updateSettingsSafely { it.copy(themeName = themeName) }
+            // Canonical + legacy allowed, normalize to canonical for storage
+            val normalized = try {
+                com.example.ui.theme.AppPalettes.normalizeId(themeName)
+            } catch (_: Exception) {
+                "hadra_gece"
+            }
+            updateSettingsSafely { it.copy(themeName = normalized) }
         }
     }
 
@@ -887,27 +895,34 @@ class ZikirViewModel(
 
     fun setCounterTexture(texture: String) {
         viewModelScope.launch {
-            updateSettingsSafely { it.copy(counterTexture = texture) }
+            val allowed = setOf("none", "geometric", "kaaba", "floral", "tasbih", "stars")
+            val safe = if (texture in allowed) texture else "geometric"
+            updateSettingsSafely { it.copy(counterTexture = safe) }
         }
     }
 
     fun setFontScale(scale: Float) {
         viewModelScope.launch {
-            updateSettingsSafely { it.copy(fontScale = scale) }
+            val clamped = scale.coerceIn(0.7f, 1.5f)
+            updateSettingsSafely { it.copy(fontScale = clamped) }
         }
     }
 
     fun setHapticTapMode(mode: String) {
         viewModelScope.launch {
-            updateSettingsSafely { it.copy(hapticTapMode = mode) }
-            hapticHelper.tap(mode)
+            val allowed = setOf("light", "medium", "strong")
+            val safe = if (mode in allowed) mode else "light"
+            updateSettingsSafely { it.copy(hapticTapMode = safe) }
+            hapticHelper.tap(safe)
         }
     }
 
     fun setHapticMilestoneMode(mode: String) {
         viewModelScope.launch {
-            updateSettingsSafely { it.copy(hapticMilestoneMode = mode) }
-            hapticHelper.milestone33(mode)
+            val allowed = setOf("double", "long", "triple")
+            val safe = if (mode in allowed) mode else "double"
+            updateSettingsSafely { it.copy(hapticMilestoneMode = safe) }
+            hapticHelper.milestone33(safe)
         }
     }
 

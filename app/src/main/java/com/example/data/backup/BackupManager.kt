@@ -373,10 +373,14 @@ class BackupManager(private val context: Context) {
             }
 
             val s = payload.settings
+            // Normalize legacy theme to canonical on import
+            val normalizedTheme = try {
+                com.example.ui.theme.AppPalettes.normalizeId(s.themeName)
+            } catch (_: Exception) { "hadra_gece" }
             val parsedSettings = AppSettings(
                 id = 1,
                 dailyTarget = s.dailyTarget,
-                themeName = s.themeName,
+                themeName = normalizedTheme,
                 lang = s.lang,
                 hapticEnabled = s.hapticEnabled,
                 hapticTapMode = s.hapticTapMode,

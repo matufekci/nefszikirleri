@@ -209,8 +209,31 @@ class ZikirRepository(
         val currentSettings = settingsDao.getSettingsDirect()
         if (currentSettings == null) {
             settingsDao.insertOrUpdate(AppSettings())
-        } else if (currentSettings.fontScale <= 1.05f) {
-            settingsDao.insertOrUpdate(currentSettings.copy(fontScale = 1.15f))
+        } else {
+            var needsUpdate = false
+            var updated = currentSettings
+            // FontScale migration: very old default 1.0 -> 1.15
+            if (currentSettings.fontScale <= 1.05f) {
+                updated = updated.copy(fontScale = 1.15f)
+                needsUpdate = true
+            }
+            // Theme normalization: legacy -> canonical
+            try {
+                val normalized = com.example.ui.theme.AppPalettes.normalizeId(currentSettings.themeName)
+                if (normalized != currentSettings.themeName) {
+                    updated = updated.copy(themeName = normalized)
+                    needsUpdate = true
+                }
+            } catch (_: Exception) {
+                // If normalize fails, fallback to canonical default
+                if (currentSettings.themeName != "hadra_gece") {
+                    updated = updated.copy(themeName = "hadra_gece")
+                    needsUpdate = true
+                }
+            }
+            if (needsUpdate) {
+                settingsDao.insertOrUpdate(updated)
+            }
         }
     }
 
@@ -426,11 +449,15 @@ class ZikirRepository(
             reminderDao.deleteAll()
             historyDao.deleteAll()
             
-            // Sonra yeni verileri yaz
+            // Sonra yeni verileri yaz - theme normalize
+            val normalizedSettings = try {
+                val nid = com.example.ui.theme.AppPalettes.normalizeId(settings.themeName)
+                settings.copy(themeName = nid)
+            } catch (_: Exception) { settings.copy(themeName = "hadra_gece") }
             zikirDao.replaceSnapshot(zikirs)
             historyDao.insertAll(history)
             reminderDao.insertAll(slots)
-            settingsDao.insertOrUpdate(settings)
+            settingsDao.insertOrUpdate(normalizedSettings)
         }
     }
 
@@ -459,12 +486,16 @@ class ZikirRepository(
             historyDao.deleteAll()
             reminderDao.deleteAll()
             
-            // Sonra verileri yaz
+            // Sonra verileri yaz - theme normalize
+            val normalizedTheme = try {
+                com.example.ui.theme.AppPalettes.normalizeId(settings.themeName)
+            } catch (_: Exception) { "hadra_gece" }
             zikirDao.replaceSnapshot(zikirs)
             historyDao.insertAll(history)
             reminderDao.insertAll(slots)
             
             val finalSettings = settings.copy(
+                themeName = normalizedTheme,
                 selectedZikirId = selectedZikirId.coerceIn(1, 15),
                 lastActiveTimestamp = fenceTime
             )
