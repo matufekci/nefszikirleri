@@ -636,8 +636,7 @@ class ZikirViewModel(
 
         savedStateHandle["selectedZikirId"] = validId
         viewModelScope.launch {
-            val currentSettings = _uiState.value.settings
-            repository.updateSettings(currentSettings.copy(selectedZikirId = validId))
+            updateSettingsSafely { it.copy(selectedZikirId = validId) }
             _uiState.update {
                 it.copy(
                     selectedId = validId,
@@ -926,12 +925,13 @@ class ZikirViewModel(
     }
 
     fun acknowledgeBadge(badgeId: String) {
-        val currentSettings = _uiState.value.settings
-        val acknowledged = currentSettings.acknowledgedBadges.split(",").filter { it.isNotBlank() }.toMutableSet()
-        acknowledged.add(badgeId)
-        val newAckString = acknowledged.joinToString(",")
         viewModelScope.launch {
-            repository.updateSettings(currentSettings.copy(acknowledgedBadges = newAckString))
+            updateSettingsSafely { currentSettings ->
+                val acknowledged = currentSettings.acknowledgedBadges.split(",").filter { it.isNotBlank() }.toMutableSet()
+                acknowledged.add(badgeId)
+                val newAckString = acknowledged.joinToString(",")
+                currentSettings.copy(acknowledgedBadges = newAckString)
+            }
             _uiState.update { it.copy(badgeCelebrationData = null) }
         }
     }
