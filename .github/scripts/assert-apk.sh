@@ -18,7 +18,7 @@ ARTIFACT="${3:-debug-apk}"
 
 # GitHub annotation/summary payloads need these escaped.
 escape_data() {
-  sed -e 's/%/%25/g' -e 's/\r/%0D/g' | tr '\n' ' ' | sed -e 's/  */ /g' | cut -c1-1800
+  sed -e 's/%/%25/g' -e 's/\r/%0D/g' | tr '\n' ' ' | sed -e 's/  */ /g' | cut -c1-2500
 }
 
 apk_path="$(find "$APK_DIR" -maxdepth 1 -name '*.apk' -type f 2>/dev/null | head -n 1 || true)"
@@ -44,10 +44,18 @@ fi
 reason="APK bulunamadı: ${APK_DIR} içinde hiç .apk dosyası yok"
 detail=""
 if [ -n "$BUILD_LOG" ] && [ -f "$BUILD_LOG" ]; then
-  # Prefer Gradle's own "What went wrong" block, fall back to the log tail.
-  detail="$(awk '/\* What went wrong:/{flag=1} flag{print; n++} n>=25{exit}' "$BUILD_LOG")"
+  # 1) Kotlin / KSP / javac compiler diagnostics — the actual actionable lines.
+  compiler_errors="$(grep -E '^(e|w): (file:)?/|^[^ ].*\.(kt|java):[0-9]+: error:' "$BUILD_LOG" \
+    | grep -E '^e: |error:' | head -n 30)"
+  # 2) Gradle's "What went wrong" block, without the useless stack trace.
+  what_wrong="$(awk '/^\* What went wrong:/{flag=1; next} /^\* Try:/{flag=0} flag' "$BUILD_LOG" | head -n 12)"
+  # 3) Root causes.
+  caused_by="$(grep -E '^Caused by: |Execution failed for task' "$BUILD_LOG" | head -n 6)"
+
+  detail="$(printf '%s\n%s\n%s\n' "$compiler_errors" "$what_wrong" "$caused_by" | sed '/^[[:space:]]*$/d')"
+
   if [ -z "$detail" ]; then
-    detail="$(grep -E 'FAILURE:|BUILD FAILED|Execution failed|error:|Caused by:|e: ' "$BUILD_LOG" | tail -n 15)"
+    detail="$(grep -E 'FAILURE:|BUILD FAILED|Execution failed|error:|Caused by:' "$BUILD_LOG" | tail -n 15)"
   fi
   if [ -z "$detail" ]; then
     detail="$(tail -n 25 "$BUILD_LOG")"
