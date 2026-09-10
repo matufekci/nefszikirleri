@@ -1222,11 +1222,16 @@ class ZikirViewModel(
     private fun backupToCloudSilently(userId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val zikirs = _uiState.value.zikirs
-                val history = repository.getAllHistoryDirect()
-                val slots = _uiState.value.reminderSlots
-                val settings = _uiState.value.settings
-                val res = syncManager.backupToCloud(userId, zikirs, history, slots, settings, getLocalRevision(), getDeviceId())
+                val snapshot = repository.getAtomicSnapshot()
+                val res = syncManager.backupToCloud(
+                    userId = userId,
+                    zikirs = snapshot.zikirs,
+                    history = snapshot.history,
+                    slots = snapshot.slots,
+                    settings = snapshot.settings,
+                    localRevision = getLocalRevision(),
+                    deviceId = getDeviceId()
+                )
                 res.onSuccess { ts ->
                     setLocalRevision(getLocalRevision() + 1)
                     _lastCloudSyncTimestamp.value = ts

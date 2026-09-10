@@ -134,7 +134,24 @@ class ZikirRepository(
     suspend fun getAllHistoryDirect(): List<ZikirHistory> =
         getAllHistoryInChunksDirect()
 
-    suspend fun getAllHistoryInChunksDirect(chunkSize: Int = 2000): List<ZikirHistory> {
+    suspend fun getAllHistoryInChunksDirect(chunkSize: Int = 2000): List<ZikirHistory> = database.withTransaction {
+        val totalCount = historyDao.getHistoryCountDirect()
+        if (totalCount <= chunkSize) {
+            return@withTransaction historyDao.getAllHistoryDirect()
+        }
+        val result = ArrayList<ZikirHistory>(totalCount)
+        var offset = 0
+        while (offset < totalCount) {
+            val chunk = historyDao.getHistoryPagedDirect(limit = chunkSize, offset = offset)
+            if (chunk.isEmpty()) break
+            result.addAll(chunk)
+            offset += chunk.size
+        }
+        result
+    }
+
+    suspend fun getAllHistoryInChunksDirectInternal(chunkSize: Int = 2000): List<ZikirHistory> {
+        // Internal non-transactional version for use inside existing transactions
         val totalCount = historyDao.getHistoryCountDirect()
         if (totalCount <= chunkSize) {
             return historyDao.getAllHistoryDirect()
@@ -157,18 +174,22 @@ class ZikirRepository(
         val settings: AppSettings
     )
 
-    suspend fun getAtomicSnapshot(): BackupSnapshot = database.withTransaction {
-        val zikirs = zikirDao.getAllZikirsDirect()
-        val history = getAllHistoryInChunksDirect()
-        val slots = reminderDao.getAllSlotsList()
-        val settings = settingsDao.getSettingsDirect() ?: AppSettings()
-        
-        BackupSnapshot(
-            zikirs = zikirs,
-            history = history,
-            slots = slots,
-            settings = settings
-        )
+    suspend fun getAtomicSnapshot(): BackupSnapshot {
+        // Ensure pending increments are applied before snapshot to avoid count/history mismatch
+        processUnappliedOperations()
+        return database.withTransaction {
+            val zikirs = zikirDao.getAllZikirsDirect()
+            val history = getAllHistoryInChunksDirectInternal()
+            val slots = reminderDao.getAllSlotsList()
+            val settings = settingsDao.getSettingsDirect() ?: AppSettings()
+            
+            BackupSnapshot(
+                zikirs = zikirs,
+                history = history,
+                slots = slots,
+                settings = settings
+            )
+        }
     }
 
     suspend fun ensureInitialized() = database.withTransaction {
