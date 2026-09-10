@@ -12,6 +12,9 @@ set -uo pipefail
 
 DIR="${1:-app/build/test-results/testDebugUnitTest}"
 
+NL='
+'
+
 shopt -s nullglob
 files=("$DIR"/TEST-*.xml)
 
@@ -25,6 +28,7 @@ failures=0
 errors=0
 skipped=0
 failed_lines=""
+suite_lines=""
 
 for f in "${files[@]}"; do
   # İlk <testsuite ...> etiketindeki sayaçlar.
@@ -40,6 +44,9 @@ for f in "${files[@]}"; do
   failures=$((failures + fl))
   errors=$((errors + er))
   skipped=$((skipped + sk))
+
+  suite_name="$(basename "$f" .xml)"; suite_name="${suite_name#TEST-}"
+  suite_lines="${suite_lines}${suite_name}: ${t} test, ${fl} failure, ${er} error${NL}"
 
   # Başarısız testlerin adları: <testcase> içinde <failure>/<error> geçenler.
   names="$(awk '
@@ -85,4 +92,5 @@ if [ "$bad" -gt 0 ]; then
 fi
 
 echo "::notice title=Unit testler yeşil::${total} test geçti (${skipped} atlandı)"
+printf '::notice title=Koşan test sınıfları::%s\n' "$(printf '%s' "$suite_lines" | sed '/^[[:space:]]*$/d' | sed 's/$/%0A/' | tr -d '\n')"
 exit 0
