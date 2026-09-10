@@ -73,7 +73,13 @@ service cloud.firestore {
             'settingsUsageStats', 'acknowledgedBadges'
           ])
           && settings.lang in ['tr', 'ar', 'en', 'de', 'fr']
-          && settings.themeName in ['emerald', 'night', 'rose', 'olive', 'light', 'obsidian', 'kisve', 'turq', 'amethyst', 'sahara']
+          // Canonical 3 + legacy 10 + aliases for backward compat (must stay in sync with Color.kt + DhikrDataValidator.kt)
+          && settings.themeName in [
+            'hadra_gunduz', 'hadra_gece', 'siyah', 'beyaz', 'yesil', 'black',
+            'emerald', 'night', 'rose', 'olive', 'light', 'obsidian', 'kisve', 'turq', 'amethyst', 'sahara',
+            'hadra_light', 'hadra_dark', 'inci', 'white', 'green', 'oniks', 'oled', 'pure_black',
+            'hadra_white', 'hadra', 'leyl', 'kudus', 'iznik', 'gul', 'amber', 'kandil'
+          ]
           && settings.counterTexture in ['none', 'geometric', 'kaaba', 'floral', 'tasbih', 'stars']
           && settings.hapticTapMode in ['light', 'medium', 'strong']
           && settings.hapticMilestoneMode in ['double', 'long', 'triple']

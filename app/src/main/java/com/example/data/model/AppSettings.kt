@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey
 data class AppSettings(
     @PrimaryKey val id: Int = 1,
     val lang: String = "tr", // "tr", "ar", "en", "de", "fr"
-    val themeName: String = "emerald", // "emerald", "night", "rose", "olive", "light", "obsidian", "kisve", "turq", "amethyst", "sahara"
+    val themeName: String = "hadra_gece", // canonical: hadra_gunduz (Beyaz), hadra_gece (Yeşil), siyah (Siyah) + legacy 10 for backward compat
     val countdownMode: Boolean = false,
     val dailyTarget: Long = 10000L,
     val hapticEnabled: Boolean = true,

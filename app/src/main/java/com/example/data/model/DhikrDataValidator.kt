@@ -208,7 +208,17 @@ object DhikrDataValidator {
             throw IllegalArgumentException("Strict Restore Validation Error: Invalid lang (${settings.lang})")
         }
 
-        val ALLOWED_THEMES = setOf("emerald", "night", "rose", "olive", "light", "obsidian", "kisve", "turq", "amethyst", "sahara")
+        // Canonical 3 + legacy 10 + aliases for backward compat (must stay in sync with Color.kt + firestore.rules)
+        val ALLOWED_THEMES = setOf(
+            // Canonical (new)
+            "hadra_gunduz", "hadra_gece", "siyah",
+            "beyaz", "yesil", "black",
+            // Legacy (old 10)
+            "emerald", "night", "rose", "olive", "light", "obsidian", "kisve", "turq", "amethyst", "sahara",
+            // Additional legacy aliases
+            "hadra_light", "hadra_dark", "inci", "white", "green", "oniks", "oled", "pure_black",
+            "hadra_white", "hadra", "leyl", "kudus", "iznik", "gul", "amber", "kandil"
+        )
         if (settings.themeName !in ALLOWED_THEMES) {
             throw IllegalArgumentException("Strict Restore Validation Error: Invalid themeName (${settings.themeName})")
         }
