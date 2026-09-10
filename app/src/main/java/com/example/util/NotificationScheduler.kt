@@ -43,16 +43,28 @@ class NotificationScheduler(private val context: Context) {
         saveActiveScheduledSlotIds(currentActiveSlotIds)
     }
 
+    @Synchronized
     fun getActiveScheduledSlotIds(): Set<Long> {
         return prefs.getStringSet(KEY_SCHEDULED_SLOT_IDS, emptySet())
             ?.mapNotNull { it.toLongOrNull() }
             ?.toSet() ?: emptySet()
     }
 
+    @Synchronized
     private fun saveActiveScheduledSlotIds(slotIds: Set<Long>) {
+        // Use commit for critical alarm tracking to ensure persistence before process death
         prefs.edit()
             .putStringSet(KEY_SCHEDULED_SLOT_IDS, slotIds.map { it.toString() }.toSet())
             .apply()
+    }
+
+    fun cancelAllScheduledAlarms() {
+        val scheduled = getActiveScheduledSlotIds()
+        scheduled.forEach { cancelSlotAlarm(it) }
+        saveActiveScheduledSlotIds(emptySet())
+        // Also cancel inactivity and target
+        scheduleInactivityAlert(false)
+        scheduleTargetReminder(false)
     }
 
     private fun scheduleSlot(slot: ReminderSlot) {
@@ -82,18 +94,47 @@ class NotificationScheduler(private val context: Context) {
         )
 
         try {
-            alarmManager.setInexactRepeating(
-                AlarmManager.RTC_WAKEUP,
-                calendar.timeInMillis,
-                AlarmManager.INTERVAL_DAY,
-                pendingIntent
-            )
+            // Check if we can schedule exact alarms (Android 12+), otherwise use inexact
+            val canExact = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                alarmManager.canScheduleExactAlarms()
+            } else true
+
+            if (canExact) {
+                // Use exact for first trigger, then repeating inexact for battery
+                try {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        calendar.timeInMillis,
+                        pendingIntent
+                    )
+                } catch (e: Exception) {
+                    alarmManager.setInexactRepeating(
+                        AlarmManager.RTC_WAKEUP,
+                        calendar.timeInMillis,
+                        AlarmManager.INTERVAL_DAY,
+                        pendingIntent
+                    )
+                }
+            } else {
+                alarmManager.setInexactRepeating(
+                    AlarmManager.RTC_WAKEUP,
+                    calendar.timeInMillis,
+                    AlarmManager.INTERVAL_DAY,
+                    pendingIntent
+                )
+            }
         } catch (e: Exception) {
-            alarmManager.set(
-                AlarmManager.RTC_WAKEUP,
-                calendar.timeInMillis,
-                pendingIntent
-            )
+            try {
+                alarmManager.set(
+                    AlarmManager.RTC_WAKEUP,
+                    calendar.timeInMillis,
+                    pendingIntent
+                )
+            } catch (e2: Exception) {
+                if (com.example.BuildConfig.DEBUG) {
+                    android.util.Log.e("NotificationScheduler", "Failed to schedule slot $slot", e2)
+                }
+            }
         }
     }
 

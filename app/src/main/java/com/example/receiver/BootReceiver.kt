@@ -28,12 +28,23 @@ class BootReceiver : BroadcastReceiver() {
 
                     if (settings?.reminderEnabled == true) {
                         scheduler.scheduleDailyReminders(slots, true)
+                    } else {
+                        // Ensure orphan alarms are cleaned even if disabled
+                        scheduler.scheduleDailyReminders(emptyList(), false)
                     }
 
                     if (settings?.inactivityAlertEnabled == true) {
                         scheduler.scheduleInactivityAlert(true)
                     }
-                    // Akıllı zikir azalma takip servisini yeniden başlat
+
+                    if (settings?.targetReminderEnabled == true) {
+                        scheduler.scheduleTargetReminder(true)
+                    }
+
+                    // Reschedule WorkManager periodic evaluation
+                    com.example.NefsApplication.scheduleDailyEvaluation(context)
+
+                    // Legacy adaptive check - now handled by WorkManager, keep for backward compat
                     com.example.util.AdaptiveReminderManager.schedulePeriodicEvaluation(context)
                 } catch (e: Exception) {
                     if (e is kotlinx.coroutines.CancellationException) throw e

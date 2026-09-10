@@ -636,8 +636,7 @@ class ZikirViewModel(
 
         savedStateHandle["selectedZikirId"] = validId
         viewModelScope.launch {
-            val currentSettings = _uiState.value.settings
-            repository.updateSettings(currentSettings.copy(selectedZikirId = validId))
+            updateSettingsSafely { it.copy(selectedZikirId = validId) }
             _uiState.update {
                 it.copy(
                     selectedId = validId,
@@ -740,13 +739,21 @@ class ZikirViewModel(
 
     fun setLanguage(lang: String) {
         viewModelScope.launch {
-            updateSettingsSafely { it.copy(lang = lang) }
+            val allowed = setOf("tr", "ar", "en", "de", "fr")
+            val safe = if (lang in allowed) lang else "tr"
+            updateSettingsSafely { it.copy(lang = safe) }
         }
     }
 
     fun setTheme(themeName: String) {
         viewModelScope.launch {
-            updateSettingsSafely { it.copy(themeName = themeName) }
+            // Canonical + legacy allowed, normalize to canonical for storage
+            val normalized = try {
+                com.example.ui.theme.AppPalettes.normalizeId(themeName)
+            } catch (_: Exception) {
+                "hadra_gece"
+            }
+            updateSettingsSafely { it.copy(themeName = normalized) }
         }
     }
 
@@ -888,27 +895,34 @@ class ZikirViewModel(
 
     fun setCounterTexture(texture: String) {
         viewModelScope.launch {
-            updateSettingsSafely { it.copy(counterTexture = texture) }
+            val allowed = setOf("none", "geometric", "kaaba", "floral", "tasbih", "stars")
+            val safe = if (texture in allowed) texture else "geometric"
+            updateSettingsSafely { it.copy(counterTexture = safe) }
         }
     }
 
     fun setFontScale(scale: Float) {
         viewModelScope.launch {
-            updateSettingsSafely { it.copy(fontScale = scale) }
+            val clamped = scale.coerceIn(0.7f, 1.5f)
+            updateSettingsSafely { it.copy(fontScale = clamped) }
         }
     }
 
     fun setHapticTapMode(mode: String) {
         viewModelScope.launch {
-            updateSettingsSafely { it.copy(hapticTapMode = mode) }
-            hapticHelper.tap(mode)
+            val allowed = setOf("light", "medium", "strong")
+            val safe = if (mode in allowed) mode else "light"
+            updateSettingsSafely { it.copy(hapticTapMode = safe) }
+            hapticHelper.tap(safe)
         }
     }
 
     fun setHapticMilestoneMode(mode: String) {
         viewModelScope.launch {
-            updateSettingsSafely { it.copy(hapticMilestoneMode = mode) }
-            hapticHelper.milestone33(mode)
+            val allowed = setOf("double", "long", "triple")
+            val safe = if (mode in allowed) mode else "double"
+            updateSettingsSafely { it.copy(hapticMilestoneMode = safe) }
+            hapticHelper.milestone33(safe)
         }
     }
 
@@ -926,12 +940,13 @@ class ZikirViewModel(
     }
 
     fun acknowledgeBadge(badgeId: String) {
-        val currentSettings = _uiState.value.settings
-        val acknowledged = currentSettings.acknowledgedBadges.split(",").filter { it.isNotBlank() }.toMutableSet()
-        acknowledged.add(badgeId)
-        val newAckString = acknowledged.joinToString(",")
         viewModelScope.launch {
-            repository.updateSettings(currentSettings.copy(acknowledgedBadges = newAckString))
+            updateSettingsSafely { currentSettings ->
+                val acknowledged = currentSettings.acknowledgedBadges.split(",").filter { it.isNotBlank() }.toMutableSet()
+                acknowledged.add(badgeId)
+                val newAckString = acknowledged.joinToString(",")
+                currentSettings.copy(acknowledgedBadges = newAckString)
+            }
             _uiState.update { it.copy(badgeCelebrationData = null) }
         }
     }
@@ -954,33 +969,41 @@ class ZikirViewModel(
     fun incrementSettingUsage(category: String) {
         viewModelScope.launch {
             updateSettingsSafely { currentSettings ->
-            val currentStatsStr = currentSettings.settingsUsageStats
-            
-            // Simple parser for {"key":1, "key2":2}
-            val map = mutableMapOf<String, Int>()
-            try {
-                val cleanStr = currentStatsStr.removePrefix("{").removeSuffix("}").trim()
-                if (cleanStr.isNotEmpty()) {
-                    cleanStr.split(",").forEach { pair ->
-                        val parts = pair.split(":")
-                        if (parts.size == 2) {
-                            val key = parts[0].trim().removeSurrounding("\"")
-                            val value = parts[1].trim().toIntOrNull() ?: 0
-                            map[key] = value
-                        }
+                val currentStatsStr = currentSettings.settingsUsageStats
+                val map = mutableMapOf<String, Int>()
+                try {
+                    val json = JSONObject(currentStatsStr)
+                    val keys = json.keys()
+                    while (keys.hasNext()) {
+                        val k = keys.next()
+                        map[k] = json.optInt(k, 0)
                     }
+                } catch (e: Exception) {
+                    // Fallback to lenient parser if JSON malformed
+                    try {
+                        val cleanStr = currentStatsStr.removePrefix("{").removeSuffix("}").trim()
+                        if (cleanStr.isNotEmpty()) {
+                            cleanStr.split(",").forEach { pair ->
+                                val parts = pair.split(":")
+                                if (parts.size == 2) {
+                                    val key = parts[0].trim().removeSurrounding("\"")
+                                    val value = parts[1].trim().toIntOrNull() ?: 0
+                                    map[key] = value
+                                }
+                            }
+                        }
+                    } catch (_: Exception) {}
                 }
-            } catch (e: Exception) {}
-            
-            map[category] = (map[category] ?: 0) + 1
-            
-            // Simple serializer
-            val newStatsStr = map.entries.joinToString(prefix = "{", postfix = "}", separator = ",") {
-                "\"${it.key}\":${it.value}"
+                
+                map[category] = (map[category] ?: 0) + 1
+                
+                val newJson = JSONObject()
+                for ((k, v) in map) {
+                    newJson.put(k, v)
+                }
+                
+                currentSettings.copy(settingsUsageStats = newJson.toString())
             }
-            
-            currentSettings.copy(settingsUsageStats = newStatsStr)
-        }
         }
     }
 
@@ -1222,11 +1245,16 @@ class ZikirViewModel(
     private fun backupToCloudSilently(userId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val zikirs = _uiState.value.zikirs
-                val history = repository.getAllHistoryDirect()
-                val slots = _uiState.value.reminderSlots
-                val settings = _uiState.value.settings
-                val res = syncManager.backupToCloud(userId, zikirs, history, slots, settings, getLocalRevision(), getDeviceId())
+                val snapshot = repository.getAtomicSnapshot()
+                val res = syncManager.backupToCloud(
+                    userId = userId,
+                    zikirs = snapshot.zikirs,
+                    history = snapshot.history,
+                    slots = snapshot.slots,
+                    settings = snapshot.settings,
+                    localRevision = getLocalRevision(),
+                    deviceId = getDeviceId()
+                )
                 res.onSuccess { ts ->
                     setLocalRevision(getLocalRevision() + 1)
                     _lastCloudSyncTimestamp.value = ts

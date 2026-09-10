@@ -31,9 +31,37 @@ service cloud.firestore {
 
     function isValidSlots(slots) {
       return slots is list
-          && slots.size() <= 50
+          && slots.size() <= 5
           && slots.all(s, isValidSlot(s))
           && slots.map(s, s.id).toSet().size() == slots.size();
+    }
+
+    function isValidSnapshot(snapshot) {
+      return snapshot.keys().hasAll(['snapshotId', 'userId', 'zikirs', 'slots', 'settings', 'chunkCount', 'updatedAt'])
+          && snapshot.snapshotId is string
+          && snapshot.userId is string
+          && snapshot.zikirs is list && snapshot.zikirs.all(z, isValidZikir(z))
+          && isValidSlots(snapshot.slots)
+          && snapshot.settings is map && isValidSettings(snapshot.settings)
+          && snapshot.chunkCount is int && snapshot.chunkCount >= 0
+          && (snapshot.updatedAt is int || snapshot.updatedAt is float);
+    }
+
+    function isValidSnapshotHistoryChunk() {
+      return request.resource.data.keys().hasAll(['snapshotId', 'chunkIndex', 'entries', 'updatedAt'])
+          && request.resource.data.snapshotId is string
+          && request.resource.data.chunkIndex is int && request.resource.data.chunkIndex >= 0
+          && request.resource.data.entries is list
+          && request.resource.data.entries.size() <= 500
+          && request.resource.data.entries.all(entry, isValidHistoryEntry(entry))
+          && (request.resource.data.updatedAt is int || request.resource.data.updatedAt is float);
+    }
+
+    function isValidSnapshotHistoryMeta() {
+      return request.resource.data.keys().hasAll(['snapshotId', 'chunkCount', 'updatedAt'])
+          && request.resource.data.snapshotId is string
+          && request.resource.data.chunkCount is int && request.resource.data.chunkCount >= 0
+          && (request.resource.data.updatedAt is int || request.resource.data.updatedAt is float);
     }
 
     function isValidSettings(settings) {
@@ -45,7 +73,13 @@ service cloud.firestore {
             'settingsUsageStats', 'acknowledgedBadges'
           ])
           && settings.lang in ['tr', 'ar', 'en', 'de', 'fr']
-          && settings.themeName in ['emerald', 'night', 'rose', 'olive', 'light', 'obsidian', 'kisve', 'turq', 'amethyst', 'sahara']
+          // Canonical 3 + legacy 10 + aliases for backward compat (must stay in sync with Color.kt + DhikrDataValidator.kt)
+          && settings.themeName in [
+            'hadra_gunduz', 'hadra_gece', 'siyah', 'beyaz', 'yesil', 'black',
+            'emerald', 'night', 'rose', 'olive', 'light', 'obsidian', 'kisve', 'turq', 'amethyst', 'sahara',
+            'hadra_light', 'hadra_dark', 'inci', 'white', 'green', 'oniks', 'oled', 'pure_black',
+            'hadra_white', 'hadra', 'leyl', 'kudus', 'iznik', 'gul', 'amber', 'kandil'
+          ]
           && settings.counterTexture in ['none', 'geometric', 'kaaba', 'floral', 'tasbih', 'stars']
           && settings.hapticTapMode in ['light', 'medium', 'strong']
           && settings.hapticMilestoneMode in ['double', 'long', 'triple']
@@ -118,6 +152,21 @@ service cloud.firestore {
           (docId.matches('chunk_[0-9]+') && isValidHistoryChunk())
         );
         allow delete: if isOwner(userId);
+      }
+
+      match /snapshots/{snapshotId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidSnapshot(request.resource.data);
+        allow delete: if isOwner(userId);
+
+        match /history/{docId} {
+          allow read: if isOwner(userId);
+          allow create, update: if isOwner(userId) && (
+            (docId == 'meta' && isValidSnapshotHistoryMeta()) ||
+            (docId.matches('chunk_[0-9]+') && isValidSnapshotHistoryChunk())
+          );
+          allow delete: if isOwner(userId);
+        }
       }
     }
   }

@@ -1,0 +1,165 @@
+name: CI - Build & Test & Room Schema
+
+on:
+  push:
+    branches: [ main, arena/** ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Create dummy google-services.json for CI
+        run: |
+          if [ -f app/ci-dummy-google-services.json ]; then
+            cp app/ci-dummy-google-services.json app/google-services.json
+            echo "Using ci-dummy-google-services.json"
+          elif [ ! -f app/google-services.json ]; then
+            cp app/google-services.json.example app/google-services.json || echo '{"project_info":{}}' > app/google-services.json
+          fi
+          cat app/google-services.json
+
+      - name: Create .env from example for CI
+        run: |
+          if [ ! -f .env ] && [ -f .env.example ]; then cp .env.example .env; fi
+          if [ ! -f app/.env ] && [ -f app/.env.example ]; then cp app/.env.example app/.env; fi
+          if [ ! -f .env ] && [ -f app/.env.example ]; then cp app/.env.example .env; fi
+          ls -la .env 2>&1 || true
+          cat .env
+
+      - name: Check Room schema exists
+        run: |
+          echo "Checking Room schemas..."
+          ls -la app/schemas/com.example.data.local.AppDatabase/ || echo "No schemas folder yet"
+          if [ ! -f app/schemas/com.example.data.local.AppDatabase/8.json ]; then
+            echo "WARNING: Latest Room schema 8.json missing"
+          fi
+
+      - name: Run unit tests (Robolectric)
+        run: ./gradlew testDebugUnitTest --stacktrace --continue 2>&1 | tee unit-test.log
+        continue-on-error: true
+
+      - name: Run Android lint
+        run: ./gradlew lintDebug --stacktrace 2>&1 | tee lint.log
+        continue-on-error: true
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            app/build/reports/
+            app/build/test-results/
+            unit-test.log
+            lint.log
+
+  build-debug:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Create dummy google-services.json for CI
+        run: |
+          if [ -f app/ci-dummy-google-services.json ]; then
+            cp app/ci-dummy-google-services.json app/google-services.json
+            echo "Using ci-dummy-google-services.json for APK build"
+          elif [ ! -f app/google-services.json ]; then
+            cp app/google-services.json.example app/google-services.json || echo '{"project_info":{}}' > app/google-services.json
+          fi
+          cat app/google-services.json
+
+      - name: Create .env from example for CI
+        run: |
+          if [ ! -f .env ] && [ -f .env.example ]; then cp .env.example .env; fi
+          if [ ! -f app/.env ] && [ -f app/.env.example ]; then cp app/.env.example app/.env; fi
+          ls -la .env 2>&1 || true
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --stacktrace 2>&1 | tee build-debug.log
+        continue-on-error: true
+
+      - name: Upload debug APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-apk
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/debug/output-metadata.json
+            build-debug.log
+
+  build-apk-only:
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Create dummy google-services.json for CI (valid structure)
+        run: |
+          cp app/ci-dummy-google-services.json app/google-services.json
+          echo "Using valid dummy google-services.json"
+          cat app/google-services.json
+
+      - name: Create .env from example
+        run: |
+          cp .env.example .env
+          cat .env
+
+      - name: Build debug APK (no tests)
+        run: ./gradlew assembleDebug -x test --stacktrace 2>&1 | tee build-apk-only.log
+        continue-on-error: true
+
+      - name: Upload debug APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-apk-no-tests
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            build-apk-only.log

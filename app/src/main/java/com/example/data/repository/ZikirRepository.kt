@@ -134,7 +134,24 @@ class ZikirRepository(
     suspend fun getAllHistoryDirect(): List<ZikirHistory> =
         getAllHistoryInChunksDirect()
 
-    suspend fun getAllHistoryInChunksDirect(chunkSize: Int = 2000): List<ZikirHistory> {
+    suspend fun getAllHistoryInChunksDirect(chunkSize: Int = 2000): List<ZikirHistory> = database.withTransaction {
+        val totalCount = historyDao.getHistoryCountDirect()
+        if (totalCount <= chunkSize) {
+            return@withTransaction historyDao.getAllHistoryDirect()
+        }
+        val result = ArrayList<ZikirHistory>(totalCount)
+        var offset = 0
+        while (offset < totalCount) {
+            val chunk = historyDao.getHistoryPagedDirect(limit = chunkSize, offset = offset)
+            if (chunk.isEmpty()) break
+            result.addAll(chunk)
+            offset += chunk.size
+        }
+        result
+    }
+
+    suspend fun getAllHistoryInChunksDirectInternal(chunkSize: Int = 2000): List<ZikirHistory> {
+        // Internal non-transactional version for use inside existing transactions
         val totalCount = historyDao.getHistoryCountDirect()
         if (totalCount <= chunkSize) {
             return historyDao.getAllHistoryDirect()
@@ -157,18 +174,22 @@ class ZikirRepository(
         val settings: AppSettings
     )
 
-    suspend fun getAtomicSnapshot(): BackupSnapshot = database.withTransaction {
-        val zikirs = zikirDao.getAllZikirsDirect()
-        val history = getAllHistoryInChunksDirect()
-        val slots = reminderDao.getAllSlotsList()
-        val settings = settingsDao.getSettingsDirect() ?: AppSettings()
-        
-        BackupSnapshot(
-            zikirs = zikirs,
-            history = history,
-            slots = slots,
-            settings = settings
-        )
+    suspend fun getAtomicSnapshot(): BackupSnapshot {
+        // Ensure pending increments are applied before snapshot to avoid count/history mismatch
+        processUnappliedOperations()
+        return database.withTransaction {
+            val zikirs = zikirDao.getAllZikirsDirect()
+            val history = getAllHistoryInChunksDirectInternal()
+            val slots = reminderDao.getAllSlotsList()
+            val settings = settingsDao.getSettingsDirect() ?: AppSettings()
+            
+            BackupSnapshot(
+                zikirs = zikirs,
+                history = history,
+                slots = slots,
+                settings = settings
+            )
+        }
     }
 
     suspend fun ensureInitialized() = database.withTransaction {
@@ -188,8 +209,31 @@ class ZikirRepository(
         val currentSettings = settingsDao.getSettingsDirect()
         if (currentSettings == null) {
             settingsDao.insertOrUpdate(AppSettings())
-        } else if (currentSettings.fontScale <= 1.05f) {
-            settingsDao.insertOrUpdate(currentSettings.copy(fontScale = 1.15f))
+        } else {
+            var needsUpdate = false
+            var updated = currentSettings
+            // FontScale migration: very old default 1.0 -> 1.15
+            if (currentSettings.fontScale <= 1.05f) {
+                updated = updated.copy(fontScale = 1.15f)
+                needsUpdate = true
+            }
+            // Theme normalization: legacy -> canonical
+            try {
+                val normalized = com.example.ui.theme.AppPalettes.normalizeId(currentSettings.themeName)
+                if (normalized != currentSettings.themeName) {
+                    updated = updated.copy(themeName = normalized)
+                    needsUpdate = true
+                }
+            } catch (_: Exception) {
+                // If normalize fails, fallback to canonical default
+                if (currentSettings.themeName != "hadra_gece") {
+                    updated = updated.copy(themeName = "hadra_gece")
+                    needsUpdate = true
+                }
+            }
+            if (needsUpdate) {
+                settingsDao.insertOrUpdate(updated)
+            }
         }
     }
 
@@ -405,11 +449,15 @@ class ZikirRepository(
             reminderDao.deleteAll()
             historyDao.deleteAll()
             
-            // Sonra yeni verileri yaz
+            // Sonra yeni verileri yaz - theme normalize
+            val normalizedSettings = try {
+                val nid = com.example.ui.theme.AppPalettes.normalizeId(settings.themeName)
+                settings.copy(themeName = nid)
+            } catch (_: Exception) { settings.copy(themeName = "hadra_gece") }
             zikirDao.replaceSnapshot(zikirs)
             historyDao.insertAll(history)
             reminderDao.insertAll(slots)
-            settingsDao.insertOrUpdate(settings)
+            settingsDao.insertOrUpdate(normalizedSettings)
         }
     }
 
@@ -438,12 +486,16 @@ class ZikirRepository(
             historyDao.deleteAll()
             reminderDao.deleteAll()
             
-            // Sonra verileri yaz
+            // Sonra verileri yaz - theme normalize
+            val normalizedTheme = try {
+                com.example.ui.theme.AppPalettes.normalizeId(settings.themeName)
+            } catch (_: Exception) { "hadra_gece" }
             zikirDao.replaceSnapshot(zikirs)
             historyDao.insertAll(history)
             reminderDao.insertAll(slots)
             
             val finalSettings = settings.copy(
+                themeName = normalizedTheme,
                 selectedZikirId = selectedZikirId.coerceIn(1, 15),
                 lastActiveTimestamp = fenceTime
             )

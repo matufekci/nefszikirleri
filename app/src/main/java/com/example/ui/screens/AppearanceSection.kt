@@ -65,6 +65,7 @@ fun AppearanceSection(
             onToggle = { themeExpanded = !themeExpanded },
             strings = strings
         ) {
+            val normalizedCurrent = AppPalettes.normalizeId(settings.themeName)
             val chunks = AppPalettes.ALL.chunked(2)
             chunks.forEachIndexed { rowIndex, rowList ->
                 if (rowIndex > 0) Spacer(modifier = Modifier.height(8.dp))
@@ -73,10 +74,7 @@ fun AppearanceSection(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     rowList.forEach { palette ->
-                        val isSelected = settings.themeName == palette.id ||
-                                (settings.themeName == "emerald" && palette.id == "hadra_gece") ||
-                                (settings.themeName == "rahle" && palette.id == "hadra_gunduz") ||
-                                (settings.themeName == "obsidian" && palette.id == "siyah")
+                        val isSelected = normalizedCurrent == palette.id
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,

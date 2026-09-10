@@ -89,17 +89,20 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
                     content = strings.inactivityNotifBody
                     notificationId = 9999
                 } else if (type == TYPE_TARGET_REMINDER) {
+                    if (settings?.targetReminderEnabled != true) {
+                        return@launch
+                    }
                     val todayKey = com.example.util.NumberFormatter.getDateKey()
                     val targetDaily = settings?.dailyTarget ?: 10000L
                     val selectedId = settings?.selectedZikirId ?: 1
                     val todayDone = db.historyDao().getTodayRecitedForZikirDirect(selectedId, todayKey)
                     val remainingToday = (targetDaily - todayDone).coerceAtLeast(0L)
-                    title = strings.targetReminderTitle
-                    content = if (remainingToday > 0) {
-                        "${strings.remainingZikir}: ${com.example.util.NumberFormatter.format(remainingToday, lang)}"
-                    } else {
-                        "${strings.statCompleted}"
+                    if (remainingToday <= 0L) {
+                        // Daily target already met, no need to remind
+                        return@launch
                     }
+                    title = strings.targetReminderTitle
+                    content = "${strings.remainingZikir}: ${com.example.util.NumberFormatter.format(remainingToday, lang)}"
                     notificationId = 8888
                 } else {
                     if (settings?.reminderEnabled != true) {
@@ -107,10 +110,14 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
                     }
                     val slotRequestCode = intent.getIntExtra(EXTRA_SLOT_ID, 1000)
                     val dbSlots = db.reminderDao().getAllSlotsList()
+                    if (dbSlots.isEmpty()) {
+                        // No slots configured, nothing to notify
+                        return@launch
+                    }
                     val isSlotActive = dbSlots.any { slot ->
                         slot.isEnabled && com.example.util.NotificationScheduler.getSlotRequestCode(slot.id) == slotRequestCode
                     }
-                    if (!isSlotActive && dbSlots.isNotEmpty()) {
+                    if (!isSlotActive) {
                         // Silinmiş veya devre dışı bırakılmış slotun alarmı çalışmamalı
                         return@launch
                     }

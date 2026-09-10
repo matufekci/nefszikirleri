@@ -15,18 +15,31 @@ android {
     applicationId = "com.aistudio.nefszikir.kdhrmq"
     minSdk = 24
     targetSdk = 36
-    versionCode = 2
-    versionName = "2.0"
+    versionCode = 3
+    versionName = "2.1"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
   signingConfigs {
-    create("debugConfig") {
-      storeFile = file("${rootDir}/debug.keystore")
-      storePassword = "android"
-      keyAlias = "androiddebugkey"
-      keyPassword = "android"
+    val debugKeystoreFile = file("${rootDir}/debug.keystore")
+    if (debugKeystoreFile.exists()) {
+      create("debugConfig") {
+        storeFile = debugKeystoreFile
+        storePassword = "android"
+        keyAlias = "androiddebugkey"
+        keyPassword = "android"
+      }
+    } else {
+      // Fallback: let AGP generate default debug keystore if custom one missing
+      // This prevents build failure in CI / fresh clones without debug.keystore
+      create("debugConfig") {
+        // No explicit storeFile - AGP will use default debug keystore
+        // We still set passwords to match default expectations
+        storePassword = "android"
+        keyAlias = "androiddebugkey"
+        keyPassword = "android"
+      }
     }
 
     val keystorePath = System.getenv("RELEASE_KEYSTORE_PATH") ?: System.getenv("KEYSTORE_PATH")
@@ -54,13 +67,21 @@ android {
     release {
       isCrunchPngs = false
       isMinifyEnabled = true
+      isShrinkResources = true
 
       val releaseSigning = signingConfigs.findByName("release")
       val isReleaseBuild = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) } || 
                            gradle.startParameter.taskRequests.toString().contains("Release", ignoreCase = true)
                            
       if (isReleaseBuild && releaseSigning == null) {
-          throw GradleException("CONFIGURATION FAILED: Release signing configuration is missing. Environment variables or valid keystore not found.")
+          val msg = """
+              |CONFIGURATION FAILED: Release signing configuration is missing.
+              |Expected env vars: RELEASE_KEYSTORE_PATH, RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD
+              |Or: KEYSTORE_PATH, STORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
+              |For CI: ensure debug build works, release requires real keystore.
+              |To bypass in CI for non-release tasks, don't run :assembleRelease.
+          """.trimMargin()
+          throw GradleException(msg)
       }
 
       signingConfig = releaseSigning
@@ -70,7 +91,15 @@ android {
           "proguard-rules.pro"
       )
     }
-    debug { signingConfig = signingConfigs.getByName("debugConfig") }
+    debug {
+      // Use custom debugConfig if available, otherwise default debug signing
+      val debugCfg = signingConfigs.findByName("debugConfig")
+      if (debugCfg != null && debugCfg.storeFile?.exists() == true) {
+        signingConfig = debugCfg
+      } else {
+        // Let AGP use default debug keystore
+      }
+    }
   }
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11
@@ -119,6 +148,10 @@ dependencies {
   implementation(platform(libs.firebase.bom))
   implementation(libs.firebase.firestore)
   implementation(libs.firebase.auth)
+  // App Check: Play Integrity for prod, Debug for dev, Recaptcha fallback
+  implementation(libs.firebase.appcheck.playintegrity)
+  implementation(libs.firebase.appcheck.debug)
+  // implementation(libs.firebase.appcheck.recaptcha) // optional fallback
   implementation(libs.androidx.credentials)
   implementation(libs.androidx.credentials.play.services)
   implementation(libs.googleid)

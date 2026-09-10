@@ -66,9 +66,10 @@ fun NefsZikirTheme(
             }
         }
     }
-    val systemFontScale = LocalDensity.current.fontScale
-    val appFontScale = fontScale
-    val effectiveScale = (appFontScale * systemFontScale).coerceAtMost(2.0f)
+    val systemFontScale = LocalDensity.current.fontScale.coerceIn(0.5f, 2.0f)
+    val appFontScale = fontScale.coerceIn(0.7f, 1.5f)
+    // Multiply but clamp to reasonable range to avoid huge text
+    val effectiveScale = (appFontScale * systemFontScale).coerceIn(0.7f, 2.0f)
 
     // Custom density sağla
     val adjustedDensity = Density(

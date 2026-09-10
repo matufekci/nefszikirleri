@@ -313,29 +313,54 @@ object AppPalettes {
         )
     )
 
-    // Renk Temaları Listesi (Beyaz, Yeşil, Siyah)
+    // Renk Temaları Listesi (Beyaz, Yeşil, Siyah) - Canonical 3
     val ALL = listOf(HadraGunduz, HadraGece, Siyah)
 
-    // Legacy Aliases
+    // Legacy Aliases for backward compat
     val Emerald = HadraGece
     val Rahle = HadraGunduz
     val Obsidian = Siyah
     val Beyaz = HadraGunduz
     val Yesil = HadraGece
-
-    // Fallback aliases
     val CyberNeon = HadraGece
     val GlassCloud = HadraGunduz
     val DeepTech = HadraGece
     val SoftMinimal = HadraGunduz
     val OledGlow = Siyah
 
-    fun get(id: String): AppThemeColors {
-        return ALL.find { it.id.equals(id, ignoreCase = true) } ?: when(id.lowercase()) {
-            "hadra_gunduz", "hadra_light", "rahle", "light", "inci", "white", "hadra_white", "beyaz" -> HadraGunduz
-            "hadra_gece", "hadra_dark", "emerald", "hadra", "yesil", "green", "night", "leyl" -> HadraGece
-            "siyah", "obsidian", "black", "oniks", "oled", "pure_black" -> Siyah
-            else -> HadraGece
-        }
+    // Full mapping table: legacy 10 + aliases -> canonical
+    private val legacyMapping = mapOf(
+        // White family -> HadraGunduz
+        "hadra_gunduz" to HadraGunduz, "hadra_light" to HadraGunduz, "rahle" to HadraGunduz,
+        "light" to HadraGunduz, "inci" to HadraGunduz, "white" to HadraGunduz,
+        "hadra_white" to HadraGunduz, "beyaz" to HadraGunduz, "olive" to HadraGunduz,
+        "sahara" to HadraGunduz, "amethyst" to HadraGunduz, "rose" to HadraGunduz,
+        // Green family -> HadraGece
+        "hadra_gece" to HadraGece, "hadra_dark" to HadraGece, "emerald" to HadraGece,
+        "hadra" to HadraGece, "yesil" to HadraGece, "green" to HadraGece,
+        "night" to HadraGece, "leyl" to HadraGece, "kisve" to HadraGece,
+        "turq" to HadraGece, "kudus" to HadraGece, "iznik" to HadraGece,
+        "gul" to HadraGece, "amber" to HadraGece, "kandil" to HadraGece,
+        // Black family -> Siyah
+        "siyah" to Siyah, "obsidian" to Siyah, "black" to Siyah,
+        "oniks" to Siyah, "oled" to Siyah, "pure_black" to Siyah
+    )
+
+    fun normalizeId(id: String): String {
+        val lower = id.lowercase()
+        // If direct match in ALL, return its id
+        ALL.find { it.id.equals(lower, ignoreCase = true) }?.let { return it.id }
+        // Check legacy mapping
+        legacyMapping[lower]?.let { return it.id }
+        return "hadra_gece" // default fallback
     }
+
+    fun get(id: String): AppThemeColors {
+        val lower = id.lowercase()
+        ALL.find { it.id.equals(lower, ignoreCase = true) }?.let { return it }
+        return legacyMapping[lower] ?: HadraGece
+    }
+
+    fun getAllCanonicalIds(): List<String> = ALL.map { it.id }
+    fun getLegacyIds(): List<String> = legacyMapping.keys.toList()
 }

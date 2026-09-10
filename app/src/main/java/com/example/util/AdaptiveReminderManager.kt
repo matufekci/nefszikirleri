@@ -91,9 +91,14 @@ object AdaptiveReminderManager {
 
     /**
      * Akıllı kontrol periyodunu planlar. (Artık WorkManager [DailyEvaluationWorker] tarafından yürütülüyor.)
+     * Geriye dönük uyumluluk için NefsApplication scheduler'ına yönlendirir.
      */
     fun schedulePeriodicEvaluation(context: Context) {
-        // WorkManager'a geçildiği için bu fonksiyon işlevsiz bırakılmıştır.
+        try {
+            com.example.NefsApplication.scheduleDailyEvaluation(context)
+        } catch (e: Exception) {
+            // Best-effort, ignore
+        }
     }
 
     /**

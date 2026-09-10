@@ -61,6 +61,23 @@ class DailyEvaluationWorker(
             val lang = settings?.lang ?: AdaptiveReminderManager.getAppLanguage(context)
             val strings = AppStrings.get(lang)
 
+            // 0. Cleanup old pending operations (older than 7 days)
+            try {
+                val weekAgo = System.currentTimeMillis() - (7 * 24 * 60 * 60 * 1000L)
+                db.pendingOperationDao().cleanupOldApplied(weekAgo)
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                Log.w(TAG, "Failed to cleanup old pending operations", e)
+            }
+
+            // 0b. Cleanup temporary backup files
+            try {
+                com.example.data.backup.BackupManager(context).cleanupTemporaryBackups()
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                Log.w(TAG, "Failed to cleanup temp backups", e)
+            }
+
             // 1. Günlük zikir istatistiklerini ve adaptif hatırlatıcı zamanlarını değerlendir
             val shouldSend = evaluateAdaptiveReminder(context, db)
             if (shouldSend) {
@@ -69,6 +86,15 @@ class DailyEvaluationWorker(
 
             // 2. Streak kontrolü yap (Optional logging or validation)
             checkStreakStatus(context, db)
+
+            // 3. Process any unapplied pending operations (in case app was killed before batch)
+            try {
+                val repo = com.example.data.repository.ZikirRepository(db)
+                repo.processUnappliedOperations()
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                Log.w(TAG, "Failed to process unapplied ops in worker", e)
+            }
 
             return Result.success()
         } catch (e: CancellationException) {
