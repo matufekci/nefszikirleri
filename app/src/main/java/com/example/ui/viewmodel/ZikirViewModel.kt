@@ -27,6 +27,7 @@ import com.example.data.model.PendingOperation
 import com.example.data.repository.ZikirRepository
 import com.example.util.HapticHelper
 import com.example.util.NotificationScheduler
+import com.example.util.MonotonicTime
 import com.example.util.NumberFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -167,6 +168,15 @@ class ZikirViewModel(
 
     private val increments = Channel<PendingOperation>(capacity = Channel.UNLIMITED)
 
+    /**
+     * Kullanıcının yaptığı son açık seçim (liste -> "Öncekileri Tamamla ve Buradan
+     * Başla" ya da kilitli olmayan bir basamağa dokunma). Room akışları hedefle
+     * tutarlı hale gelene kadar bu basamağın ilk eksik basamağa düşürülmesini
+     * engeller. Bkz. [SelectedZikirResolver].
+     */
+    @Volatile
+    private var pendingSelection: SelectedZikirResolver.Pending? = null
+
     private val _uiState: MutableStateFlow<DhikrUiState>
     val uiState: StateFlow<DhikrUiState>
 
@@ -218,11 +228,21 @@ class ZikirViewModel(
                 val settings = settingsObj ?: AppSettings()
                 val zikirs = if (dbZikirs.isNotEmpty()) dbZikirs else _uiState.value.zikirs
                 val savedId = savedStateHandle.get<Int>("selectedZikirId")
-                var selectedId = savedId ?: settings.selectedZikirId.coerceIn(1, 15)
-                
-                // Terkib-i Şerif tertip emniyeti: Kilitli zikir seçiliyse ilk eksik basamağa yönlendir
-                if (zikirs.isNotEmpty() && !isZikirUnlocked(selectedId, zikirs)) {
-                    selectedId = getFirstIncompleteZikirId(zikirs)
+
+                // Terkib-i Şerif tertip emniyeti + hızlı intikal yarışının çözümü:
+                // kullanıcı açık bir seçim yaptıysa (ör. "Öncekileri Tamamla ve Buradan
+                // Başla"), Room'un eski zikir listesiyle gelen ara emission'ı o seçimi
+                // ilk eksik basamağa düşürmesin. Bkz. SelectedZikirResolver.
+                val resolution = SelectedZikirResolver.resolve(
+                    savedId = savedId,
+                    settingsSelectedId = settings.selectedZikirId,
+                    zikirs = zikirs,
+                    pending = pendingSelection,
+                    nowMs = MonotonicTime.now()
+                )
+                val selectedId = resolution.selectedId
+                if (resolution.clearPending) {
+                    pendingSelection = null
                 }
                 savedStateHandle["selectedZikirId"] = selectedId
 
@@ -590,28 +610,11 @@ class ZikirViewModel(
     }
 
 
-    fun getFirstIncompleteZikirId(zikirs: List<Zikir> = _uiState.value.zikirs): Int {
-        for (id in 1..15) {
-            val z = zikirs.find { it.id == id } ?: return id
-            if (z.count < z.target) {
-                return id
-            }
-        }
-        return 1
-    }
+    fun getFirstIncompleteZikirId(zikirs: List<Zikir> = _uiState.value.zikirs): Int =
+        SelectedZikirResolver.firstIncompleteId(zikirs)
 
-    fun isZikirUnlocked(id: Int, zikirs: List<Zikir> = _uiState.value.zikirs): Boolean {
-        if (id <= 1) return true
-        if (zikirs.isEmpty()) return false
-        // Bir zikrin açık olabilmesi için kendisinden önceki 1..(id-1) tüm zikirlerin hedeflerinin tamamlanmış olması şarttır.
-        for (prevId in 1 until id) {
-            val prev = zikirs.find { it.id == prevId } ?: return false
-            if (prev.count < prev.target) {
-                return false
-            }
-        }
-        return true
-    }
+    fun isZikirUnlocked(id: Int, zikirs: List<Zikir> = _uiState.value.zikirs): Boolean =
+        SelectedZikirResolver.isUnlocked(id, zikirs)
 
     fun selectZikir(id: Int, bypassValidation: Boolean = false) {
         val validId = id.coerceIn(1, 15)
@@ -635,6 +638,7 @@ class ZikirViewModel(
         }
 
         savedStateHandle["selectedZikirId"] = validId
+        pendingSelection = SelectedZikirResolver.Pending(validId, MonotonicTime.now())
         viewModelScope.launch {
             updateSettingsSafely { it.copy(selectedZikirId = validId) }
             _uiState.update {
@@ -660,6 +664,7 @@ class ZikirViewModel(
         val validId = targetZikirId.coerceIn(1, 15)
         autoShownZeroInfoZikirIds.clear()
         savedStateHandle["selectedZikirId"] = validId
+        pendingSelection = SelectedZikirResolver.Pending(validId, MonotonicTime.now())
         savedStateHandle["currentTab"] = "zikir"
         viewModelScope.launch {
             repository.fastJumpToZikir(validId)

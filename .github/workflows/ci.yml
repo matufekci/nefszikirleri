@@ -56,6 +56,11 @@ jobs:
         run: ./gradlew testDebugUnitTest --stacktrace --continue 2>&1 | tee unit-test.log
         continue-on-error: true
 
+      - name: Report unit test results
+        if: always()
+        run: ./.github/scripts/report-unit-tests.sh app/build/test-results/testDebugUnitTest
+        continue-on-error: true
+
       - name: Run Android lint
         run: ./gradlew lintDebug --stacktrace 2>&1 | tee lint.log
         continue-on-error: true
