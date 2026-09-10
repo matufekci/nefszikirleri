@@ -66,14 +66,52 @@ class NefsApplication : Application(), Configuration.Provider {
 
     private fun initializeAppCheck() {
         try {
-            // Ensure Firebase is initialized
-            FirebaseApp.initializeApp(this)
+            // Skip AppCheck initialization in unit tests (Robolectric)
+            // Detect Robolectric by checking if we're in test environment
+            try {
+                Class.forName("org.robolectric.RobolectricTestRunner")
+                // We're in a Robolectric test, skip AppCheck
+                return
+            } catch (_: ClassNotFoundException) {
+                // Not in test, continue
+            }
 
-            val firebaseAppCheck = FirebaseAppCheck.getInstance()
+            // Also skip if running in instrumentation test with test application
+            if (packageName.contains(".test") || packageName.endsWith(".test")) {
+                return
+            }
+
+            // Ensure Firebase is initialized - may fail with dummy google-services.json in CI, that's ok
+            val firebaseApp = try {
+                FirebaseApp.initializeApp(this) ?: FirebaseApp.getInstance()
+            } catch (e: Exception) {
+                if (BuildConfig.DEBUG) {
+                    Log.w("NefsApplication", "Firebase init failed (likely dummy google-services.json in CI), skipping AppCheck", e)
+                }
+                return
+            }
+
+            // If FirebaseApp is null or has no options, skip
+            if (firebaseApp.options.projectId.isBlank() || firebaseApp.options.projectId == "nefs-zikirleri" && firebaseApp.options.applicationId.contains("REDACTED")) {
+                // Check if it's dummy config
+                try {
+                    val appId = firebaseApp.options.applicationId
+                    if (appId.contains("REDACTED")) {
+                        if (BuildConfig.DEBUG) {
+                            Log.d("NefsApplication", "Dummy Firebase config detected (REDACTED), skipping AppCheck for CI")
+                        }
+                        return
+                    }
+                } catch (_: Exception) {}
+            }
+
+            val firebaseAppCheck = try {
+                FirebaseAppCheck.getInstance(firebaseApp)
+            } catch (e: Exception) {
+                FirebaseAppCheck.getInstance()
+            }
 
             // Debug token from .env / BuildConfig if provided
-            // The secrets plugin generates BuildConfig fields from .env
-            // We use reflection to avoid hard dependency if field not generated
             val debugToken = try {
                 val field = BuildConfig::class.java.getField("FIREBASE_APPCHECK_DEBUG_TOKEN")
                 field.get(null) as? String
@@ -82,8 +120,6 @@ class NefsApplication : Application(), Configuration.Provider {
             }
 
             if (BuildConfig.DEBUG) {
-                // In debug builds, use Debug provider to allow emulator/testing
-                // If FIREBASE_APPCHECK_DEBUG_TOKEN is set in .env, it will be used
                 firebaseAppCheck.installAppCheckProviderFactory(
                     DebugAppCheckProviderFactory.getInstance()
                 )
@@ -91,7 +127,6 @@ class NefsApplication : Application(), Configuration.Provider {
                     Log.d("NefsApplication", "AppCheck: Debug provider installed. Token from env: ${if (!debugToken.isNullOrBlank()) "present" else "auto-generated, check logcat for debug token"}")
                 }
             } else {
-                // In release builds, use Play Integrity (recommended)
                 firebaseAppCheck.installAppCheckProviderFactory(
                     PlayIntegrityAppCheckProviderFactory.getInstance()
                 )
@@ -101,10 +136,8 @@ class NefsApplication : Application(), Configuration.Provider {
             }
         } catch (e: Exception) {
             if (BuildConfig.DEBUG) {
-                Log.w("NefsApplication", "AppCheck initialization failed (non-fatal, will retry)", e)
+                Log.w("NefsApplication", "AppCheck initialization failed (non-fatal)", e)
             }
-            // Non-fatal: app should continue even if AppCheck fails to init
-            // Firestore rules should have fallback for unauthenticated debug builds
         }
     }
     
