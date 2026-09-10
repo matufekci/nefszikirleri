@@ -1,5 +1,6 @@
 package com.example.util
 
+import android.app.AlarmManager
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.example.data.model.ReminderSlot
@@ -10,6 +11,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
@@ -87,5 +89,29 @@ class NotificationSchedulerTest {
         // 4. Genel hatırlatıcı kapatıldığında (isEnabled = false), tüm alarmlar temizlenmeli
         scheduler.scheduleDailyReminders(listOf(slot1, slot3Disabled), isEnabled = false)
         assertTrue(scheduler.getActiveScheduledSlotIds().isEmpty())
+    }
+
+    @Test
+    fun testInactivityAlert_DortGunSonrasinaKurulurVeKapatilincaIptalOlur() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val scheduler = NotificationScheduler(context)
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val shadow = shadowOf(alarmManager)
+
+        val before = System.currentTimeMillis()
+        scheduler.scheduleInactivityAlert(true)
+
+        val alarms = shadow.scheduledAlarms
+        assertEquals(1, alarms.size)
+        val delta = alarms[0].triggerAtTime - before
+        val expected = AdaptiveReminderManager.INACTIVITY_TRIGGER_DAYS * 24L * 60 * 60 * 1000L
+        assertTrue(
+            "hareketsizlik alarmı ~4 gün sonrasına kurulmalı, delta=$delta ms",
+            delta in (expected - 60_000L)..(expected + 60_000L)
+        )
+
+        // Kapatıldığında alarm tamamen iptal edilmeli
+        scheduler.scheduleInactivityAlert(false)
+        assertTrue(shadow.scheduledAlarms.isEmpty())
     }
 }
