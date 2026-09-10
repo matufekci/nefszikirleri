@@ -169,7 +169,4 @@ class NefsApplication : Application(), Configuration.Provider {
             .setMinimumLoggingLevel(android.util.Log.INFO)
             .build()
 
-    private fun setupWorkManager() {
-        scheduleDailyEvaluation(this)
-    }
 }

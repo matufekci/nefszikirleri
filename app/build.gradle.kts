@@ -24,8 +24,17 @@ android {
   signingConfigs {
     val debugKeystoreFile = file("${rootDir}/debug.keystore")
     if (debugKeystoreFile.exists()) {
+      // Keystore tipini dosyanin magic baytlarindan tespit et.
+      // JKS dosyalari FEEDFEED ile, PKCS12 (DER) dosyalari 3082 ile baslar.
+      // Yanlis storeType verilirse imzalama adimi "keystore was tampered with /
+      // not found" gibi yaniltici hatalarla patlar. Repodaki debug.keystore PKCS12.
+      val magic = debugKeystoreFile.inputStream().use { it.readNBytes(4) }
+      val isJksKeystore = magic.size >= 4 &&
+        magic[0] == 0xFE.toByte() && magic[1] == 0xED.toByte() &&
+        magic[2] == 0xFE.toByte() && magic[3] == 0xED.toByte()
       create("debugConfig") {
         storeFile = debugKeystoreFile
+        storeType = if (isJksKeystore) "jks" else "PKCS12"
         storePassword = "android"
         keyAlias = "androiddebugkey"
         keyPassword = "android"

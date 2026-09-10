@@ -26,15 +26,8 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Create dummy google-services.json for CI
-        run: |
-          if [ -f app/ci-dummy-google-services.json ]; then
-            cp app/ci-dummy-google-services.json app/google-services.json
-            echo "Using ci-dummy-google-services.json"
-          elif [ ! -f app/google-services.json ]; then
-            cp app/google-services.json.example app/google-services.json || echo '{"project_info":{}}' > app/google-services.json
-          fi
-          cat app/google-services.json
+      - name: Prepare google-services.json (gercek Firebase yapilandirmasi)
+        run: bash .github/scripts/prepare-google-services.sh
 
       - name: Create .env from example for CI
         run: |
@@ -96,15 +89,8 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Create dummy google-services.json for CI
-        run: |
-          if [ -f app/ci-dummy-google-services.json ]; then
-            cp app/ci-dummy-google-services.json app/google-services.json
-            echo "Using ci-dummy-google-services.json for APK build"
-          elif [ ! -f app/google-services.json ]; then
-            cp app/google-services.json.example app/google-services.json || echo '{"project_info":{}}' > app/google-services.json
-          fi
-          cat app/google-services.json
+      - name: Prepare google-services.json (gercek Firebase yapilandirmasi)
+        run: bash .github/scripts/prepare-google-services.sh
 
       - name: Create .env from example for CI
         run: |
@@ -130,6 +116,10 @@ jobs:
         if: always()
         run: ./.github/scripts/assert-apk.sh app/build/outputs/apk/debug build-debug.log debug-apk
 
+      - name: Report APK signing certificate (Firebase SHA-1 kaniti)
+        if: always()
+        run: bash .github/scripts/report-apk-signer.sh
+
   build-apk-only:
     runs-on: ubuntu-latest
     if: always()
@@ -149,11 +139,8 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Create dummy google-services.json for CI (valid structure)
-        run: |
-          cp app/ci-dummy-google-services.json app/google-services.json
-          echo "Using valid dummy google-services.json"
-          cat app/google-services.json
+      - name: Prepare google-services.json (gercek Firebase yapilandirmasi)
+        run: bash .github/scripts/prepare-google-services.sh
 
       - name: Create .env from example
         run: |
@@ -176,3 +163,66 @@ jobs:
       - name: Fail loudly if no APK was produced
         if: always()
         run: ./.github/scripts/assert-apk.sh app/build/outputs/apk/debug build-apk-only.log debug-apk-no-tests
+
+      - name: Report APK signing certificate (Firebase SHA-1 kaniti)
+        if: always()
+        run: bash .github/scripts/report-apk-signer.sh
+
+  release-build:
+    # Release yolu (R8 minify + shrinkResources) CI'da HIC denenmemisti.
+    # Obfuscation/kaynak daraltma hatalari yalnizca release derlemesinde ortaya
+    # cikar; yani debug yesilken release cokuyor olabilirdi. Bu job bunu kapatir.
+    # Imza icin repodaki sabit debug.keystore kullanilir: boylece cikan APK
+    # kurulabilir ve Google girisi ayni SHA-1 ile calisir. Play'e cikacak
+    # surumde gercek release anahtari ortam degiskenleriyle verilmelidir.
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Prepare google-services.json (gercek Firebase yapilandirmasi)
+        run: bash .github/scripts/prepare-google-services.sh
+
+      - name: Create .env from example
+        run: |
+          cp .env.example .env
+
+      - name: Build release APK (R8 + kaynak daraltma)
+        env:
+          # Mutlak yol sart: file(...) app modulune gore cozumlenir.
+          RELEASE_KEYSTORE_PATH: ${{ github.workspace }}/debug.keystore
+          RELEASE_STORE_PASSWORD: android
+          RELEASE_KEY_ALIAS: androiddebugkey
+          RELEASE_KEY_PASSWORD: android
+        run: ./gradlew assembleRelease --stacktrace 2>&1 | tee build-release.log
+        continue-on-error: true
+
+      - name: Upload release APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: |
+            app/build/outputs/apk/release/*.apk
+            build-release.log
+
+      - name: Fail loudly if no release APK was produced
+        if: always()
+        run: ./.github/scripts/assert-apk.sh app/build/outputs/apk/release build-release.log release-apk
+
+      - name: Report release APK signing certificate (Firebase SHA-1 kaniti)
+        if: always()
+        run: bash .github/scripts/report-apk-signer.sh app/build/outputs/apk/release/app-release.apk
