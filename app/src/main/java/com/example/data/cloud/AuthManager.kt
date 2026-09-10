@@ -57,7 +57,14 @@ class AuthManager(private val context: Context) {
             val webClientId = try {
                 context.getString(com.example.R.string.default_web_client_id)
             } catch (e: Exception) {
-                "72481680894-51gufn22qa2ht863u3c118ledjv55dmu.apps.googleusercontent.com"
+                if (com.example.BuildConfig.DEBUG) {
+                    Log.e("AuthManager", "default_web_client_id not found in strings.xml", e)
+                }
+                return Result.failure(Exception("Google istemci kimliği yapılandırılamadı. google-services.json dosyasını kontrol edin."))
+            }
+
+            if (webClientId.isBlank() || webClientId == "REDACTED" || webClientId.contains("REDACTED")) {
+                return Result.failure(Exception("Google istemci kimliği geçersiz veya örnek dosyadan geliyor. Gerçek google-services.json gerekli."))
             }
 
             val googleIdOption = GetGoogleIdOption.Builder()

@@ -954,33 +954,41 @@ class ZikirViewModel(
     fun incrementSettingUsage(category: String) {
         viewModelScope.launch {
             updateSettingsSafely { currentSettings ->
-            val currentStatsStr = currentSettings.settingsUsageStats
-            
-            // Simple parser for {"key":1, "key2":2}
-            val map = mutableMapOf<String, Int>()
-            try {
-                val cleanStr = currentStatsStr.removePrefix("{").removeSuffix("}").trim()
-                if (cleanStr.isNotEmpty()) {
-                    cleanStr.split(",").forEach { pair ->
-                        val parts = pair.split(":")
-                        if (parts.size == 2) {
-                            val key = parts[0].trim().removeSurrounding("\"")
-                            val value = parts[1].trim().toIntOrNull() ?: 0
-                            map[key] = value
-                        }
+                val currentStatsStr = currentSettings.settingsUsageStats
+                val map = mutableMapOf<String, Int>()
+                try {
+                    val json = JSONObject(currentStatsStr)
+                    val keys = json.keys()
+                    while (keys.hasNext()) {
+                        val k = keys.next()
+                        map[k] = json.optInt(k, 0)
                     }
+                } catch (e: Exception) {
+                    // Fallback to lenient parser if JSON malformed
+                    try {
+                        val cleanStr = currentStatsStr.removePrefix("{").removeSuffix("}").trim()
+                        if (cleanStr.isNotEmpty()) {
+                            cleanStr.split(",").forEach { pair ->
+                                val parts = pair.split(":")
+                                if (parts.size == 2) {
+                                    val key = parts[0].trim().removeSurrounding("\"")
+                                    val value = parts[1].trim().toIntOrNull() ?: 0
+                                    map[key] = value
+                                }
+                            }
+                        }
+                    } catch (_: Exception) {}
                 }
-            } catch (e: Exception) {}
-            
-            map[category] = (map[category] ?: 0) + 1
-            
-            // Simple serializer
-            val newStatsStr = map.entries.joinToString(prefix = "{", postfix = "}", separator = ",") {
-                "\"${it.key}\":${it.value}"
+                
+                map[category] = (map[category] ?: 0) + 1
+                
+                val newJson = JSONObject()
+                for ((k, v) in map) {
+                    newJson.put(k, v)
+                }
+                
+                currentSettings.copy(settingsUsageStats = newJson.toString())
             }
-            
-            currentSettings.copy(settingsUsageStats = newStatsStr)
-        }
         }
     }
 

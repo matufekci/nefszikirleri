@@ -91,7 +91,9 @@ class BackupManager(private val context: Context) {
         const val CURRENT_SCHEMA_VERSION = 1
         const val APP_SIGNATURE = "com.example.nefs_zikir"
         const val ENCRYPTION_VERSION_BYTE: Byte = 0x01
+        const val COMPRESSION_VERSION_BYTE: Byte = 0x02
         const val MAX_BACKUP_SIZE_BYTES = 25 * 1024 * 1024L // 25 MB
+        const val MAX_DECOMPRESSED_SIZE_BYTES = 50 * 1024 * 1024L // 50 MB after decompression
         
         private const val ITERATION_COUNT = 120000
         private const val KEY_LENGTH = 256
@@ -108,6 +110,33 @@ class BackupManager(private val context: Context) {
         val spec = PBEKeySpec(password.toCharArray(), salt, ITERATION_COUNT, KEY_LENGTH)
         val tmp = factory.generateSecret(spec)
         return SecretKeySpec(tmp.encoded, "AES")
+    }
+
+    private fun gzipCompress(data: ByteArray): ByteArray {
+        val bos = java.io.ByteArrayOutputStream()
+        java.util.zip.GZIPOutputStream(bos).use { gzip ->
+            gzip.write(data)
+        }
+        return bos.toByteArray()
+    }
+
+    private fun gzipDecompress(data: ByteArray): ByteArray {
+        // Protect against zip bomb
+        val bis = java.io.ByteArrayInputStream(data)
+        val gzip = java.util.zip.GZIPInputStream(bis)
+        val bos = java.io.ByteArrayOutputStream()
+        val buffer = ByteArray(8192)
+        var total = 0L
+        while (true) {
+            val read = gzip.read(buffer)
+            if (read == -1) break
+            total += read
+            if (total > MAX_DECOMPRESSED_SIZE_BYTES) {
+                throw IllegalArgumentException("Decompressed backup exceeds maximum allowed size (50 MB). Possible zip bomb.")
+            }
+            bos.write(buffer, 0, read)
+        }
+        return bos.toByteArray()
     }
 
     suspend fun exportBackup(
@@ -174,8 +203,10 @@ class BackupManager(private val context: Context) {
                 )
             )
 
-            val jsonString = jsonAdapter.indent("  ").toJson(payload)
+            val jsonString = jsonAdapter.toJson(payload)
             val jsonBytes = jsonString.toByteArray(Charsets.UTF_8)
+            // Compress to reduce size (70% reduction typical for repetitive history)
+            val compressedBytes = gzipCompress(jsonBytes)
 
             val secureRandom = SecureRandom()
             val salt = ByteArray(SALT_LENGTH)
@@ -188,17 +219,20 @@ class BackupManager(private val context: Context) {
             val parameterSpec = GCMParameterSpec(TAG_LENGTH, iv)
             cipher.init(Cipher.ENCRYPT_MODE, secretKey, parameterSpec)
 
-            val ciphertext = cipher.doFinal(jsonBytes)
+            val ciphertext = cipher.doFinal(compressedBytes)
 
             outputStream.use { out ->
-                out.write(byteArrayOf(ENCRYPTION_VERSION_BYTE))
+                out.write(byteArrayOf(COMPRESSION_VERSION_BYTE))
                 out.write(salt)
                 out.write(iv)
                 out.write(ciphertext)
                 out.flush()
             }
 
-            Result.success("Yedekleme başarıyla oluşturuldu ve şifrelendi (${payload.zikirs.size} zikir, ${payload.history.size} geçmiş kaydı).")
+            val originalSize = jsonBytes.size
+            val compressedSize = compressedBytes.size
+            val encryptedSize = ciphertext.size
+            Result.success("Yedekleme başarıyla oluşturuldu ve şifrelendi (${payload.zikirs.size} zikir, ${payload.history.size} geçmiş kaydı). Orijinal: ${originalSize / 1024}KB, Sıkıştırılmış: ${compressedSize / 1024}KB, Şifreli: ${encryptedSize / 1024}KB")
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
             Result.failure(Exception("Yedek oluşturulurken hata meydana geldi: ${e.localizedMessage}", e))
@@ -234,8 +268,8 @@ class BackupManager(private val context: Context) {
             if (bytes[0] == '{'.code.toByte()) {
                 // Eski şifresiz JSON formatı
                 jsonContent = String(bytes, Charsets.UTF_8)
-            } else if (bytes[0] == ENCRYPTION_VERSION_BYTE) {
-                // Yeni şifreli format
+            } else if (bytes[0] == ENCRYPTION_VERSION_BYTE || bytes[0] == COMPRESSION_VERSION_BYTE) {
+                val isCompressed = bytes[0] == COMPRESSION_VERSION_BYTE
                 if (password.isNullOrBlank()) {
                     return@withContext Result.failure(PasswordRequiredException())
                 }
@@ -255,9 +289,16 @@ class BackupManager(private val context: Context) {
                     cipher.init(Cipher.DECRYPT_MODE, secretKey, parameterSpec)
                     
                     val decryptedBytes = cipher.doFinal(ciphertext)
-                    jsonContent = String(decryptedBytes, Charsets.UTF_8)
+                    val finalBytes = if (isCompressed) {
+                        gzipDecompress(decryptedBytes)
+                    } else {
+                        decryptedBytes
+                    }
+                    jsonContent = String(finalBytes, Charsets.UTF_8)
                 } catch (e: javax.crypto.AEADBadTagException) {
                     return@withContext Result.failure(WrongPasswordException())
+                } catch (e: IllegalArgumentException) {
+                    return@withContext Result.failure(e)
                 } catch (e: Exception) {
                     return@withContext Result.failure(Exception("Şifre çözme hatası: ${e.localizedMessage}", e))
                 }
