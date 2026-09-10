@@ -57,7 +57,23 @@ for f in "${files[@]}"; do
       cur = c "#" n
       next
     }
-    /<failure|<error/ { if (cur != "") { print cur; cur="" } }
+    /<failure|<error/ {
+      if (cur != "") {
+        # Ham log dosyalari sandbox icinden okunamadigi icin hata MESAJINI da
+        # annotation icine gomuyoruz; yoksa sadece test adi gorunuyor,
+        # neden patladigi gorunmuyor.
+        msg = ""
+        if (match($0, /message="[^"]*"/)) msg = substr($0, RSTART+9, RLENGTH-10)
+        gsub(/&#10;/, " ", msg); gsub(/&#9;/, " ", msg)
+        gsub(/&quot;/, sprintf("%c", 39), msg)
+        gsub(/&lt;/, "<", msg); gsub(/&gt;/, ">", msg)
+        gsub(/&amp;/, "&", msg)
+        gsub(/[\r\n\t]/, " ", msg)
+        if (length(msg) > 400) msg = substr(msg, 1, 400) "..."
+        print (msg == "" ? cur : cur " :: " msg)
+        cur=""
+      }
+    }
   ' "$f")"
   if [ -n "$names" ]; then
     failed_lines="${failed_lines}${names}
@@ -85,7 +101,7 @@ echo "unit tests: ${total} test, ${failures} failure, ${errors} error, ${skipped
 
 if [ "$bad" -gt 0 ]; then
   printf '%s\n' "$failed_lines" | sed '/^[[:space:]]*$/d' | head -n 10 | while IFS= read -r line; do
-    printf '::error title=Unit test başarısız::%s\n' "$line"
+    printf '::error title=Unit test başarısız::%s\n' "$(printf '%s' "$line" | tr '\n' ' ' | cut -c1-900)"
   done
   echo "::error title=Unit testler kırmızı::${total} test içinde ${failures} failure, ${errors} error"
   exit 1
