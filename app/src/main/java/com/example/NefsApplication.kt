@@ -92,7 +92,7 @@ class NefsApplication : Application(), Configuration.Provider {
             }
 
             // If FirebaseApp is null or has no options, skip
-            if (firebaseApp.options.projectId.isBlank() || firebaseApp.options.projectId == "nefs-zikirleri" && firebaseApp.options.applicationId.contains("REDACTED")) {
+            if (firebaseApp.options.projectId.isNullOrBlank() || firebaseApp.options.projectId == "nefs-zikirleri" && firebaseApp.options.applicationId.contains("REDACTED")) {
                 // Check if it's dummy config
                 try {
                     val appId = firebaseApp.options.applicationId

@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import android.Manifest
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -47,6 +48,9 @@ fun SettingsScreen(
     val context = LocalContext.current
     val colors = LocalAppColors.current
     val strings = AppStrings.get(state.settings.lang)
+
+    // Bildirim izni rasyonelini daha önce gösterdik mi? (MainApp ile aynı prefs dosyası)
+    val prefs = remember { context.getSharedPreferences("nefs_app_prefs", Context.MODE_PRIVATE) }
 
     // ViewModel State'leri
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
