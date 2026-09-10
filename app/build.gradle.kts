@@ -22,11 +22,24 @@ android {
   }
 
   signingConfigs {
-    create("debugConfig") {
-      storeFile = file("${rootDir}/debug.keystore")
-      storePassword = "android"
-      keyAlias = "androiddebugkey"
-      keyPassword = "android"
+    val debugKeystoreFile = file("${rootDir}/debug.keystore")
+    if (debugKeystoreFile.exists()) {
+      create("debugConfig") {
+        storeFile = debugKeystoreFile
+        storePassword = "android"
+        keyAlias = "androiddebugkey"
+        keyPassword = "android"
+      }
+    } else {
+      // Fallback: let AGP generate default debug keystore if custom one missing
+      // This prevents build failure in CI / fresh clones without debug.keystore
+      create("debugConfig") {
+        // No explicit storeFile - AGP will use default debug keystore
+        // We still set passwords to match default expectations
+        storePassword = "android"
+        keyAlias = "androiddebugkey"
+        keyPassword = "android"
+      }
     }
 
     val keystorePath = System.getenv("RELEASE_KEYSTORE_PATH") ?: System.getenv("KEYSTORE_PATH")
@@ -70,7 +83,15 @@ android {
           "proguard-rules.pro"
       )
     }
-    debug { signingConfig = signingConfigs.getByName("debugConfig") }
+    debug {
+      // Use custom debugConfig if available, otherwise default debug signing
+      val debugCfg = signingConfigs.findByName("debugConfig")
+      if (debugCfg != null && debugCfg.storeFile?.exists() == true) {
+        signingConfig = debugCfg
+      } else {
+        // Let AGP use default debug keystore
+      }
+    }
   }
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11

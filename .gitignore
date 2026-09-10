@@ -1,0 +1,45 @@
+# Gradle
+.gradle/
+build/
+app/build/
+gradle/wrapper/dists/
+
+# Android Studio
+.idea/
+*.iml
+*.ipr
+*.iws
+local.properties
+*.hprof
+
+# Keystore & Secrets
+*.jks
+*.keystore
+!debug.keystore
+.env
+.env.local
+google-services.json
+!app/google-services.json.example
+secrets.properties
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Kotlin
+.kotlin/
+
+# Python junk (AI Studio scripts)
+__pycache__/
+*.pyc
+fix_test.py
+update_test.py
+
+# Temp
+*.tmp
+*.log
+*.edb
+app/schemas/*.log
+
+# Node (if any)
+node_modules/
