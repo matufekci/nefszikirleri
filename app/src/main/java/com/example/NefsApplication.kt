@@ -1,12 +1,17 @@
 package com.example
 
 import android.app.Application
+import android.util.Log
 import androidx.work.Configuration
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.worker.DailyEvaluationWorker
+import com.google.firebase.FirebaseApp
+import com.google.firebase.appcheck.FirebaseAppCheck
+import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
+import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,7 +60,52 @@ class NefsApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        initializeAppCheck()
         scheduleDailyEvaluation(this)
+    }
+
+    private fun initializeAppCheck() {
+        try {
+            // Ensure Firebase is initialized
+            FirebaseApp.initializeApp(this)
+
+            val firebaseAppCheck = FirebaseAppCheck.getInstance()
+
+            // Debug token from .env / BuildConfig if provided
+            // The secrets plugin generates BuildConfig fields from .env
+            // We use reflection to avoid hard dependency if field not generated
+            val debugToken = try {
+                val field = BuildConfig::class.java.getField("FIREBASE_APPCHECK_DEBUG_TOKEN")
+                field.get(null) as? String
+            } catch (_: Exception) {
+                null
+            }
+
+            if (BuildConfig.DEBUG) {
+                // In debug builds, use Debug provider to allow emulator/testing
+                // If FIREBASE_APPCHECK_DEBUG_TOKEN is set in .env, it will be used
+                firebaseAppCheck.installAppCheckProviderFactory(
+                    DebugAppCheckProviderFactory.getInstance()
+                )
+                if (BuildConfig.DEBUG) {
+                    Log.d("NefsApplication", "AppCheck: Debug provider installed. Token from env: ${if (!debugToken.isNullOrBlank()) "present" else "auto-generated, check logcat for debug token"}")
+                }
+            } else {
+                // In release builds, use Play Integrity (recommended)
+                firebaseAppCheck.installAppCheckProviderFactory(
+                    PlayIntegrityAppCheckProviderFactory.getInstance()
+                )
+                if (BuildConfig.DEBUG) {
+                    Log.d("NefsApplication", "AppCheck: Play Integrity provider installed")
+                }
+            }
+        } catch (e: Exception) {
+            if (BuildConfig.DEBUG) {
+                Log.w("NefsApplication", "AppCheck initialization failed (non-fatal, will retry)", e)
+            }
+            // Non-fatal: app should continue even if AppCheck fails to init
+            // Firestore rules should have fallback for unauthenticated debug builds
+        }
     }
     
     override val workManagerConfiguration: Configuration

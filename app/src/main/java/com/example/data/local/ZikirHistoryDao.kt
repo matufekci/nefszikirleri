@@ -29,6 +29,21 @@ interface ZikirHistoryDao {
     @Query("SELECT * FROM zikir_history ORDER BY timestamp DESC, id DESC")
     suspend fun getAllHistoryDirect(): List<ZikirHistory>
 
+    // Hamle 13: Memory-hardened pagination for large histories (10k+ entries)
+    // Use this for UI pagination instead of loading all history into RAM
+    @Query("SELECT * FROM zikir_history ORDER BY timestamp DESC, id DESC LIMIT :limit OFFSET :offset")
+    fun observeHistoryPaged(limit: Int, offset: Int): Flow<List<ZikirHistory>>
+
+    @Query("SELECT * FROM zikir_history WHERE dateKey = :dateKey ORDER BY timestamp DESC, id DESC LIMIT :limit OFFSET :offset")
+    suspend fun getHistoryByDatePagedDirect(dateKey: String, limit: Int, offset: Int): List<ZikirHistory>
+
+    @Query("SELECT COUNT(*) FROM zikir_history WHERE dateKey = :dateKey")
+    suspend fun getHistoryCountByDateDirect(dateKey: String): Int
+
+    // For statistics: get total count without loading all entries
+    @Query("SELECT COUNT(*) FROM zikir_history WHERE zikirId = :zikirId")
+    suspend fun getHistoryCountForZikirDirect(zikirId: Int): Int
+
     @Query("SELECT * FROM zikir_history WHERE zikirId = :zikirId ORDER BY timestamp DESC, id DESC")
     fun getHistoryForZikir(zikirId: Int): Flow<List<ZikirHistory>>
 
