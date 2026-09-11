@@ -1177,8 +1177,11 @@ class ZikirViewModel(
                 onSuccess = { user ->
                     val userName = user.displayName ?: user.email ?: ""
                     _cloudSyncMessage.value = strings.cloudWelcomeMessage.replace("{0}", userName)
-                    backupToCloudSilently(user.uid)
                     onResult(true, null)
+                    // BULUT ONCELIKLI: once oku, gerekiyorsa geri yukle,
+                    // ikisi de doluysa kullaniciya sor. Artik yerel veri
+                    // giris aninda sessizce buluta YUKLENMIYOR.
+                    syncCloudAfterSignIn(user.uid)
                 },
                 onFailure = { error ->
                     val msg = error.localizedMessage ?: strings.cloudGenericSignInError
@@ -1200,24 +1203,99 @@ class ZikirViewModel(
         }
     }
 
-    private fun backupToCloudSilently(userId: String) {
+    /**
+     * Giris sonrasi BULUT ONCELIKLI senkronizasyon.
+     *
+     * Eski davranis hataliydi: giris basarili olunca backupToCloudSilently()
+     * cagriliyor, yani YEREL veri sessizce buluta yukleniyordu. Eski yedek
+     * hic cekilmiyor, kullaniciya sorulmuyor ve hata bile gosterilmiyordu
+     * (catch (_: Exception) {}). Ustelik taze kurulumda localRevision 0
+     * oldugu icin SyncManager'daki koruma (remoteRevision > localRevision)
+     * devreye girmiyor ve buluttaki revision 0/eksikse ESKI YEDEK EZILIYORDU.
+     *
+     * Yeni davranis:
+     *  1. Once buluttaki yedek OKUNUR; bu asamada hicbir sey yazilmaz.
+     *  2. Bulutta yedek yoksa -> yerel veri yuklenir (bulut ilk kez olusur).
+     *  3. Bulutta yedek varsa ve bu cihaz bosa (taze kurulum) -> otomatik
+     *     geri yuklenir; kullaniciyi gereksiz soruyla mesgul etmeyiz.
+     *  4. Ikisi de dolu -> kullaniciya SORULUR (SyncConflictDialog).
+     */
+    private fun syncCloudAfterSignIn(userId: String) {
         viewModelScope.launch(Dispatchers.IO) {
+            val lang = _uiState.value.settings.lang
             try {
-                val snapshot = repository.getAtomicSnapshot()
-                val res = syncManager.backupToCloud(
-                    userId = userId,
-                    zikirs = snapshot.zikirs,
-                    history = snapshot.history,
-                    slots = snapshot.slots,
-                    settings = snapshot.settings,
-                    localRevision = getLocalRevision(),
-                    deviceId = getDeviceId()
-                )
-                res.onSuccess { ts ->
+                _isCloudSyncing.value = true
+                val remote = syncManager.restoreFromCloud(userId)
+                val remoteData = remote.getOrNull()
+
+                if (remoteData == null) {
+                    // Bulutta yedek yok (veya okunamadi): bu cihazin verisini yukle.
+                    uploadLocalAfterSignIn(userId)
+                    return@launch
+                }
+
+                val localSnapshot = repository.getAtomicSnapshot()
+                val localIsEmpty = localSnapshot.history.isEmpty() &&
+                    localSnapshot.zikirs.all { it.count == 0L }
+
+                if (localIsEmpty) {
+                    repository.restoreFullCloudBackup(
+                        zikirs = remoteData.zikirs,
+                        settings = remoteData.settings,
+                        slots = remoteData.reminderSlots,
+                        history = remoteData.history
+                    )
+                    setLocalRevision(remoteData.syncMetadata?.revision ?: 0L)
+                    _lastCloudSyncTimestamp.value = remoteData.lastSyncedAt
+                    _cloudSyncMessage.value = UiText.cloudRestoredOnSignIn.get(lang)
+                } else {
+                    // Hem yerel hem bulut dolu -> karar kullanicinin.
+                    _syncConflictState.value = remoteData
+                }
+                _isCloudSyncing.value = false
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                _isCloudSyncing.value = false
+                _cloudSyncMessage.value = e.localizedMessage
+                    ?: AppStrings.get(lang).cloudGenericRestoreError
+            }
+        }
+    }
+
+    /**
+     * Bulutta hic yedek yokken bu cihazin verisini yukler.
+     * Eskiden hatalar sessizce yutuluyordu; artik kullaniciya gosterilir.
+     */
+    private suspend fun uploadLocalAfterSignIn(userId: String) {
+        val lang = _uiState.value.settings.lang
+        try {
+            val snapshot = repository.getAtomicSnapshot()
+            val res = syncManager.backupToCloud(
+                userId = userId,
+                zikirs = snapshot.zikirs,
+                history = snapshot.history,
+                slots = snapshot.slots,
+                settings = snapshot.settings,
+                localRevision = getLocalRevision(),
+                deviceId = getDeviceId()
+            )
+            res.fold(
+                onSuccess = { ts ->
                     setLocalRevision(getLocalRevision() + 1)
                     _lastCloudSyncTimestamp.value = ts
+                    _cloudSyncMessage.value = UiText.cloudNoBackupUploadedLocal.get(lang)
+                },
+                onFailure = { e ->
+                    _cloudSyncMessage.value = e.localizedMessage
+                        ?: AppStrings.get(lang).cloudGenericBackupError
                 }
-            } catch (_: Exception) {}
+            )
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            _cloudSyncMessage.value = e.localizedMessage
+                ?: AppStrings.get(lang).cloudGenericBackupError
+        } finally {
+            _isCloudSyncing.value = false
         }
     }
 
@@ -1457,10 +1535,15 @@ class ZikirViewModel(
                         val isSameDevice = remoteDeviceId == getDeviceId()
 
                         if (!isSameDevice && remoteRev > 0 && localRev > 0 && remoteRev != localRev) {
+                            // ÇAKIŞMA: hiçbir şey yüklenmedi, karar kullanıcıya bırakıldı.
+                            // Eskiden burada onComplete(true) dönülüyordu; bu, veriler
+                            // yüklenmediği halde "başarılı" demekti ve kullanıcı
+                            // neden hiçbir şey olmadığını anlayamıyordu.
+                            val conflictMsg = UiText.syncConflictDetected.get(_uiState.value.settings.lang)
                             _syncConflictState.value = backupData
-                            _cloudSyncMessage.value = UiText.syncConflictDetected.get(_uiState.value.settings.lang)
+                            _cloudSyncMessage.value = conflictMsg
                             _isCloudSyncing.value = false
-                            withContext(Dispatchers.Main) { onComplete(true, null) }
+                            withContext(Dispatchers.Main) { onComplete(false, conflictMsg) }
                             return@launch
                         }
 

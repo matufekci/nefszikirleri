@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.graphics.Color
 import com.example.ui.components.SpiritualAmbientBackground
+import com.example.ui.components.SyncConflictDialog
 import com.example.data.model.AppStrings
 import com.example.ui.components.BadgeCelebrationDialog
 import com.example.ui.components.DhikrBottomBar
@@ -71,6 +72,10 @@ import com.example.util.rememberShouldReduceMotion
 @Composable
 fun MainApp(viewModel: ZikirViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    // Bulut/yerel çakışması. Bu akış eskiden HİÇBİR yerde izlenmiyordu;
+    // diyalog bu yüzden hiç görünmüyor, "Geri Yükle" sessizce hiçbir şey
+    // yüklemeden bitiyordu.
+    val syncConflict by viewModel.syncConflictState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val shouldReduceMotion = rememberShouldReduceMotion()
 
@@ -212,6 +217,21 @@ fun MainApp(viewModel: ZikirViewModel) {
                     }
 
                     // MODALS & CELEBRATIONS
+
+            // Bulut yedeği bulundu / çakışma: kullanıcıya NE YAPILACAĞI SORULUR.
+            // (Google girişi sonrası otomatik çalışır; sekmeden bağımsız
+            // görünebilmesi için kök composable'da tutuluyor.)
+            syncConflict?.let { conflict ->
+                SyncConflictDialog(
+                    lang = state.settings.lang,
+                    remoteBackupTimestamp = conflict.lastSyncedAt,
+                    onDismissRequest = { viewModel.dismissSyncConflict() },
+                    onKeepLocal = { viewModel.resolveConflictWithLocalOverwrite() },
+                    onUseRemote = { viewModel.resolveConflictWithRemote() },
+                    onMerge = { viewModel.resolveConflictWithMerge() }
+                )
+            }
+
             state.badgeCelebrationData?.let { badge ->
                 BadgeCelebrationDialog(
                     badge = badge,

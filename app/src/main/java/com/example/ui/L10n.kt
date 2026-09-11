@@ -161,4 +161,57 @@ object UiText {
         "Synchronisationskonflikt erkannt.",
         "Conflit de synchronisation détecté."
     )
+
+    // --------------------------------------------------- giris sonrasi bulut
+    // Google ile giris yapildiginda bulutta yedek varsa kullaniciya SORULUR.
+    // (Eskiden sorulmuyor, hatta yerel veri sessizce buluta yukleniyordu.)
+    val cloudBackupFoundTitle = L10n(
+        "Bulutta Yedek Bulundu",
+        "تم العثور على نسخة في السحابة",
+        "Cloud Backup Found",
+        "Cloud-Backup gefunden",
+        "Sauvegarde cloud trouvée"
+    )
+    val cloudBackupFoundMessage = L10n(
+        "Bu hesaba ait bulutta {0} tarihli bir zikir yedeği var. Ne yapmak istersiniz?",
+        "توجد نسخة احتياطية من الأذكار على السحابة لهذا الحساب بتاريخ {0}. ماذا تريد أن تفعل؟",
+        "There is a dhikr backup from {0} in the cloud for this account. What would you like to do?",
+        "Für dieses Konto gibt es ein Dhikr-Backup vom {0} in der Cloud. Was möchtest du tun?",
+        "Une sauvegarde de dhikr du {0} existe dans le cloud pour ce compte. Que veux-tu faire ?"
+    )
+    val cloudChoiceMerge = L10n(
+        "Birleştir (en güvenli – en yüksek sayaçlar korunur)",
+        "دمج (الأكثر أمانًا – يُحافظ على أكبر العدادات)",
+        "Merge (safest – keeps the highest counts)",
+        "Zusammenführen (am sichersten – höchste Zähler bleiben)",
+        "Fusionner (le plus sûr – garde les compteurs les plus élevés)"
+    )
+    val cloudChoiceUseRemote = L10n(
+        "Buluttakini yükle (bu cihazın verisinin üzerine yazar)",
+        "تحميل نسخة السحابة (يكتب فوق بيانات هذا الجهاز)",
+        "Load cloud backup (overwrites this device's data)",
+        "Cloud-Backup laden (überschreibt die Daten dieses Geräts)",
+        "Charger la sauvegarde cloud (écrase les données de cet appareil)"
+    )
+    val cloudChoiceKeepLocal = L10n(
+        "Bu cihazda kal (bulutu bu cihazla güncelle)",
+        "إبقاء بيانات هذا الجهاز (تحديث السحابة بها)",
+        "Stay on this device (update the cloud with it)",
+        "Auf diesem Gerät bleiben (Cloud damit aktualisieren)",
+        "Rester sur cet appareil (mettre le cloud à jour)"
+    )
+    val cloudNoBackupUploadedLocal = L10n(
+        "Bulutta kayıtlı yedek bulunamadı; bu cihazın verisi buluta yüklendi.",
+        "لا توجد نسخة محفوظة في السحابة؛ تم رفع بيانات هذا الجهاز إليها.",
+        "No backup was found in the cloud; this device's data was uploaded.",
+        "Kein Backup in der Cloud gefunden; die Daten dieses Geräts wurden hochgeladen.",
+        "Aucune sauvegarde trouvée dans le cloud ; les données de cet appareil ont été téléversées."
+    )
+    val cloudRestoredOnSignIn = L10n(
+        "Buluttaki yedeğiniz geri yüklendi.",
+        "تمت استعادة نسختك الاحتياطية من السحابة.",
+        "Your cloud backup has been restored.",
+        "Dein Cloud-Backup wurde wiederhergestellt.",
+        "Ta sauvegarde cloud a été restaurée."
+    )
 }
