@@ -166,6 +166,15 @@ class ZikirViewModel(
 
     private val increments = Channel<PendingOperation>(capacity = Channel.UNLIMITED)
 
+    // Henuz DB'ye dusmemis bekleyen artis toplami (zikirId -> toplam).
+    // +1'e basilinca optimistic guncelleme yapilir ve islem 40ms'lik toplu
+    // pencereye girer. Bu arada Room'dan gelen emission HAM (eski) sayiyi
+    // getirdigi icin combine ekrani bir anlik BIR ASAGI yaziyordu ("rakamlar
+    // kendi kendine geri sayiyor" hissi). combine artik DB degerine bu bekleyen
+    // katmani ekler; toplu islem DB'ye dustugunde katman sifirlanir ve deger
+    // asla geriye dusmez, dogal ilerleme korunur.
+    private val _pendingIncrements = kotlinx.coroutines.flow.MutableStateFlow<Map<Int, Long>>(emptyMap())
+
     /**
      * Kullanıcının yaptığı son açık seçim (liste -> "Öncekileri Tamamla ve Buradan
      * Başla" ya da kilitli olmayan bir basamağa dokunma). Room akışları hedefle
@@ -225,6 +234,15 @@ class ZikirViewModel(
                 }
 
                 repository.applyBatchOperations(batch)
+                // Toplu islem DB'ye dustu; bekleyen katmandan dus.
+                _pendingIncrements.update { m ->
+                    var out = m
+                    for (op in batch) {
+                        val nv = (out[op.zikirId] ?: 0L) - op.amount
+                        out = if (nv <= 0L) out - op.zikirId else out + (op.zikirId to nv)
+                    }
+                    out
+                }
             }
         }
 
@@ -244,10 +262,17 @@ class ZikirViewModel(
                 repository.allZikirs,
                 repository.allSlots,
                 repository.settings,
-                statsFlow
-            ) { dbZikirs, slots, settingsObj, (recentHistory, dailyStats, distinctActiveDates) ->
+                statsFlow,
+                _pendingIncrements
+            ) { dbZikirs, slots, settingsObj, (recentHistory, dailyStats, distinctActiveDates), pendingMap ->
                 val settings = settingsObj ?: AppSettings()
-                val zikirs = if (dbZikirs.isNotEmpty()) dbZikirs else _uiState.value.zikirs
+                val rawZikirs = if (dbZikirs.isNotEmpty()) dbZikirs else _uiState.value.zikirs
+                // Bekleyen (DB'ye henüz düşmemiş) artışları DB değerine ekle;
+                // toplu-işleme penceresinde ekran sayısı asla aşağı düşmesin.
+                val zikirs = if (pendingMap.isEmpty()) rawZikirs else rawZikirs.map { z ->
+                    val pend = pendingMap[z.id] ?: 0L
+                    if (pend > 0L) z.copy(count = (z.count + pend).coerceAtMost(z.target)) else z
+                }
                 val savedId = savedStateHandle.get<Int>("selectedZikirId")
 
                 // Terkib-i Şerif tertip emniyeti + hızlı intikal yarışının çözümü:
@@ -503,6 +528,9 @@ class ZikirViewModel(
         val addAmt = amount.coerceAtMost(available)
         val newCount = currentZikir.count + addAmt
         val reachedTarget = newCount >= currentZikir.target
+
+        // Bekleyen katmani artir; combine DB emission'inda bunu ekleyecek.
+        _pendingIncrements.update { it + (currentZikir.id to ((it[currentZikir.id] ?: 0L) + addAmt)) }
 
         // Optimistic UI Update
         val updatedZikirs = state.zikirs.map { z ->
