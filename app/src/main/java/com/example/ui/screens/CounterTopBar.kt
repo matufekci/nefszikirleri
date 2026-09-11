@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Fullscreen
+import androidx.compose.material.icons.rounded.FullscreenExit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
@@ -30,7 +31,11 @@ fun CounterTopBar(
     settings: AppSettings,
     onCycleHapticMode: () -> Unit,
     onToggleZenMode: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Zen/tam ekran modunda da AYNI bar kullanilir. Boylece tam ekrana
+    // gecince butonlarin konumu/boyutu degismez; yalnizca sagdaki butonun
+    // ikonu ve islevi "tam ekrandan cik" olur.
+    isZenMode: Boolean = false
 ) {
     val colors = LocalAppColors.current
     val strings = AppStrings.get(settings.lang)
@@ -74,18 +79,19 @@ fun CounterTopBar(
         }
 
         // Sağ Üst: Zen / Odaklanma Modu Butonu
+        // (Zen modundayken aynı yer, aynı boyut; sadece ikon ve işlev tersine döner.)
         IconButton(
-            onClick = { onToggleZenMode(true) },
+            onClick = { onToggleZenMode(!isZenMode) },
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
                 .background(colors.inputBg)
                 .border(1.dp, colors.border, CircleShape)
-                .testTag("btn_zen_mode")
+                .testTag(if (isZenMode) "btn_zen_mode_exit" else "btn_zen_mode")
         ) {
             Icon(
-                imageVector = Icons.Rounded.Fullscreen,
-                contentDescription = strings.zenMode,
+                imageVector = if (isZenMode) Icons.Rounded.FullscreenExit else Icons.Rounded.Fullscreen,
+                contentDescription = if (isZenMode) strings.exitZenMode else strings.zenMode,
                 tint = colors.primary,
                 modifier = Modifier.size(18.dp)
             )

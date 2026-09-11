@@ -18,8 +18,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.graphics.Color
 import com.example.ui.components.SpiritualAmbientBackground
 import com.example.data.model.AppStrings
@@ -117,15 +123,39 @@ fun MainApp(viewModel: ZikirViewModel) {
                     Scaffold(
                         topBar = {
                             // Üstte sadece güvenli durum çubuğu boşluğu (Safe status bar insets)
-                            Spacer(modifier = Modifier.statusBarsPadding())
+                            //
+                            // ONEMLI: statusBarsPadding() KULLANILMIYOR. Tam ekran (zen)
+                            // modunda sistem barlari gizlendigi icin statusBarsPadding
+                            // sifira cokuyor ve tum icerik bir anda yukari zipliyordu.
+                            // statusBarsIgnoringVisibility, bar gizli olsa da ayni
+                            // yuksekligi raporlar; boylece ust barin yeri sabit kalir.
+                            Spacer(
+                                modifier = Modifier.windowInsetsPadding(
+                                    WindowInsets.statusBarsIgnoringVisibility
+                                )
+                            )
                         },
                         bottomBar = {
-                            if (!isWideScreen && !state.isZenMode) {
-                                DhikrBottomBar(
-                                    currentTab = state.tab,
-                                    lang = state.settings.lang,
-                                    onTabSelected = { viewModel.setTab(it) }
-                                )
+                            if (!isWideScreen) {
+                                // Alt sekmeler tam ekrana gecince ANI kaybolmasin;
+                                // suzulerek asagi insin. Aksi halde ekranin alt
+                                // boslugu bir anda buyuyor ve gecis "keskin"
+                                // gorunuyordu.
+                                AnimatedVisibility(
+                                    visible = !state.isZenMode,
+                                    enter = fadeIn(tween(300)) + slideInVertically(
+                                        tween(420, easing = FastOutSlowInEasing)
+                                    ) { it / 2 },
+                                    exit = fadeOut(tween(220)) + slideOutVertically(
+                                        tween(420, easing = FastOutSlowInEasing)
+                                    ) { it / 2 }
+                                ) {
+                                    DhikrBottomBar(
+                                        currentTab = state.tab,
+                                        lang = state.settings.lang,
+                                        onTabSelected = { viewModel.setTab(it) }
+                                    )
+                                }
                             }
                         },
                         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),

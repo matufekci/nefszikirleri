@@ -25,11 +25,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.List
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.material.icons.rounded.FullscreenExit
+import androidx.compose.animation.togetherWith
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -60,7 +61,6 @@ import com.example.data.model.AppStrings
 import com.example.data.model.Zikir
 import com.example.data.model.ZikirContent
 import com.example.ui.components.DhikrCircle
-import com.example.ui.components.HapticIcons
 import com.example.ui.components.SpiritualBeadsIcon
 import com.example.ui.components.SpiritualCheckIcon
 import com.example.ui.components.SpiritualFlameIcon
@@ -162,90 +162,75 @@ fun DhikrCounterScreen(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Crossfade(
+            AnimatedContent(
                 targetState = isZenMode,
-                animationSpec = tween(420),
-                label = "zenModeCrossfade"
+                transitionSpec = {
+                    // Suzulme + solerek gecis: yeni ekran asagidan yukari
+                    // suzulurken eski ekran ters yonde suzulup soluyor.
+                    val slide = tween<Float>(560, easing = FastOutSlowInEasing)
+                    val move = tween<IntOffset>(560, easing = FastOutSlowInEasing)
+                    if (targetState) {
+                        (slideInVertically(move) { it / 7 } + fadeIn(slide)) togetherWith
+                            (slideOutVertically(move) { -it / 7 } + fadeOut(tween(340)))
+                    } else {
+                        (slideInVertically(move) { -it / 7 } + fadeIn(slide)) togetherWith
+                            (slideOutVertically(move) { it / 7 } + fadeOut(tween(340)))
+                    }
+                },
+                label = "zenModeTransition"
             ) { zenActive ->
-                // Yumusak gecis: icerik ani degismek yerine 420ms'de solerek degisir.
+                // Yumusak gecis: icerik ani degismek yerine suzulerek degisir.
                 if (zenActive) {
-                // Tam ekran modunda SADECE çember gösterilir, diğer her şey kaldırılır
+                // Tam ekran modunda SADECE ust bar (titresim + cikis) ve cember kalir.
                 val progress = if (currentZikir.target > 0) (currentZikir.count.toFloat() / currentZikir.target.toFloat()).coerceIn(0f, 1f) else 0f
                 val remaining = (currentZikir.target - currentZikir.count).coerceAtLeast(0L)
                 val transliteration = ZikirContent.getZikirTransliteration(currentZikir.id, state.settings.lang)
                 val remainingLabel = strings.remainingInThis.replace("{0}", NumberFormatter.format(remaining, state.settings.lang))
 
-                DhikrCircle(
-                    ringSize = calculatedRingSize,
-                    progress = progress,
-                    displayCount = currentZikir.count,
-                    targetCount = currentZikir.target,
-                    isCountdownMode = state.settings.countdownMode,
-                    remainingLabel = remainingLabel,
-                    arabicText = arabicText,
-                    transliteration = transliteration,
-                    lang = state.settings.lang,
-                    isZenMode = true,
-                    onTap = { viewModel.incrementCount(1) },
-                    modifier = Modifier.testTag("dhikr_circle_tap_area")
-                )
-
-                // Tam ekranda YALNIZCA iki kucuk buton kalir: titresim ve cikis.
-                val zenHapticIcon = HapticIcons.forMode(
-                    enabled = state.settings.hapticEnabled,
-                    tapMode = state.settings.hapticTapMode
-                )
-                val zenHapticDesc = when {
-                    !state.settings.hapticEnabled -> strings.hapticOff
-                    state.settings.hapticTapMode == "light" -> "${strings.hapticTitle} (${strings.hapticTapLight})"
-                    state.settings.hapticTapMode == "medium" -> "${strings.hapticTitle} (${strings.hapticTapMedium})"
-                    else -> "${strings.hapticTitle} (${strings.hapticTapStrong})"
-                }
+                // Ust bar NORMAL MODLA BIREBIR AYNI: ayni padding, ayni 640dp
+                // genislik siniri, ayni CounterTopBar bileseni. Bu yuzden tam
+                // ekrana gecince titresim ve tam ekran butonlarinin yeri
+                // degismiyor. (Eskiden butonlar sag ustte alt alta duruyordu ve
+                // Modifier.align gecis bileseninin icinde etkisiz kaliyordu.)
                 Column(
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                        .fillMaxSize()
+                        .padding(horizontal = 14.dp, vertical = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Titresim (3 kademe) - yari saydam, koseye yapismis
-                    IconButton(
-                        onClick = { viewModel.cycleHapticMode() },
+                    Column(
                         modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(colors.inputBg.copy(alpha = 0.5f))
-                            .border(
-                                1.dp,
-                                if (state.settings.hapticEnabled) colors.gold.copy(alpha = 0.5f)
-                                else colors.border.copy(alpha = 0.4f),
-                                CircleShape
-                            )
-                            .testTag("btn_vibration_toggle_zen")
+                            .fillMaxWidth()
+                            .widthIn(max = 640.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(
-                            imageVector = zenHapticIcon,
-                            contentDescription = zenHapticDesc,
-                            tint = if (state.settings.hapticEnabled) colors.gold
-                            else colors.textMuted.copy(alpha = 0.5f),
-                            modifier = Modifier.size(19.dp)
+                        CounterTopBar(
+                            settings = state.settings,
+                            onCycleHapticMode = { viewModel.cycleHapticMode() },
+                            onToggleZenMode = { viewModel.toggleZenMode(it) },
+                            isZenMode = true
                         )
                     }
 
-                    // Tam ekrandan cikis
-                    IconButton(
-                        onClick = { viewModel.toggleZenMode(false) },
+                    Box(
                         modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(colors.inputBg.copy(alpha = 0.5f))
-                            .border(1.dp, colors.border.copy(alpha = 0.4f), CircleShape)
-                            .testTag("btn_zen_mode_exit")
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.FullscreenExit,
-                            contentDescription = strings.exitZenMode,
-                            tint = colors.primary,
-                            modifier = Modifier.size(20.dp)
+                        DhikrCircle(
+                            ringSize = calculatedRingSize,
+                            progress = progress,
+                            displayCount = currentZikir.count,
+                            targetCount = currentZikir.target,
+                            isCountdownMode = state.settings.countdownMode,
+                            remainingLabel = remainingLabel,
+                            arabicText = arabicText,
+                            transliteration = transliteration,
+                            lang = state.settings.lang,
+                            isZenMode = true,
+                            onTap = { viewModel.incrementCount(1) },
+                            modifier = Modifier.testTag("dhikr_circle_tap_area")
                         )
                     }
                 }
