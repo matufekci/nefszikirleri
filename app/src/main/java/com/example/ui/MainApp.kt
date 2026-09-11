@@ -22,6 +22,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
@@ -63,6 +64,10 @@ import com.example.ui.theme.NefsZikirTheme
 import com.example.ui.viewmodel.ZikirViewModel
 import com.example.util.rememberShouldReduceMotion
 
+// statusBarsIgnoringVisibility deneysel (ExperimentalLayoutApi) isaretli.
+// Bu API'yi bilerek kullaniyoruz: tam ekran modunda durum cubugu gizlense
+// de ayni yuksekligi raporlamasi gerekiyor, aksi halde ust bar zipliyor.
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MainApp(viewModel: ZikirViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
