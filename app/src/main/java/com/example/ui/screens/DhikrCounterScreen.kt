@@ -249,7 +249,6 @@ fun DhikrCounterScreen(
                         )
                     }
                 }
-            }
             } else {
                 // Normal Mod
                 Column(
@@ -372,6 +371,7 @@ fun DhikrCounterScreen(
                         Spacer(modifier = Modifier.height(4.dp))
                     }
                 }
+            }
             }
         }
     }
