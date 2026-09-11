@@ -61,7 +61,7 @@ import com.example.util.rememberShouldReduceMotion
 fun MainApp(viewModel: ZikirViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val shouldReduceMotion = rememberShouldReduceMotion(state.isZenMode)
+    val shouldReduceMotion = rememberShouldReduceMotion()
 
     // SharedPreferences to track if user completed the initial intro onboarding
     val prefs = remember { context.getSharedPreferences("nefs_app_prefs", Context.MODE_PRIVATE) }

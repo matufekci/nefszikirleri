@@ -63,7 +63,7 @@ fun DhikrCircle(
     val hasStarted = actualCount > 0L || progress > 0.0001f
 
     // Reduced Motion / Zen Mode algılaması
-    val shouldReduceMotion = rememberShouldReduceMotion(isZenMode)
+    val shouldReduceMotion = rememberShouldReduceMotion()
 
     // Animasyon Durumları
     val animState = rememberDhikrCircleAnimations(

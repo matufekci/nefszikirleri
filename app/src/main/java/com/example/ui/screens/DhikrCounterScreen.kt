@@ -27,6 +27,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.List
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.rounded.FullscreenExit
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -58,6 +60,7 @@ import com.example.data.model.AppStrings
 import com.example.data.model.Zikir
 import com.example.data.model.ZikirContent
 import com.example.ui.components.DhikrCircle
+import com.example.ui.components.HapticIcons
 import com.example.ui.components.SpiritualBeadsIcon
 import com.example.ui.components.SpiritualCheckIcon
 import com.example.ui.components.SpiritualFlameIcon
@@ -86,8 +89,11 @@ fun DhikrCounterScreen(
     var showResetDialog by rememberSaveable { mutableStateOf(false) }
     var showTargetDialog by rememberSaveable { mutableStateOf(false) }
 
-    // Zen / Odaklanma Modu Durumu
-    var isZenMode by rememberSaveable { mutableStateOf(false) }
+    // Zen / Odaklanma Modu Durumu.
+    // TEK dogruluk kaynagi ViewModel: MainApp alt sekmeleri state.isZenMode'a
+    // gore gizliyor. Durum burada lokal tutuldugu icin tam ekrana gecince
+    // sekmeler hic gizlenmiyordu.
+    val isZenMode = state.isZenMode
 
     // Zen Modunda Sistem Barlarını Gizleme
     val activity = context as? Activity
@@ -156,7 +162,13 @@ fun DhikrCounterScreen(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            if (isZenMode) {
+            Crossfade(
+                targetState = isZenMode,
+                animationSpec = tween(420),
+                label = "zenModeCrossfade"
+            ) { zenActive ->
+                // Yumusak gecis: icerik ani degismek yerine 420ms'de solerek degisir.
+                if (zenActive) {
                 // Tam ekran modunda SADECE çember gösterilir, diğer her şey kaldırılır
                 val progress = if (currentZikir.target > 0) (currentZikir.count.toFloat() / currentZikir.target.toFloat()).coerceIn(0f, 1f) else 0f
                 val remaining = (currentZikir.target - currentZikir.count).coerceAtLeast(0L)
@@ -178,24 +190,66 @@ fun DhikrCounterScreen(
                     modifier = Modifier.testTag("dhikr_circle_tap_area")
                 )
 
-                // Çok şık, yarı saydam, köşede yüzen bir çıkış butonu
-                IconButton(
-                    onClick = { isZenMode = false },
+                // Tam ekranda YALNIZCA iki kucuk buton kalir: titresim ve cikis.
+                val zenHapticIcon = HapticIcons.forMode(
+                    enabled = state.settings.hapticEnabled,
+                    tapMode = state.settings.hapticTapMode
+                )
+                val zenHapticDesc = when {
+                    !state.settings.hapticEnabled -> strings.hapticOff
+                    state.settings.hapticTapMode == "light" -> "${strings.hapticTitle} (${strings.hapticTapLight})"
+                    state.settings.hapticTapMode == "medium" -> "${strings.hapticTitle} (${strings.hapticTapMedium})"
+                    else -> "${strings.hapticTitle} (${strings.hapticTapStrong})"
+                }
+                Column(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(16.dp)
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(colors.inputBg.copy(alpha = 0.5f))
-                        .border(1.dp, colors.border.copy(alpha = 0.4f), CircleShape)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.FullscreenExit,
-                        contentDescription = strings.exitZenMode,
-                        tint = colors.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    // Titresim (3 kademe) - yari saydam, koseye yapismis
+                    IconButton(
+                        onClick = { viewModel.cycleHapticMode() },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(colors.inputBg.copy(alpha = 0.5f))
+                            .border(
+                                1.dp,
+                                if (state.settings.hapticEnabled) colors.gold.copy(alpha = 0.5f)
+                                else colors.border.copy(alpha = 0.4f),
+                                CircleShape
+                            )
+                            .testTag("btn_vibration_toggle_zen")
+                    ) {
+                        Icon(
+                            imageVector = zenHapticIcon,
+                            contentDescription = zenHapticDesc,
+                            tint = if (state.settings.hapticEnabled) colors.gold
+                            else colors.textMuted.copy(alpha = 0.5f),
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
+
+                    // Tam ekrandan cikis
+                    IconButton(
+                        onClick = { viewModel.toggleZenMode(false) },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(colors.inputBg.copy(alpha = 0.5f))
+                            .border(1.dp, colors.border.copy(alpha = 0.4f), CircleShape)
+                            .testTag("btn_zen_mode_exit")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.FullscreenExit,
+                            contentDescription = strings.exitZenMode,
+                            tint = colors.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
+            }
             } else {
                 // Normal Mod
                 Column(
@@ -219,7 +273,7 @@ fun DhikrCounterScreen(
                         CounterTopBar(
                             settings = state.settings,
                             onCycleHapticMode = { viewModel.cycleHapticMode() },
-                            onToggleZenMode = { isZenMode = it }
+                            onToggleZenMode = { viewModel.toggleZenMode(it) }
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))

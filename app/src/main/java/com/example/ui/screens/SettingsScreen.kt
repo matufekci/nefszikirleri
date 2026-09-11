@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import com.example.ui.UiText
+
 import android.Manifest
 import android.app.Activity
 import android.content.Context
@@ -100,13 +102,7 @@ fun SettingsScreen(
                 isPermanentlyDenied = true
                 showNotificationRationaleDialog = true
             } else {
-                val deniedMsg = when (state.settings.lang) {
-                    "ar" -> "يجب منح إذن التنبيهات لاستلام التذكيرات"
-                    "de" -> "Benachrichtigungsberechtigung ist erforderlich, um Erinnerungen zu erhalten"
-                    "fr" -> "L'autorisation de notification est requise pour recevoir les rappels"
-                    "en" -> "Notification permission is required to receive reminders"
-                    else -> "Hatırlatıcıları alabilmek için bildirim iznine ihtiyacımız var"
-                }
+                val deniedMsg = UiText.notificationPermissionNeeded.get(state.settings.lang)
                 Toast.makeText(context, deniedMsg, Toast.LENGTH_SHORT).show()
             }
         }
@@ -296,9 +292,10 @@ fun SettingsScreen(
 
     if (showExportPasswordDialog) {
         BackupPasswordDialog(
-            title = "Yedek Şifreleme",
-            message = "Yedeğinizi AES-256 ile korumak için bir parola belirleyin:",
-            actionText = "Şifrele ve Paylaş",
+            title = UiText.backupEncryptionTitle.get(state.settings.lang),
+            message = UiText.backupEncryptionMessage.get(state.settings.lang),
+            actionText = UiText.encryptAndShare.get(state.settings.lang),
+            cancelText = UiText.cancel.get(state.settings.lang),
             onDismissRequest = { viewModel.dismissExportPasswordDialog() },
             onConfirm = { password ->
                 viewModel.exportAndShareStatisticsBackup(context, password) { error ->
@@ -310,16 +307,17 @@ fun SettingsScreen(
 
     if (showImportPasswordDialog) {
         BackupPasswordDialog(
-            title = "Yedek Parolası",
-            message = "Şifrelenmiş yedeği açmak için parolayı girin (eski şifresiz yedekler için boş bırakabilirsiniz):",
-            actionText = "Yedeği Aç",
+            title = UiText.backupPasswordTitle.get(state.settings.lang),
+            message = UiText.backupPasswordMessage.get(state.settings.lang),
+            actionText = UiText.openBackup.get(state.settings.lang),
+            cancelText = UiText.cancel.get(state.settings.lang),
             onDismissRequest = { viewModel.dismissImportPasswordDialog() },
             onConfirm = { password ->
                 viewModel.importStatisticsBackup(
                     context = context,
                     password = password,
                     onSuccess = { restoredCount ->
-                        Toast.makeText(context, "Yedek başarıyla geri yüklendi ($restoredCount zikir)", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, UiText.backupRestoredToast.format(state.settings.lang, restoredCount), Toast.LENGTH_LONG).show()
                     },
                     onError = { error ->
                         Toast.makeText(context, error, Toast.LENGTH_LONG).show()

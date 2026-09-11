@@ -1,5 +1,7 @@
 package com.example.ui.viewmodel
 
+import com.example.ui.UiText
+
 import android.app.Application
 import android.content.Context
 import android.content.Intent
@@ -1078,7 +1080,7 @@ class ZikirViewModel(
                             return@launch
                         }
                         if (ex is com.example.data.backup.WrongPasswordException) {
-                            withContext(Dispatchers.Main) { onError(ex.localizedMessage ?: "Yanlış parola") }
+                            withContext(Dispatchers.Main) { onError(UiText.wrongPassword.get(_uiState.value.settings.lang)) }
                             return@launch
                         }
                         
@@ -1412,7 +1414,7 @@ class ZikirViewModel(
                             remoteDataResult.onSuccess { remoteData ->
                                 _syncConflictState.value = remoteData
                             }
-                            val msg = "Senkronizasyon çakışması algılandı."
+                            val msg = UiText.syncConflictDetected.get(_uiState.value.settings.lang)
                             _cloudSyncMessage.value = msg
                             _isCloudSyncing.value = false
                             withContext(Dispatchers.Main) { onComplete(false, msg) }
@@ -1456,7 +1458,7 @@ class ZikirViewModel(
 
                         if (!isSameDevice && remoteRev > 0 && localRev > 0 && remoteRev != localRev) {
                             _syncConflictState.value = backupData
-                            _cloudSyncMessage.value = "Senkronizasyon çakışması algılandı."
+                            _cloudSyncMessage.value = UiText.syncConflictDetected.get(_uiState.value.settings.lang)
                             _isCloudSyncing.value = false
                             withContext(Dispatchers.Main) { onComplete(true, null) }
                             return@launch

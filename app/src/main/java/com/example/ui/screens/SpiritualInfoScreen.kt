@@ -28,6 +28,18 @@ import com.example.util.*
 import android.content.*
 import android.widget.Toast
 
+/**
+ * Metnin basindaki siralama numarasini siler.
+ *
+ * Bilgi sekmesindeki notlar "1- ...", "2- ..." (Arapca'da "١- ...") diye
+ * basliyor ve kullanicinin istegiyle bu rakamlar gosterilmiyor. Numara metnin
+ * icinde tutulmak yerine gosterim sirasinda soyuluyor; boylece AppStrings'teki
+ * 5 dilin 20 metnini ayri ayri degistirmeye gerek kalmiyor ve yeni dil
+ * eklendiginde de kendiliginden calisiyor.
+ */
+private fun String.withoutLeadingNumber(): String =
+    replace(Regex("^\\s*[0-9\u0660-\u0669]+\\s*[-\u2013\u2014.)\u00B7]\\s*"), "")
+
 @Composable
 fun SpiritualInfoScreen(
     lang: String,
@@ -41,10 +53,10 @@ fun SpiritualInfoScreen(
         val shareText = "${strings.sheikhTitle}\n" +
             "${strings.sheikhName}\n\n" +
             "${strings.notesTitle}\n" +
-            "${strings.note1}\n\n" +
-            "${strings.note2}\n\n" +
-            "${strings.note3}\n\n" +
-            "${strings.note4}"
+            "${strings.note1.withoutLeadingNumber()}\n\n" +
+            "${strings.note2.withoutLeadingNumber()}\n\n" +
+            "${strings.note3.withoutLeadingNumber()}\n\n" +
+            "${strings.note4.withoutLeadingNumber()}"
 
         val sendIntent = Intent().apply {
             action = Intent.ACTION_SEND
@@ -125,23 +137,9 @@ fun SpiritualInfoScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // NOTLAR BAŞLIĞI
-                Text(
-                    text = strings.notesTitle,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp
-                    ),
-                    color = colors.primary,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
                 // 1. NOT
                 NoteItem(
-                    text = strings.note1,
+                    text = strings.note1.withoutLeadingNumber(),
                     textColor = colors.text,
                     bulletColor = colors.gold
                 )
@@ -152,7 +150,7 @@ fun SpiritualInfoScreen(
 
                 // 2. NOT
                 NoteItem(
-                    text = strings.note2,
+                    text = strings.note2.withoutLeadingNumber(),
                     textColor = colors.text,
                     bulletColor = colors.gold
                 )
@@ -163,7 +161,7 @@ fun SpiritualInfoScreen(
 
                 // 3. NOT
                 NoteItem(
-                    text = strings.note3,
+                    text = strings.note3.withoutLeadingNumber(),
                     textColor = colors.text,
                     bulletColor = colors.gold
                 )
@@ -174,7 +172,7 @@ fun SpiritualInfoScreen(
 
                 // 4. NOT
                 NoteItem(
-                    text = strings.note4,
+                    text = strings.note4.withoutLeadingNumber(),
                     textColor = colors.text,
                     bulletColor = colors.gold
                 )

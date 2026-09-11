@@ -132,8 +132,16 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
                         // Silinmiş veya devre dışı bırakılmış slotun alarmı çalışmamalı
                         return@launch
                     }
-                    title = strings.title
-                    content = "${strings.todayVird} - ${strings.subtitle}"
+                    // Düz "günlük virdiniz" metni yerine ayet/hadis referanslı,
+                    // davetkâr ve her gün değişen manevi mesaj gösterilir.
+                    val dayOfYear = java.util.Calendar.getInstance()
+                        .get(java.util.Calendar.DAY_OF_YEAR)
+                    val (reminderTitle, reminderBody) = com.example.util.DailyReminderMessages.pick(
+                        lang = lang,
+                        seed = dayOfYear + slotRequestCode
+                    )
+                    title = reminderTitle
+                    content = reminderBody
                     notificationId = slotRequestCode
                 }
 

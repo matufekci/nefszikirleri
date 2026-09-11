@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import com.example.ui.UiText
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -115,7 +117,7 @@ fun AppearanceSection(
                             Spacer(modifier = Modifier.width(10.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = palette.name,
+                                    text = UiText.themeName(palette.id, settings.lang),
                                     style = MaterialTheme.typography.labelMedium.copy(
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
                                     ),

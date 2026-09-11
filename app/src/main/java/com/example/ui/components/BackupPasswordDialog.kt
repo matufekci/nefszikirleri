@@ -22,6 +22,7 @@ fun BackupPasswordDialog(
     title: String,
     message: String,
     actionText: String,
+    cancelText: String,
     onDismissRequest: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
@@ -54,7 +55,7 @@ fun BackupPasswordDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismissRequest) {
-                Text(text = "İptal")
+                Text(text = cancelText)
             }
         }
     )
