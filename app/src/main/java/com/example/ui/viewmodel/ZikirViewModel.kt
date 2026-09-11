@@ -25,22 +25,18 @@ import com.example.data.model.ReminderSlot
 import com.example.data.model.Zikir
 import com.example.data.model.ZikirContent
 import com.example.data.model.ZikirHistory
-import com.example.data.model.PendingOperation
 import com.example.data.repository.ZikirRepository
 import com.example.util.HapticHelper
 import com.example.util.NotificationScheduler
 import com.example.util.MonotonicTime
 import com.example.util.NumberFormatter
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -52,7 +48,6 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import java.util.UUID
 
 data class DayChartItem(
     val dateKey: String,
@@ -164,16 +159,8 @@ class ZikirViewModel(
     private val _lastCloudSyncTimestamp = MutableStateFlow<Long?>(null)
     val lastCloudSyncTimestamp: StateFlow<Long?> = _lastCloudSyncTimestamp.asStateFlow()
 
-    private val increments = Channel<PendingOperation>(capacity = Channel.UNLIMITED)
-
-    // Henuz DB'ye dusmemis bekleyen artis toplami (zikirId -> toplam).
-    // +1'e basilinca optimistic guncelleme yapilir ve islem 40ms'lik toplu
-    // pencereye girer. Bu arada Room'dan gelen emission HAM (eski) sayiyi
-    // getirdigi icin combine ekrani bir anlik BIR ASAGI yaziyordu ("rakamlar
-    // kendi kendine geri sayiyor" hissi). combine artik DB degerine bu bekleyen
-    // katmani ekler; toplu islem DB'ye dustugunde katman sifirlanir ve deger
-    // asla geriye dusmez, dogal ilerleme korunur.
-    private val _pendingIncrements = kotlinx.coroutines.flow.MutableStateFlow<Map<Int, Long>>(emptyMap())
+    // +1 islemleri artik SENKRON (repository.addDhikrCount) yazilir; toplu
+    // kanal + optimistic katman kaldirildi (titremenin kaynagiydi).
 
     /**
      * Kullanıcının yaptığı son açık seçim (liste -> "Öncekileri Tamamla ve Buradan
@@ -219,34 +206,8 @@ class ZikirViewModel(
         _uiState = MutableStateFlow(DhikrUiState(selectedId = initialSelectedId, tab = initialTab))
         uiState = _uiState.asStateFlow()
 
-        // Channel-based batching worker
         viewModelScope.launch {
-            repository.processUnappliedOperations()
-            
-            while (isActive) {
-                val first = increments.receive()
-                delay(40) // 40ms batch window
-
-                val batch = mutableListOf(first)
-                while (true) {
-                    val next = increments.tryReceive().getOrNull() ?: break
-                    batch.add(next)
-                }
-
-                repository.applyBatchOperations(batch)
-                // Toplu islem DB'ye dustu; bekleyen katmandan dus.
-                _pendingIncrements.update { m ->
-                    var out = m
-                    for (op in batch) {
-                        val nv = (out[op.zikirId] ?: 0L) - op.amount
-                        out = if (nv <= 0L) out - op.zikirId else out + (op.zikirId to nv)
-                    }
-                    out
-                }
-            }
-        }
-
-        viewModelScope.launch {
+            repository.processUnappliedOperations() // eski surumden kalan pending op'lar
             repository.ensureInitialized()
 
             val sixMonthsAgo = System.currentTimeMillis() - (185L * 24 * 60 * 60 * 1000L)
@@ -262,18 +223,14 @@ class ZikirViewModel(
                 repository.allZikirs,
                 repository.allSlots,
                 repository.settings,
-                statsFlow,
-                _pendingIncrements
-            ) { dbZikirs, slots, settingsObj, (recentHistory, dailyStats, distinctActiveDates), pendingMap ->
+                statsFlow
+            ) { dbZikirs, slots, settingsObj, (recentHistory, dailyStats, distinctActiveDates) ->
                 val settings = settingsObj ?: AppSettings()
-                val rawZikirs = if (dbZikirs.isNotEmpty()) dbZikirs else _uiState.value.zikirs
-                // Bekleyen (DB'ye henüz düşmemiş) artışları DB değerine ekle;
-                // toplu-işleme penceresinde ekran sayısı asla aşağı düşmesin.
-                val zikirs = if (pendingMap.isEmpty()) rawZikirs else rawZikirs.map { z ->
-                    val pend = pendingMap[z.id] ?: 0L
-                    if (pend > 0L) z.copy(count = (z.count + pend).coerceAtMost(z.target)) else z
-                }
-                val savedId = savedStateHandle.get<Int>("selectedZikirId")
+                val zikirs = if (dbZikirs.isNotEmpty()) dbZikirs else _uiState.value.zikirs
+                // Tek kaynak settings.selectedZikirId. savedStateHandle echo'su
+                // restore sonrasi ilk emission'da 1 yazip secimi ilk zikire
+                // kilitliyordu; bu golgeleme kaldirildi.
+                val savedId: Int? = null
 
                 // Terkib-i Şerif tertip emniyeti + hızlı intikal yarışının çözümü:
                 // kullanıcı açık bir seçim yaptıysa (ör. "Öncekileri Tamamla ve Buradan
@@ -290,7 +247,6 @@ class ZikirViewModel(
                 if (resolution.clearPending) {
                     pendingSelection = null
                 }
-                savedStateHandle["selectedZikirId"] = selectedId
 
                 val savedTab = savedStateHandle.get<String>("currentTab") ?: _uiState.value.tab
                 savedStateHandle["currentTab"] = savedTab
@@ -529,37 +485,6 @@ class ZikirViewModel(
         val newCount = currentZikir.count + addAmt
         val reachedTarget = newCount >= currentZikir.target
 
-        // Bekleyen katmani artir; combine DB emission'inda bunu ekleyecek.
-        _pendingIncrements.update { it + (currentZikir.id to ((it[currentZikir.id] ?: 0L) + addAmt)) }
-
-        // Optimistic UI Update
-        val updatedZikirs = state.zikirs.map { z ->
-            if (z.id == currentZikir.id) z.copy(count = newCount) else z
-        }
-        val updatedCurrentZikir = currentZikir.copy(count = newCount)
-
-        if (reachedTarget) {
-            hapticHelper.celebration()
-            val nextId = if (currentZikir.id < 15) currentZikir.id + 1 else null
-            val zikirName = ZikirContent.getZikirName(currentZikir.id, state.settings.lang)
-            _uiState.update {
-                it.copy(
-                    zikirs = updatedZikirs,
-                    currentZikir = updatedCurrentZikir,
-                    celebrationData = CelebrationData(currentZikir.id, zikirName, nextId),
-                    canUndo = true
-                )
-            }
-        } else {
-            _uiState.update {
-                it.copy(
-                    zikirs = updatedZikirs,
-                    currentZikir = updatedCurrentZikir,
-                    canUndo = true
-                )
-            }
-        }
-
         if (state.settings.hapticEnabled && !reachedTarget) {
             val intensity = state.settings.hapticTapMode
             when (amount) {
@@ -574,22 +499,27 @@ class ZikirViewModel(
         // Her zikirden sonra hareketsizlik sayacını sıfırla (4 gün sonra tekrar kurulsun).
         notificationScheduler.scheduleInactivityAlert(true)
 
-        val opId = UUID.randomUUID().toString()
-        val now = com.example.util.MonotonicTime.now()
-        val dateKey = NumberFormatter.getDateKey(now)
-        
-        val pendingOp = PendingOperation(
-            operationId = opId,
-            zikirId = currentZikir.id,
-            amount = addAmt,
-            timestamp = now,
-            dateKey = dateKey,
-            status = "created"
-        )
-        
-        viewModelScope.launch {
-            repository.createPendingOperation(pendingOp)
-            increments.trySend(pendingOp)
+        // SENKRON YAZMA: Room transaction hemen calisir ve allZikirs Flow'u
+        // yeni sayiyi TEK emission ile getirir. Optimistic guncelleme + 40ms
+        // toplu kanal kaldirildi; boylece ekran once artip sonra dusen
+        // titreme yasamaz - sayinin tek kaynagi DB'dir.
+        viewModelScope.launch(Dispatchers.IO) {
+            val (_, reached) = repository.addDhikrCount(currentZikir.id, addAmt)
+            withContext(Dispatchers.Main) {
+                if (reached) {
+                    hapticHelper.celebration()
+                    val nextId = if (currentZikir.id < 15) currentZikir.id + 1 else null
+                    val zikirName = ZikirContent.getZikirName(currentZikir.id, state.settings.lang)
+                    _uiState.update {
+                        it.copy(
+                            celebrationData = CelebrationData(currentZikir.id, zikirName, nextId),
+                            canUndo = true
+                        )
+                    }
+                } else {
+                    _uiState.update { it.copy(canUndo = true) }
+                }
+            }
         }
     }
 
@@ -1652,19 +1582,5 @@ class ZikirViewModel(
     override fun onCleared() {
         super.onCleared()
         authManager.cleanup()
-        flushPendingIncrements()
-    }
-
-    private fun flushPendingIncrements() {
-        val pending = mutableListOf<PendingOperation>()
-        while (true) {
-            val req = increments.tryReceive().getOrNull() ?: break
-            pending.add(req)
-        }
-        if (pending.isNotEmpty()) {
-            com.example.NefsApplication.applicationScope.launch {
-                repository.applyBatchOperations(pending)
-            }
-        }
     }
 }
