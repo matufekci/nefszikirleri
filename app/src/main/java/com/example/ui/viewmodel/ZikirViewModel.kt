@@ -1245,6 +1245,11 @@ class ZikirViewModel(
                         slots = remoteData.reminderSlots,
                         history = remoteData.history
                     )
+                    alignSelectionAfterRestore(
+                        zikirs = remoteData.zikirs,
+                        history = remoteData.history,
+                        backedUpSelection = remoteData.settings.selectedZikirId
+                    )
                     setLocalRevision(remoteData.syncMetadata?.revision ?: 0L)
                     _lastCloudSyncTimestamp.value = remoteData.lastSyncedAt
                     _cloudSyncMessage.value = UiText.cloudRestoredOnSignIn.get(lang)
@@ -1334,6 +1339,11 @@ class ZikirViewModel(
                     settings = backupData.settings,
                     slots = backupData.reminderSlots,
                     history = backupData.history
+                )
+                alignSelectionAfterRestore(
+                    zikirs = backupData.zikirs,
+                    history = backupData.history,
+                    backedUpSelection = backupData.settings.selectedZikirId
                 )
                 setLocalRevision(backupData.syncMetadata?.revision ?: 0L)
                 _lastCloudSyncTimestamp.value = backupData.lastSyncedAt
@@ -1553,6 +1563,11 @@ class ZikirViewModel(
                             slots = backupData.reminderSlots,
                             history = backupData.history
                         )
+                        alignSelectionAfterRestore(
+                            zikirs = backupData.zikirs,
+                            history = backupData.history,
+                            backedUpSelection = backupData.settings.selectedZikirId
+                        )
                         setLocalRevision(remoteRev)
                         _lastCloudSyncTimestamp.value = backupData.lastSyncedAt
                         _cloudSyncMessage.value = strings.cloudRestoreSuccess
@@ -1574,6 +1589,36 @@ class ZikirViewModel(
                 withContext(Dispatchers.Main) { onComplete(false, msg) }
             }
         }
+    }
+
+    /**
+     * Buluttan tam geri yukleme sonrasi ekranda "en son cekilen" zikrin
+     * acilmasini saglar.
+     *
+     * Neden gerekli: combine blogu cozulen id'yi savedStateHandle'a geri
+     * yaziyor ve savedId, settings.selectedZikirId'yi GOLGELIYOR. Taze
+     * kurulumda ilk emission 1 yazdigi icin restore sonrasi ekran hep ilk
+     * zikiri gostermeye basliyordu. Burada hem savedStateHandle hem DB
+     * settings guncellenir; boylece hem bu oturumda hem sonraki acilista
+     * dogru basamak gorunur.
+     */
+    private suspend fun alignSelectionAfterRestore(
+        zikirs: List<Zikir>,
+        history: List<ZikirHistory>,
+        backedUpSelection: Int
+    ) {
+        val lastRecited = history.maxByOrNull { it.timestamp }?.zikirId
+        val frontier = SelectedZikirResolver.firstIncompleteId(zikirs)
+        val candidate = lastRecited ?: backedUpSelection
+        val finalId = when {
+            candidate in 1..SelectedZikirResolver.TOTAL_ZIKIRS &&
+                candidate > 1 &&
+                SelectedZikirResolver.isUnlocked(candidate, zikirs) -> candidate
+            else -> frontier
+        }.coerceIn(1, SelectedZikirResolver.TOTAL_ZIKIRS)
+
+        savedStateHandle["selectedZikirId"] = finalId
+        updateSettingsSafely { it.copy(selectedZikirId = finalId) }
     }
 
     override fun onCleared() {
