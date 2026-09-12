@@ -6,7 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.FormatSize
@@ -104,23 +103,34 @@ fun AppearanceSection(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                // Theme Color Dual Swatch (Primary + Background)
+                                // Mini tema önizlemesi: ufak dikdörtgen kart,
+                                // arka plan ve yazı rengi TEMANIN KENDİ renkleri —
+                                // kullanıcı seçmeden önce temayı sezer.
                                 Box(
                                     modifier = Modifier
-                                        .size(28.dp)
-                                        .clip(CircleShape)
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(10.dp))
                                         .background(palette.bg)
-                                        .border(1.5.dp, palette.primary, CircleShape),
+                                        .border(
+                                            1.dp,
+                                            palette.primary.copy(alpha = 0.6f),
+                                            RoundedCornerShape(10.dp)
+                                        )
+                                        .padding(vertical = 8.dp, horizontal = 6.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(14.dp)
-                                            .clip(CircleShape)
-                                            .background(palette.primary)
+                                    Text(
+                                        text = UiText.themeName(palette.id, settings.lang),
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = FontWeight.Bold
+                                        ),
+                                        color = palette.primary,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
-                                Spacer(modifier = Modifier.weight(1f))
+                                Spacer(modifier = Modifier.width(4.dp))
                                 // Tema başına switch: açık olan switch, aktif temayı gösterir.
                                 // Tek seçimli olduğu için aktif temanın switch'i kapatılamaz
                                 // (bir tema her zaman aktif kalmalıdır).
@@ -141,16 +151,6 @@ fun AppearanceSection(
                                     modifier = Modifier.scale(0.8f)
                                 )
                             }
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = UiText.themeName(palette.id, settings.lang),
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
-                                ),
-                                color = if (isSelected) palette.primary else colors.text,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
                         }
                     }
                     if (rowList.size == 1) {
