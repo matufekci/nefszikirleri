@@ -9,7 +9,7 @@ data class AppSettings(
     val lang: String = "tr", // "tr", "ar", "en", "de", "fr"
     val themeName: String = "hadra_gece", // canonical: hadra_gunduz (Beyaz), hadra_gece (Yeşil), siyah (Siyah) + legacy 10 for backward compat
     val countdownMode: Boolean = false,
-    val dailyTarget: Long = 4000L, // Tempo matematiği bandı: 3.000–5.000 (1.140.000 zikir / 6 ay)
+    val dailyTarget: Long = 10000L,
     val hapticEnabled: Boolean = true,
     val fullScreenTap: Boolean = false,
     val keepAwakeEnabled: Boolean = true,
