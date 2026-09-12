@@ -85,6 +85,23 @@ fun MainApp(viewModel: ZikirViewModel) {
         mutableStateOf(!prefs.getBoolean("intro_completed", false))
     }
 
+    // Bildirimler ayarsız ve otomatiktir (tempo matematiği + hareketsizlik ağı).
+    // Android 13+ izni ilk açılışta bir kez istenir; ret halinde bildirimler
+    // sessizce devre dışı kalır, uygulama çalışmaya devam eder.
+    val notificationPermissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { /* sonuc bilincli olarak islenmiyor */ }
+    LaunchedEffect(Unit) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.POST_NOTIFICATIONS
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
     // Keep screen awake effect
     DisposableEffect(state.settings.keepAwakeEnabled) {
         val window = (context as? Activity)?.window

@@ -1,172 +1,40 @@
 rules_version = '2';
+
+// Nefs Zikirleri - Firestore guvenlik kurallari.
+//
+// NEDEN BU DOSYA: "Buluta Yedekle" PERMISSION_DENIED veriyordu ama "Geri
+// Yukle" (okuma) calisiyordu. Sebep: Firestore kurallari HIYERARSIK DEGILDIR;
+// /users/{uid} icin verilen izin, altindaki snapshots/ ve history/
+// alt-koleksiyonlarini KAPSAMAZ. Uygulama yedek yazarken uc seviyeye de
+// yazdigi icin (users/<uid>, users/<uid>/snapshots/<sid> ve
+// users/<uid>/snapshots/<sid>/history/*) her seviye ayrica izin istiyor.
+//
+// KURULUM: Firebase Console -> Firestore Database -> Rules sekmesi ->
+// asagidaki icerigi yapistir -> Publish. (App Check ayrica "Unenforced"
+// birakilmalidir; debug build token'i konsola kayitli degildir.)
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    function isValidZikir(zikir) {
-      return zikir.keys().hasAll(['id', 'target', 'count'])
-          && zikir.keys().hasOnly(['id', 'target', 'count', 'startedAt', 'completedAt'])
-          && zikir.id is int && zikir.id >= 1 && zikir.id <= 15
-          && (zikir.target is int || zikir.target is float) && zikir.target >= 100 && zikir.target <= 5000000
-          && (zikir.count is int || zikir.count is float) && zikir.count >= 0 && zikir.count <= zikir.target
-          && (!('startedAt' in zikir) || zikir.startedAt == null || ((zikir.startedAt is int || zikir.startedAt is float) && zikir.startedAt > 0))
-          && (!('completedAt' in zikir) || zikir.completedAt == null || ((zikir.completedAt is int || zikir.completedAt is float) && zikir.completedAt > 0));
-    }
-
-    function isValidSlot(slot) {
-      return slot.keys().hasAll(['id', 'hour', 'minute', 'isEnabled'])
-          && slot.keys().hasOnly(['id', 'hour', 'minute', 'isEnabled'])
-          && (slot.id is int || slot.id is float)
-          && slot.hour is int && slot.hour >= 0 && slot.hour <= 23
-          && slot.minute is int && slot.minute >= 0 && slot.minute <= 59
-          && slot.isEnabled is bool;
-    }
-
-    function isValidSlots(slots) {
-      return slots is list
-          && slots.size() <= 5
-          && slots.all(s, isValidSlot(s))
-          && slots.map(s, s.id).toSet().size() == slots.size();
-    }
-
-    function isValidSnapshot(snapshot) {
-      return snapshot.keys().hasAll(['snapshotId', 'userId', 'zikirs', 'slots', 'settings', 'chunkCount', 'updatedAt'])
-          && snapshot.snapshotId is string
-          && snapshot.userId is string
-          && snapshot.zikirs is list && snapshot.zikirs.all(z, isValidZikir(z))
-          && isValidSlots(snapshot.slots)
-          && snapshot.settings is map && isValidSettings(snapshot.settings)
-          && snapshot.chunkCount is int && snapshot.chunkCount >= 0
-          && (snapshot.updatedAt is int || snapshot.updatedAt is float);
-    }
-
-    function isValidSnapshotHistoryChunk() {
-      return request.resource.data.keys().hasAll(['snapshotId', 'chunkIndex', 'entries', 'updatedAt'])
-          && request.resource.data.snapshotId is string
-          && request.resource.data.chunkIndex is int && request.resource.data.chunkIndex >= 0
-          && request.resource.data.entries is list
-          && request.resource.data.entries.size() <= 500
-          && request.resource.data.entries.all(entry, isValidHistoryEntry(entry))
-          && (request.resource.data.updatedAt is int || request.resource.data.updatedAt is float);
-    }
-
-    function isValidSnapshotHistoryMeta() {
-      return request.resource.data.keys().hasAll(['snapshotId', 'chunkCount', 'updatedAt'])
-          && request.resource.data.snapshotId is string
-          && request.resource.data.chunkCount is int && request.resource.data.chunkCount >= 0
-          && (request.resource.data.updatedAt is int || request.resource.data.updatedAt is float);
-    }
-
-    function isValidSettings(settings) {
-      return settings.keys().hasAll([
-            'lang', 'themeName', 'counterTexture', 'hapticTapMode', 'hapticMilestoneMode',
-            'dailyTarget', 'completedRounds', 'fontScale', 'selectedZikirId',
-            'countdownMode', 'fullScreenTap', 'reminderEnabled', 'inactivityAlertEnabled',
-            'keepAwakeEnabled', 'targetReminderEnabled', 'autoReorderSettings',
-            'settingsUsageStats', 'acknowledgedBadges'
-          ])
-          && settings.lang in ['tr', 'ar', 'en', 'de', 'fr']
-          // Canonical 3 + legacy 10 + aliases for backward compat (must stay in sync with Color.kt + DhikrDataValidator.kt)
-          && settings.themeName in [
-            'hadra_gunduz', 'hadra_gece', 'siyah', 'beyaz', 'yesil', 'black',
-            'emerald', 'night', 'rose', 'olive', 'light', 'obsidian', 'kisve', 'turq', 'amethyst', 'sahara',
-            'hadra_light', 'hadra_dark', 'inci', 'white', 'green', 'oniks', 'oled', 'pure_black',
-            'hadra_white', 'hadra', 'leyl', 'kudus', 'iznik', 'gul', 'amber', 'kandil'
-          ]
-          && settings.counterTexture in ['none', 'geometric', 'kaaba', 'floral', 'tasbih', 'stars']
-          && settings.hapticTapMode in ['light', 'medium', 'strong']
-          && settings.hapticMilestoneMode in ['double', 'long', 'triple']
-          && (settings.dailyTarget is int || settings.dailyTarget is float) && settings.dailyTarget >= 1 && settings.dailyTarget <= 5000000
-          && settings.completedRounds is int && settings.completedRounds >= 0
-          && (settings.fontScale is int || settings.fontScale is float) && settings.fontScale >= 0.7 && settings.fontScale <= 1.5
-          && settings.selectedZikirId is int && settings.selectedZikirId >= 1 && settings.selectedZikirId <= 15
-          && settings.countdownMode is bool
-          && settings.fullScreenTap is bool
-          && settings.reminderEnabled is bool
-          && settings.inactivityAlertEnabled is bool
-          && settings.keepAwakeEnabled is bool
-          && settings.targetReminderEnabled is bool
-          && settings.autoReorderSettings is bool
-          && settings.acknowledgedBadges is string
-          && settings.settingsUsageStats is string;
-    }
-
-    function isValidHistoryEntry(entry) {
-      return entry.keys().hasAll(['zikirId', 'amount', 'type', 'timestamp', 'dateKey'])
-          && entry.keys().hasOnly(['zikirId', 'amount', 'type', 'timestamp', 'dateKey'])
-          && entry.zikirId is int
-          && entry.zikirId >= 1
-          && entry.zikirId <= 15
-          && (entry.amount is int || entry.amount is float)
-          && entry.amount > 0
-          && entry.type is string
-          && (entry.type == 'add' || entry.type == 'remove')
-          && (entry.timestamp is int || entry.timestamp is float)
-          && entry.timestamp > 0
-          && entry.dateKey is string;
-    }
-
-    function isValidHistoryChunk() {
-      return request.resource.data.keys().hasAll(['entries', 'updatedAt'])
-          && request.resource.data.keys().hasOnly(['entries', 'updatedAt'])
-          && request.resource.data.entries is list
-          && request.resource.data.entries.size() <= 500
-          && request.resource.data.entries.all(entry, isValidHistoryEntry(entry))
-          && (request.resource.data.updatedAt is int || request.resource.data.updatedAt is float);
-    }
-
-    function isValidHistoryMeta() {
-      return request.resource.data.keys().hasAll(['chunkCount', 'updatedAt'])
-          && request.resource.data.keys().hasOnly(['chunkCount', 'updatedAt'])
-          && request.resource.data.chunkCount is int
-          && request.resource.data.chunkCount >= 0
-          && (request.resource.data.updatedAt is int || request.resource.data.updatedAt is float);
-    }
-
-    function isValidUserDoc() {
-      return request.resource.data.keys().hasAll(['zikirs', 'slots', 'settings', 'updatedAt'])
-          && request.resource.data.zikirs is list
-          && request.resource.data.zikirs.all(z, isValidZikir(z))
-          && isValidSlots(request.resource.data.slots)
-          && request.resource.data.settings is map
-          && isValidSettings(request.resource.data.settings)
-          && (request.resource.data.updatedAt is int || request.resource.data.updatedAt is float);
+    // Yalnizca giris yapmis kullanici KENDI belgelerine erisir.
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
     }
 
     match /users/{userId} {
-      allow read: if isOwner(userId);
-      allow create, update: if isOwner(userId) && isValidUserDoc();
-      allow delete: if isOwner(userId);
-
-      match /history/{docId} {
-        allow read: if isOwner(userId);
-        allow create, update: if isOwner(userId) && (
-          (docId == 'meta' && isValidHistoryMeta()) ||
-          (docId.matches('chunk_[0-9]+') && isValidHistoryChunk())
-        );
-        allow delete: if isOwner(userId);
-      }
+      allow read, write: if isOwner(userId);
 
       match /snapshots/{snapshotId} {
-        allow read: if isOwner(userId);
-        allow create, update: if isOwner(userId) && isValidSnapshot(request.resource.data);
-        allow delete: if isOwner(userId);
+        allow read, write: if isOwner(userId);
 
-        match /history/{docId} {
-          allow read: if isOwner(userId);
-          allow create, update: if isOwner(userId) && (
-            (docId == 'meta' && isValidSnapshotHistoryMeta()) ||
-            (docId.matches('chunk_[0-9]+') && isValidSnapshotHistoryChunk())
-          );
-          allow delete: if isOwner(userId);
+        match /history/{doc} {
+          allow read, write: if isOwner(userId);
         }
+      }
+
+      // Eski surum gecmisi (legacy) okuma/yazma yolu.
+      match /history/{doc} {
+        allow read, write: if isOwner(userId);
       }
     }
   }

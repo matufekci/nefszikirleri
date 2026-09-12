@@ -21,7 +21,6 @@ import com.example.data.model.AppStrings
 import com.example.data.model.Badge
 import com.example.data.model.BadgeManager
 import com.example.data.model.DailyAggregate
-import com.example.data.model.ReminderSlot
 import com.example.data.model.Zikir
 import com.example.data.model.ZikirContent
 import com.example.data.model.ZikirHistory
@@ -86,7 +85,6 @@ data class DhikrUiState(
     val zikirs: List<Zikir> = ZikirContent.INITIAL_DEFINITIONS.map { Zikir(id = it.id, target = it.defaultTarget, count = 0L) },
     val selectedId: Int = 1,
     val history: List<ZikirHistory> = emptyList(),
-    val reminderSlots: List<ReminderSlot> = emptyList(),
     val settings: AppSettings = AppSettings(),
     val tab: String = "zikir",
     val todayRecited: Long = 0L,
@@ -221,10 +219,9 @@ class ZikirViewModel(
 
             combine(
                 repository.allZikirs,
-                repository.allSlots,
                 repository.settings,
                 statsFlow
-            ) { dbZikirs, slots, settingsObj, (recentHistory, dailyStats, distinctActiveDates) ->
+            ) { dbZikirs, settingsObj, (recentHistory, dailyStats, distinctActiveDates) ->
                 val settings = settingsObj ?: AppSettings()
                 val zikirs = if (dbZikirs.isNotEmpty()) dbZikirs else _uiState.value.zikirs
                 // Tek kaynak settings.selectedZikirId. savedStateHandle echo'su
@@ -397,7 +394,6 @@ class ZikirViewModel(
                         selectedId = selectedId,
                         tab = savedTab,
                         history = recentHistory,
-                        reminderSlots = slots,
                         settings = settings,
                         todayRecited = todayRecited,
                         todayPercent = todayPercent,
@@ -496,7 +492,7 @@ class ZikirViewModel(
             }
         }
 
-        // Her zikirden sonra hareketsizlik sayacını sıfırla (4 gün sonra tekrar kurulsun).
+        // Her zikirden sonra hareketsizlik sayacını sıfırla (3 gün sonra tekrar kurulsun).
         notificationScheduler.scheduleInactivityAlert(true)
 
         // SENKRON YAZMA: Room transaction hemen calisir ve allZikirs Flow'u
@@ -717,7 +713,8 @@ class ZikirViewModel(
 
     fun setDailyTarget(target: Long) {
         viewModelScope.launch {
-            updateSettingsSafely { it.copy(dailyTarget = target.coerceIn(500L, 500000L)) }
+            // Tempo matematiği: 1.140.000 zikir / 6 ay hedefi → günlük ihtiyaç 3-5 bin bandında.
+            updateSettingsSafely { it.copy(dailyTarget = target.coerceIn(3000L, 5000L)) }
         }
     }
 
@@ -760,50 +757,6 @@ class ZikirViewModel(
         }
     }
 
-    fun toggleReminder(enabled: Boolean) {
-        viewModelScope.launch {
-            updateSettingsSafely { it.copy(reminderEnabled = enabled) }
-            notificationScheduler.scheduleDailyReminders(_uiState.value.reminderSlots, enabled)
-        }
-    }
-
-    fun addReminderSlot(hour: Int, minute: Int) {
-        viewModelScope.launch {
-            if (_uiState.value.reminderSlots.size < 5) {
-                repository.addReminderSlot(hour, minute)
-                if (_uiState.value.settings.reminderEnabled) {
-                    val freshSlots = repository.getAllSlotsList()
-                    notificationScheduler.scheduleDailyReminders(freshSlots, true)
-                }
-            }
-        }
-    }
-
-    fun updateReminderSlot(slot: ReminderSlot, hourDelta: Int, minDelta: Int) {
-        viewModelScope.launch {
-            val newHour = (slot.hour + hourDelta + 24) % 24
-            val newMin = (slot.minute + minDelta + 60) % 60
-            val updated = slot.copy(hour = newHour, minute = newMin)
-            repository.updateReminderSlot(updated)
-            if (_uiState.value.settings.reminderEnabled) {
-                val freshSlots = repository.getAllSlotsList()
-                notificationScheduler.scheduleDailyReminders(freshSlots, true)
-            }
-        }
-    }
-
-    fun removeReminderSlot(id: Long) {
-        viewModelScope.launch {
-            if (_uiState.value.reminderSlots.size > 1) {
-                repository.removeReminderSlot(id)
-                if (_uiState.value.settings.reminderEnabled) {
-                    val freshSlots = repository.getAllSlotsList()
-                    notificationScheduler.scheduleDailyReminders(freshSlots, true)
-                }
-            }
-        }
-    }
-
     fun openInfoModal(zikirId: Int?) {
         _uiState.update { it.copy(infoModalZikirId = zikirId) }
     }
@@ -839,13 +792,6 @@ class ZikirViewModel(
         viewModelScope.launch {
             val clamped = scale.coerceIn(0.7f, 1.5f)
             updateSettingsSafely { it.copy(fontScale = clamped) }
-        }
-    }
-
-    fun toggleTargetReminder(enabled: Boolean) {
-        viewModelScope.launch {
-            updateSettingsSafely { it.copy(targetReminderEnabled = enabled) }
-            notificationScheduler.scheduleTargetReminder(enabled)
         }
     }
 

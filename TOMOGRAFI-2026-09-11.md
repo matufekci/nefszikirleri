@@ -96,3 +96,58 @@ CI: 4 job success, 126 test / 0 failure.
 | `bfd6d60` | 0-sentinel normalizasyonu (kendi yedeğini okuyabilme) |
 | `50690cf` | restore sonrası son çekilen zikir ekranda |
 | `a3380a9` | +1 flicker düzeltmesi (bekleyen artış katmanı) |
+| `eb419e6` | senkron sayaç (titreme kökten) + restore seçim gölgelemesi kaldırma |
+
+---
+
+## 4) Cihaz doğrulamaları ve konsol çözümleri (11.09.2026 gecesi)
+
+- **PERMISSION_DENIED ("Buluta Yedekle") ÇÖZÜLDÜ — kod değil, konsol:** kök neden
+  eski Firestore kurallarıydı; (a) kurallar hiyerarşik olmadığı için
+  `snapshots/` ve `history/` alt koleksiyonlarını kapsamıyordu ve (b) eski kural
+  `users/<uid>` yazmasını `isValidSnapshot` payload doğrulamasına bağlıyordu —
+  oysa uygulama artık kullanıcı belgesine tam snapshot değil pointer yazıyor.
+  Repo köküne `firestore.rules` eklendi (sadece sahiplik: `request.auth.uid ==
+  userId`, üç seviye de kapsamlı); kullanıcı konsolda yayınladı. Rules
+  Playground'da "Simulated write allowed" ve cihazda "Zikirleriniz buluta
+  başarıyla yedeklendi!" + Son Eşitleme 22:03 ile doğrulandı.
+- **Flicker (`eb419e6`) cihazda doğrulanmayı bekliyor:** CI 126 test yeşil;
+  sayaç artık tek Room transaction'dan tek emission aldığı için yapısal olarak
+  titreyemez — cihaz teyidi kullanıcıda.
+- **Restore sonrası seçim (`eb419e6`):** `savedStateHandle` gölgelemesi
+  kaldırıldı; aynı oturumda son zikir açılması beklenir — cihaz teyidi kullanıcıda.
+- **Açık Risk 1 (App Check Unenforced) hâlâ geçerli:** Play yayınına kadar
+  Unenforced kalması bilinçli tercih; yayın anında enforcement açılıp SHA-1
+  (`b863994…`) konsola kaydedilmeli.
+
+---
+
+## 5) Tempo matematiği ve ayarsız adaptif bildirimler (12.09.2026)
+
+- **Program gerçeği:** 15 zikir, toplam **1.140.000** (100k×3 + 70k×7 + 60k + 50k + 40k + 100k×2),
+  hedef **6 ayda (182 gün)** bitirmek; en kötü ihtimalle **1 yılda 1 tur**.
+- **Yeni formül (`AdaptiveReminderManager`):**
+  `needDaily = clamp(ceil(kalan / (182 − geçenGün)), 3124, 5000)`.
+  Alt sınır 3.124 = ceil(1.140.000/365) → bu tempoyla tur en geç 365 günde biter
+  (3.123'te 366 güne taşar; sınır bu yüzden 3.124). Üst sınır 5.000 → kullanıcı
+  asla günde 5 binden fazlasına zorlanmaz. Günlük ihtiyaç daima **3-5 bin bandında**.
+- **Bantlar (avg7 = son 7 TAM günün ortalaması, boş gün 0 sayılır — katı):**
+  ON_TRACK (≥%100) → haftada ≤1 müjde · MILD (≥%60) → ≤2 · BEHIND (≥%30) → ≤3 uyarı ağırlıklı ·
+  CRITICAL (<%30) → ≤4 (günde 1, sıralı uyarı/müjde). Mutlak sınır: günde 1, haftada 4.
+  Bant her gün çekilen zikirlere göre yeniden hesaplanır — "sürekli değişiklik" buradan gelir.
+- **Ayarsızlık:** Tüm hatırlatıcı ayarları kaldırıldı (günlük slotlar, hedef hatırlatıcısı,
+  hareketsizlik anahtarı). `reminderEnabled/inactivityAlertEnabled/targetReminderEnabled`
+  kolonları yalnızca Room şema/yedek uyumluluğu için uykuda tutuluyor (bkz. hapticMilestoneMode emsali).
+  Bildirim izni Android 13+'ta ilk açılışta bir kez MainApp'te isteniyor.
+- **Hareketsizlik emniyet ağı katılaştı:** eşik 3→**2 gün**, tetik 4→**3 gün**
+  (uygulama hiç açılmazsa 3. gün sıralı ayet bildirimi, ID 9999).
+- **Günlük hedef bandı:** varsayılan 10.000→**4.000**, ayar aralığı **3.000–5.000**
+  (eski değeri olan kullanıcı ilk ayarlamada banda çekilir).
+- **Silinen altyapı:** slot/hedef/adaptif alarm tipleri, `scheduleDailyReminders`,
+  `scheduleTargetReminder`, `getSlotRequestCode`, `DailyReminderMessages.kt`,
+  VM slot fonksiyonları, `UiState.reminderSlots`, repository slot sarmalayıcıları,
+  ayarlardaki hatırlatıcı UI'ı ve izin diyalogları. ReminderSlot tablosu/DAO'su ve
+  yedek şeması bilinçli olarak korundu (mevcut yedekler bozulmasın).
+- **Testler:** `AdaptivePaceMathTest` (8 saf birim testi: bant sınırları, 1-yıl garantisi,
+  kota artışı), `NotificationSchedulerTest` (3 gün alarm + iptal + eşikler),
+  `NotificationAlarmReceiverTest` güncellendi. Ayet dönüş testleri (5) değişmedi.

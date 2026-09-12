@@ -9,13 +9,19 @@ data class AppSettings(
     val lang: String = "tr", // "tr", "ar", "en", "de", "fr"
     val themeName: String = "hadra_gece", // canonical: hadra_gunduz (Beyaz), hadra_gece (Yeşil), siyah (Siyah) + legacy 10 for backward compat
     val countdownMode: Boolean = false,
-    val dailyTarget: Long = 10000L,
+    val dailyTarget: Long = 4000L, // Tempo matematiği bandı: 3.000–5.000 (1.140.000 zikir / 6 ay)
     val hapticEnabled: Boolean = true,
     val fullScreenTap: Boolean = false,
     val keepAwakeEnabled: Boolean = true,
     val completedRounds: Int = 0,
-    val reminderEnabled: Boolean = false,
-    val inactivityAlertEnabled: Boolean = false,
+    /**
+     * Hatırlatıcı ayarları kaldırıldı: bildirim temposunu DailyEvaluationWorker
+     * içindeki tempo matematiği (1.140.000 zikir / 6 ay) çekilen zikirlere göre
+     * otomatik belirler. Aşağıdaki üç kolon, Room şema/migration uyumluluğu
+     * bozulmasın ve eski yedekler doğrulanabilsin diye bilerek muhafaza ediliyor.
+     */
+    val reminderEnabled: Boolean = false, // artık UI'da yok — işlevsiz
+    val inactivityAlertEnabled: Boolean = false, // artık UI'da yok — işlevsiz
     val selectedZikirId: Int = 1,
     val lastActiveTimestamp: Long = System.currentTimeMillis(),
     val counterTexture: String = "geometric", // "none", "geometric", "kaaba", "floral", "tasbih", "stars"
@@ -27,7 +33,7 @@ data class AppSettings(
      * bozulmasın ve eski yedekler doğrulanabilsin diye bilerek muhafaza ediliyor.
      */
     val hapticMilestoneMode: String = "double", // "double", "long", "triple" — artık UI'da yok
-    val targetReminderEnabled: Boolean = false, // Hedef hatırlatıcısı
+    val targetReminderEnabled: Boolean = false, // artık UI'da yok — işlevsiz (bkz. reminderEnabled notu)
     val acknowledgedBadges: String = "", // Comma-separated acknowledged badge IDs
     /**
      * Bu alanlar (`autoReorderSettings` ve `settingsUsageStats`) artık hiçbir UI tarafından kullanılmamaktadır.

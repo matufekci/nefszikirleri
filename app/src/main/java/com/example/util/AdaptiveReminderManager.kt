@@ -1,36 +1,95 @@
 package com.example.util
 
-import android.app.AlarmManager
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import androidx.core.content.edit
 import com.example.data.model.AppStrings
 import com.example.data.model.SpiritualVerse
-import com.example.receiver.ReminderAlarmReceiver
 import java.util.Calendar
 import java.util.Random
 
 /**
  * Akıllı Manevi Hatırlatıcı Yöneticisi (Adaptive Spiritual Reminder Scheduler)
- * Kullanıcının zikir temposunu ve önceki günlerdeki zikir çekim alışkanlıklarını
- * sessizce arka planda analiz eder. Kullanıcı zikirden uzaklaştığı veya
- * önceki günlere göre zikri azalttığı anda Kur'an-ı Kerim'den ikaz ve müjde
- * ayetleriyle kişiyi gafletten uyandırır.
+ *
+ * ## Tempo Matematiği (Nefs Terbiyesi Programı)
+ *
+ * Terkib-i Şerif'in varsayılan toplamı 1.140.000 zikirdir ve programın
+ * 6 ayda (182 gün) bitirilmesi esastır. En kötü ihtimalle bir turun
+ * 1 yılda (365 gün) tamamlanabilmesi gerekir. Buna göre:
+ *
+ * - Günlük ihtiyaç = kalan zikir / ideal takvimde kalan gün, [MIN_DAILY, MAX_DAILY]
+ *   aralığına kıstırılır. Kullanıcının önündeki günlük hedef daima 3-5 bin bandındadır.
+ * - MIN_DAILY = ceil(1.140.000 / 365) = 3.124 → bu tempoyla tur en geç 365 günde biter.
+ * - MAX_DAILY = 5.000 → kullanıcı hiçbir zaman günde 5 binden fazlasına zorlanmaz.
+ *
+ * Bildirim yoğunluğu kullanıcının son 7 günlük gerçek temposuna (avg7) göre
+ * her gün yeniden hesaplanır; ayar gerektirmez:
+ *
+ * - ON_TRACK  (avg7 >= need):        haftada en fazla 1 müjdeli teşvik
+ * - MILD      (%60 <= avg7 < need):  haftada en fazla 2
+ * - BEHIND    (%30 <= avg7 < %60):   haftada en fazla 3
+ * - CRITICAL  (avg7 < %30):          haftada en fazla 4 (günde 1)
  */
 object AdaptiveReminderManager {
 
-    /** Kullanıcı bu kadar gün zikir çekmediyse hareketsiz sayılır. */
-    const val INACTIVITY_THRESHOLD_DAYS = 3
+    /** Kullanıcı bu kadar gün hiç zikir çekmediyse hareketsiz sayılır. */
+    const val INACTIVITY_THRESHOLD_DAYS = 2
 
-    /** Alarm, son zikirden bu kadar gün sonrasına kurulur (3-5 gün aralığının ortası). */
-    const val INACTIVITY_TRIGGER_DAYS = 4
+    /** Alarm, son zikirden bu kadar gün sonrasına kurulur (2-4 gün aralığının ortası). */
+    const val INACTIVITY_TRIGGER_DAYS = 3
 
+    /** Programın ideal bitiş süresi: 6 ay. */
+    const val IDEAL_DAYS = 182
+
+    /**
+     * Günlük alt sınır: ceil(1.140.000 / 365) = 3.124.
+     * Bu tempoyla bir tur en kötü ihtimalle 1 yılda biter.
+     */
+    const val MIN_DAILY = 3124L
+
+    /** Günlük üst sınır: kullanıcı günde 5 binden fazlasına zorlanmaz. */
+    const val MAX_DAILY = 5000L
+
+    /** Tur başındaki hoşgörü süresi: ilk günlerde tempo bildirimi gönderilmez. */
+    const val GRACE_DAYS = 3
+
+    /** Bildirim temposu bantları. */
+    enum class PaceBand { ON_TRACK, MILD, BEHIND, CRITICAL }
 
     private const val PREFS_NAME = "adaptive_spiritual_reminder_prefs"
     private const val KEY_LAST_SENT_DATE = "last_notification_sent_date"
     private const val KEY_WEEKLY_SENT_COUNT = "weekly_notification_sent_count"
     private const val KEY_CURRENT_WEEK_KEY = "current_week_key"
+
+    /**
+     * Kalan zikre ve turun ideal takviminde geçen süreye göre günlük ihtiyacı hesaplar.
+     * Sonuç daima [MIN_DAILY, MAX_DAILY] = [3.124, 5.000] aralığındadır.
+     */
+    fun computeNeedDaily(remaining: Long, elapsedDays: Int): Long {
+        if (remaining <= 0L) return MIN_DAILY
+        val daysLeft = (IDEAL_DAYS - elapsedDays).coerceAtLeast(1)
+        val raw = (remaining + daysLeft - 1) / daysLeft // yukarı yuvarla
+        return raw.coerceIn(MIN_DAILY, MAX_DAILY)
+    }
+
+    /** Son 7 günün günlük ortalamasını ihtiyaçla kıyaslayıp tempo bandını verir. */
+    fun paceBand(avg7: Double, needDaily: Long): PaceBand {
+        if (needDaily <= 0L) return PaceBand.ON_TRACK
+        val ratio = avg7 / needDaily
+        return when {
+            ratio >= 1.0 -> PaceBand.ON_TRACK
+            ratio >= 0.6 -> PaceBand.MILD
+            ratio >= 0.3 -> PaceBand.BEHIND
+            else -> PaceBand.CRITICAL
+        }
+    }
+
+    /** Bant başına haftalık bildirim kotası. Günlük sınır daima 1'dir. */
+    fun weeklyQuotaFor(band: PaceBand): Int = when (band) {
+        PaceBand.ON_TRACK -> 1
+        PaceBand.MILD -> 2
+        PaceBand.BEHIND -> 3
+        PaceBand.CRITICAL -> 4
+    }
 
     /**
      * Deterministik yıl ve hafta anahtarı üretir (Örn: "2026-W36", "2027-W01").
@@ -88,6 +147,26 @@ object AdaptiveReminderManager {
         return verses[index]
     }
 
+    /** Rastgele MÜJDE ayeti (tempo yerindeyken teşvik için). */
+    fun getRandomGladTidings(context: Context): SpiritualVerse {
+        val lang = getAppLanguage(context)
+        val pool = AppStrings.get(lang).spiritualVerses
+            .ifEmpty { AppStrings.get("tr").spiritualVerses }
+            .filter { it.type == "glad_tidings" }
+        if (pool.isEmpty()) return getRandomSpiritualVerse(lang)
+        return pool[Random().nextInt(pool.size)]
+    }
+
+    /** Rastgele UYARI ayeti (tempo düştüğünde ikaz için). */
+    fun getRandomWarning(context: Context): SpiritualVerse {
+        val lang = getAppLanguage(context)
+        val pool = AppStrings.get(lang).spiritualVerses
+            .ifEmpty { AppStrings.get("tr").spiritualVerses }
+            .filter { it.type == "warning" }
+        if (pool.isEmpty()) return getRandomSpiritualVerse(lang)
+        return pool[Random().nextInt(pool.size)]
+    }
+
     /**
      * Hareketsizlik hatırlatıcısı için sırayla ayet döndürür: önce 5 uyarı ayeti,
      * ardından 5 müjde ayeti; liste bitince başa sarar. Böylece kullanıcı aynı
@@ -116,57 +195,16 @@ object AdaptiveReminderManager {
     }
 
     /**
-     * Context üzerinden dili SharedPreferences'tan tespit edip rastgele manevi ayet döndürür.
-     */
-    fun getRandomSpiritualVerse(context: Context): SpiritualVerse {
-        val lang = getAppLanguage(context)
-        return getRandomSpiritualVerse(lang)
-    }
-
-    /**
-     * Akıllı kontrol periyodunu planlar. (Artık WorkManager [DailyEvaluationWorker] tarafından yürütülüyor.)
-     * Geriye dönük uyumluluk için NefsApplication scheduler'ına yönlendirir.
-     */
-    fun schedulePeriodicEvaluation(context: Context) {
-        try {
-            com.example.NefsApplication.scheduleDailyEvaluation(context)
-        } catch (e: Exception) {
-            // Best-effort, ignore
-        }
-    }
-
-    /**
      * Günlük ve haftalık bildirim sınırlandırma denetimi.
-     * Kullanıcıyı bildirimle boğmamak, fakat zikirden uzaklaştığında ikaz etmek için:
-     * - Aynı gün içinde en fazla 1 bildirim (nadiren haftada birkaç kez 2 defa)
-     * - Haftada en fazla 3-4 defa bildirim gönderilmesini garanti eder.
+     * - Aynı gün içinde en fazla 1 bildirim
+     * - Haftalık üst sınır tempo bandına göre tryReserveQuota'da uygulanır
      */
     @Synchronized
-    fun canSendNotificationToday(context: Context, calendar: Calendar = Calendar.getInstance()): Boolean {
+    fun canSendNotificationToday(context: Context): Boolean {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val todayKey = NumberFormatter.getDateKey()
         val lastDate = prefs.getString(KEY_LAST_SENT_DATE, "") ?: ""
-
-        // Aynı gün içinde daha önce gönderildiyse tekrar gönderme
-        if (todayKey == lastDate) {
-            return false
-        }
-
-        // Yıl + Hafta bazlı sayacı kontrol et ve sıfırla (Örn: "2026-W36")
-        val currentWeekKey = getWeekYearKey(calendar)
-        val storedWeekKey = prefs.getString(KEY_CURRENT_WEEK_KEY, "") ?: ""
-        var weeklyCount = prefs.getInt(KEY_WEEKLY_SENT_COUNT, 0)
-
-        if (currentWeekKey != storedWeekKey) {
-            weeklyCount = 0
-        }
-
-        // Haftada en fazla 4 defa bildirim gönder
-        if (weeklyCount >= 4) {
-            return false
-        }
-
-        return true
+        return todayKey != lastDate
     }
 
     data class QuotaReservation(
@@ -177,12 +215,15 @@ object AdaptiveReminderManager {
     )
 
     /**
-     * Atomik kota rezervasyon işlemi.
-     * Bildirim gönderimi öncesinde kotayı rezerv eder.
+     * Atomik kota rezervasyon işlemi. Haftalık üst sınır tempo bandından gelir.
      * Kota uygun değilse null döner.
      */
     @Synchronized
-    fun tryReserveQuota(context: Context, calendar: Calendar = Calendar.getInstance()): QuotaReservation? {
+    fun tryReserveQuota(
+        context: Context,
+        weeklyLimit: Int,
+        calendar: Calendar = Calendar.getInstance()
+    ): QuotaReservation? {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val todayKey = NumberFormatter.getDateKey()
         val lastDate = prefs.getString(KEY_LAST_SENT_DATE, "") ?: ""
@@ -202,7 +243,7 @@ object AdaptiveReminderManager {
             weeklyCount = 0
         }
 
-        if (weeklyCount >= 4) {
+        if (weeklyCount >= weeklyLimit.coerceAtLeast(0)) {
             return null
         }
 
@@ -235,25 +276,13 @@ object AdaptiveReminderManager {
         }
     }
 
-    /**
-     * Bildirim gönderildiğinde kaydeder
-     */
+    /** Bu hafta kaç bildirim gönderildiğini döndürür (bant kotası denetimi için). */
     @Synchronized
-    fun recordNotificationSent(context: Context, calendar: Calendar = Calendar.getInstance()) {
+    fun getWeeklySentCount(context: Context, calendar: Calendar = Calendar.getInstance()): Int {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val todayKey = NumberFormatter.getDateKey()
         val currentWeekKey = getWeekYearKey(calendar)
         val storedWeekKey = prefs.getString(KEY_CURRENT_WEEK_KEY, "") ?: ""
-        var weeklyCount = prefs.getInt(KEY_WEEKLY_SENT_COUNT, 0)
-
-        if (currentWeekKey != storedWeekKey) {
-            weeklyCount = 0
-        }
-
-        prefs.edit {
-            putString(KEY_LAST_SENT_DATE, todayKey)
-            putString(KEY_CURRENT_WEEK_KEY, currentWeekKey)
-            putInt(KEY_WEEKLY_SENT_COUNT, weeklyCount + 1)
-        }
+        if (currentWeekKey != storedWeekKey) return 0
+        return prefs.getInt(KEY_WEEKLY_SENT_COUNT, 0)
     }
 }
