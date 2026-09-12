@@ -30,17 +30,17 @@ class AdaptiveReminderQuotaTest {
     fun testTryReserveQuota_ConcurrentFirstReservationSucceeds_SecondFailsSameDay() {
         assertTrue(AdaptiveReminderManager.canSendNotificationToday(context))
 
-        val firstReservation = AdaptiveReminderManager.tryReserveQuota(context)
+        val firstReservation = AdaptiveReminderManager.tryReserveQuota(context, 4)
         assertNotNull(firstReservation)
 
         // Second reservation on the same day must be rejected (null)
-        val secondReservation = AdaptiveReminderManager.tryReserveQuota(context)
+        val secondReservation = AdaptiveReminderManager.tryReserveQuota(context, 4)
         assertNull(secondReservation)
     }
 
     @Test
     fun testRollbackQuotaReservation_RestoresQuotaOnFailure() {
-        val reservation = AdaptiveReminderManager.tryReserveQuota(context)
+        val reservation = AdaptiveReminderManager.tryReserveQuota(context, 4)
         assertNotNull(reservation)
 
         // Simulating notification dispatch failure -> Rollback reservation
@@ -48,7 +48,7 @@ class AdaptiveReminderQuotaTest {
 
         // Quota should be available again
         assertTrue(AdaptiveReminderManager.canSendNotificationToday(context))
-        val retryReservation = AdaptiveReminderManager.tryReserveQuota(context)
+        val retryReservation = AdaptiveReminderManager.tryReserveQuota(context, 4)
         assertNotNull(retryReservation)
     }
 
