@@ -313,8 +313,42 @@ object AppPalettes {
         )
     )
 
-    // Renk Temaları Listesi (Beyaz, Yeşil, Siyah) - Canonical 3
-    val ALL = listOf(HadraGunduz, HadraGece, Siyah)
+    // 4. PEMBE LÜKS (Kadınlar için: derin erik zemin, canlı pembe + roze altın,
+    //    yüksek parlama/metalik yansıma ile ışıltılı "cicili bicili" his)
+    val PembeLux = AppThemeColors(
+        id = "pembe_lux",
+        name = "Pembe Lüks",
+        bg = Color(0xFF241019), // deri erik / bordo-kakül zemin
+        surface = Color(0xFF2F1622),
+        card = Color(0xFF3B1B2C),
+        inputBg = Color(0xFF4A2439),
+        primary = Color(0xFFEE6FAE), // canlı orkide pembesi
+        primaryVariant = Color(0xFFD14E93),
+        secondary = Color(0xFFF9A8CD),
+        gold = Color(0xFFE5B769), // roze altın vurgu
+        text = Color(0xFFFCEEF5),
+        textMuted = Color(0xFFD5A9C0),
+        border = Color(0xFFEE6FAE).copy(alpha = 0.38f),
+        success = Color(0xFF10B981),
+        error = Color(0xFFEF4444),
+        isDark = true,
+        glowColor = Color(0xFFEE6FAE).copy(alpha = 0.30f),
+        themeStyle = ThemeStyle.OLED_GLOW,
+        isMetallic = true,
+        specularIntensity = 0.90f,
+        glowIntensity = 0.40f,
+        reflectionColor = Color(0xFFF9CFE4),
+        actionShadow = ActionShadowSpec(
+            elevation = 4.5.dp,
+            spotAlpha = 0.45f,
+            ambientAlpha = 0.22f,
+            spotColor = Color(0xFFEE6FAE),
+            ambientColor = Color(0xFF3B1B2C)
+        )
+    )
+
+    // Renk Temaları Listesi (Beyaz, Yeşil, Siyah, Pembe Lüks) - Canonical 4
+    val ALL = listOf(HadraGunduz, HadraGece, Siyah, PembeLux)
 
     // Legacy Aliases for backward compat
     val Emerald = HadraGece
@@ -343,6 +377,8 @@ object AppPalettes {
         "gul" to HadraGece, "amber" to HadraGece, "kandil" to HadraGece,
         // Black family -> Siyah
         "siyah" to Siyah, "obsidian" to Siyah, "black" to Siyah,
+        "pembe" to PembeLux, "pembe_lux" to PembeLux, "pink" to PembeLux,
+        "rose" to PembeLux, "pinky" to PembeLux,
         "oniks" to Siyah, "oled" to Siyah, "pure_black" to Siyah
     )
 

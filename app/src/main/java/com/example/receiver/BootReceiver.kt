@@ -21,6 +21,9 @@ class BootReceiver : BroadcastReceiver() {
                     // Hareketsizlik emniyet ağı ayarlardan bağımsız olarak her açılışta kurulur.
                     NotificationScheduler(context).scheduleInactivityAlert(true)
 
+                    // 20:00 / 22:30 günlük hedef hatırlatma zincirini yeniden kur.
+                    NotificationScheduler(context).scheduleDailyTargetReminders()
+
                     // Tempo matematiğini yürüten günlük değerlendirmeyi yeniden planla.
                     com.example.NefsApplication.scheduleDailyEvaluation(context)
                 } catch (e: Exception) {

@@ -25,6 +25,7 @@ import com.example.data.model.Zikir
 import com.example.data.model.ZikirContent
 import com.example.data.model.ZikirHistory
 import com.example.data.repository.ZikirRepository
+import com.example.util.ChildLockPrefs
 import com.example.util.HapticHelper
 import com.example.util.NotificationScheduler
 import com.example.util.MonotonicTime
@@ -124,6 +125,9 @@ class ZikirViewModel(
         const val KEY_FAST_JUMP_COMPLETED_OFFSET = "fast_jump_completed_offset"
         const val KEY_FAST_JUMP_TOTAL_OFFSET = "fast_jump_total_offset"
     }
+
+    /** Çocuk kilidi: kilit açıkken sayaç eylemleri VM düzeyinde yok sayılır. */
+    fun isChildLocked(): Boolean = ChildLockPrefs.isEnabled(getApplication())
 
     private val settingsMutex = Mutex()
 
@@ -457,6 +461,7 @@ class ZikirViewModel(
     }
 
     fun incrementCount(amount: Long) {
+        if (isChildLocked()) return
         val state = _uiState.value
         val currentZikir = state.currentZikir ?: return
         
@@ -533,6 +538,7 @@ class ZikirViewModel(
         }
     }
     fun undoLastAction() {
+        if (isChildLocked()) return
         val state = _uiState.value
         val currentZikirId = state.selectedId
         viewModelScope.launch {
@@ -640,6 +646,7 @@ class ZikirViewModel(
     }
 
     fun resetCurrentZikir() {
+        if (isChildLocked()) return
         val currentId = _uiState.value.selectedId
         autoShownZeroInfoZikirIds.remove(currentId)
         _uiState.update { s ->
@@ -654,6 +661,7 @@ class ZikirViewModel(
     }
 
     fun resetAllZikirs() {
+        if (isChildLocked()) return
         autoShownZeroInfoZikirIds.clear()
         _uiState.update { s ->
             val updated = s.zikirs.map { it.copy(count = 0L, startedAt = null, completedAt = null) }

@@ -100,6 +100,13 @@ fun SettingsScreen(
 
         item { Spacer(modifier = Modifier.height(14.dp)) }
 
+        // 2b. ÇOCUK KİLİDİ
+        item {
+            com.example.ui.components.ChildLockRow(onChanged = {})
+        }
+
+        item { Spacer(modifier = Modifier.height(14.dp)) }
+
         // 3. SAYAÇ, VİRD, EKRAN DAVRANIŞLARI VE GÜNLÜK HATIRLATICILAR
         item {
             CounterSection(

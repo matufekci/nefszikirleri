@@ -48,6 +48,29 @@ object UiText {
     val themeWhite = L10n("Beyaz", "أبيض", "White", "Weiß", "Blanc")
     val themeGreen = L10n("Yeşil", "أخضر", "Green", "Grün", "Vert")
     val themeBlack = L10n("Siyah", "أسود", "Black", "Schwarz", "Noir")
+    val themePink = L10n("Pembe Lüks", "وردي فاخر", "Pink Luxury", "Rosa Luxe", "Rose Luxe")
+
+    // ------------------------------------------------- çocuk kilidi
+    val childLock = L10n("Çocuk Kilidi", "قفل الأطفال", "Child Lock", "Kindersicherung", "Verrou enfant")
+    val childLockDesc = L10n(
+        "Açıkken sayaç dokunuşlara kapanır; çocuklar zikirleri değiştiremez.",
+        "عند التفعيل يُغلق العداد عن اللمس؛ لا يمكن للأطفال تغيير الأذكار.",
+        "When on, the counter ignores taps; children cannot change counts.",
+        "Wenn aktiv, ignoriert der Zähler Berührungen; Kinder können nichts ändern.",
+        "Activé : le compteur ignore les appuis ; les enfants ne peuvent rien modifier."
+    )
+    val lockHoldHint = L10n("Kilidi açmak için 3 sn basılı tut", "اضغط مطولاً ٣ ثوانٍ لفتح القفل", "Hold 3 s to unlock", "3 s halten zum Entsperren", "Maintenir 3 s pour déverrouiller")
+    val adultCheckTitle = L10n("Yetişkin doğrulaması", "تحقق البالغين", "Adult verification", "Erwachsenen-Verifikation", "Vérification adulte")
+    val adultCheckWrong = L10n("Yanlış cevap — kilit kalıyor.", "إجابة خاطئة — يبقى القفل.", "Wrong answer — still locked.", "Falsche Antwort — bleibt gesperrt.", "Réponse fausse — reste verrouillé.")
+
+    // ------------------------------------------------- tarihler
+    val dateStart = L10n("Başlangıç", "البداية", "Start", "Beginn", "Début")
+    val dateEnd = L10n("Bitiş", "النهاية", "End", "Ende", "Fin")
+    val dateOngoing = L10n("devam ediyor", "مستمر", "ongoing", "läuft", "en cours")
+
+    // ------------------------------------------------- aksam hatirlatmalari
+    val eveningNotifTitle = L10n("Akşam Hatırlatması", "تذكير المساء", "Evening Reminder", "Abenderinnerung", "Rappel du soir")
+    val finishNotifTitle = L10n("Son Viraj", "المنعطف الأخير", "Final Stretch", "Zielgerade", "Dernière ligne droite")
 
     /**
      * Palet kimligini secili dildeki tema adina cevirir.
@@ -57,6 +80,7 @@ object UiText {
     fun themeName(paletteId: String, lang: String): String = when (paletteId) {
         "hadra_gunduz" -> themeWhite
         "hadra_gece" -> themeGreen
+        "pembe_lux" -> themePink
         else -> themeBlack
     }.get(lang)
 

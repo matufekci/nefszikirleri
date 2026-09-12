@@ -182,13 +182,16 @@ fun MainApp(viewModel: ZikirViewModel) {
                                 // suzulerek asagi insin. Aksi halde ekranin alt
                                 // boslugu bir anda buyuyor ve gecis "keskin"
                                 // gorunuyordu.
+                                // Zen geçişinde sekme çubuğu EN SON sıyrılan parçadır:
+                                // önce günlük hedef kartı (0 ms), sonra eylem butonları
+                                // (120 ms), en son sekmeler (240 ms) — yumuşak sıralı geçiş.
                                 AnimatedVisibility(
                                     visible = !state.isZenMode,
-                                    enter = fadeIn(tween(300)) + slideInVertically(
-                                        tween(420, easing = FastOutSlowInEasing)
+                                    enter = fadeIn(tween(300, delayMillis = 200)) + slideInVertically(
+                                        tween(420, delayMillis = 200, easing = FastOutSlowInEasing)
                                     ) { it / 2 },
-                                    exit = fadeOut(tween(220)) + slideOutVertically(
-                                        tween(420, easing = FastOutSlowInEasing)
+                                    exit = fadeOut(tween(480, delayMillis = 240)) + slideOutVertically(
+                                        tween(560, delayMillis = 240, easing = FastOutSlowInEasing)
                                     ) { it / 2 }
                                 ) {
                                     DhikrBottomBar(
@@ -284,12 +287,14 @@ fun MainApp(viewModel: ZikirViewModel) {
             }
 
             state.infoModalZikirId?.let { zikirId ->
-                val targetCount = state.zikirs.find { it.id == zikirId }?.target ?: 0L
+                val infoZikir = state.zikirs.find { it.id == zikirId }
                 ZikirInfoDialog(
                     zikirId = zikirId,
                     lang = state.settings.lang,
-                    targetCount = targetCount,
-                    onDismiss = { viewModel.openInfoModal(null) }
+                    targetCount = infoZikir?.target ?: 0L,
+                    onDismiss = { viewModel.openInfoModal(null) },
+                    startedAt = infoZikir?.startedAt,
+                    completedAt = infoZikir?.completedAt
                 )
             }
 

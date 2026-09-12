@@ -80,6 +80,7 @@ class NefsApplication : Application(), Configuration.Provider {
         }
         try {
             com.example.util.NotificationScheduler(this).scheduleInactivityAlert(true)
+            com.example.util.NotificationScheduler(this).scheduleDailyTargetReminders()
         } catch (e: Exception) {
             if (BuildConfig.DEBUG) {
                 Log.e("NefsApplication", "Failed to schedule inactivity verse alert", e)
