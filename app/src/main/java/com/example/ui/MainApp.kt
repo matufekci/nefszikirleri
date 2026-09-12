@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -28,6 +27,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.graphics.Color
+import com.example.ui.components.AnimatedIconSplash
 import com.example.ui.components.SpiritualAmbientBackground
 import com.example.ui.components.SyncConflictDialog
 import com.example.data.model.AppStrings
@@ -135,14 +135,12 @@ fun MainApp(viewModel: ZikirViewModel) {
         } else {
             SpiritualAmbientBackground {
                 if (!state.isHydrated) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            color = colors.primary
-                        )
-                    }
+                    AnimatedIconSplash(
+                        primary = colors.primary,
+                        textColor = colors.text,
+                        title = strings.title,
+                        reduceMotion = shouldReduceMotion
+                    )
                 } else {
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                         val isWideScreen = maxWidth >= 600.dp
