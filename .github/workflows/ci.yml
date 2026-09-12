@@ -6,6 +6,14 @@ on:
   pull_request:
     branches: [ main ]
 
+# Aynı dal için push + pull_request çift tetikleme çakışmasın:
+# iki event da aynı concurrency grubuna düşer (pull_request'te head_ref,
+# push'ta ref_name = dal adı), ikincisi birinciyi iptal eder ve dal başına
+# tek aktif run kalır. Yeni push, eski in-progress run'ı da iptal eder.
+concurrency:
+  group: ci-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
