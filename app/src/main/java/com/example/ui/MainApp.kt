@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.graphics.Color
 import com.example.ui.components.AnimatedIconSplash
+import kotlinx.coroutines.delay
 import com.example.ui.components.SpiritualAmbientBackground
 import com.example.ui.components.SyncConflictDialog
 import com.example.data.model.AppStrings
@@ -134,7 +135,20 @@ fun MainApp(viewModel: ZikirViewModel) {
             )
         } else {
             SpiritualAmbientBackground {
-                if (!state.isHydrated) {
+                // Splash, ölçülen sürenin tam iki katı kadar görünür:
+                // hydration bittiğinde, o ana dek geçen süre kadar daha
+                // beklenir, sonra ana ekrana geçilir.
+                val splashStart = remember { System.currentTimeMillis() }
+                var showSplash by remember { mutableStateOf(true) }
+                LaunchedEffect(state.isHydrated) {
+                    if (state.isHydrated) {
+                        val elapsed =
+                            (System.currentTimeMillis() - splashStart).coerceAtLeast(0L)
+                        delay(elapsed)
+                        showSplash = false
+                    }
+                }
+                if (showSplash) {
                     AnimatedIconSplash(
                         primary = colors.primary,
                         textColor = colors.text,

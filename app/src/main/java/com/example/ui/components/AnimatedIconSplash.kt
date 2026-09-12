@@ -14,8 +14,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -148,7 +148,7 @@ internal fun AnimatedIconSplash(
                     targetValue = 1f,
                     animationSpec = spring(
                         dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessLow
+                        stiffness = Spring.StiffnessVeryLow
                     )
                 )
             }
@@ -157,37 +157,37 @@ internal fun AnimatedIconSplash(
                     targetValue = 0f,
                     animationSpec = spring(
                         dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessLow
+                        stiffness = Spring.StiffnessVeryLow
                     )
                 )
             }
             launch {
                 while (true) {
-                    glowAlpha.animateTo(0.85f, tween(1500, easing = FastOutSlowInEasing))
-                    glowAlpha.animateTo(0.35f, tween(1500, easing = FastOutSlowInEasing))
+                    glowAlpha.animateTo(0.85f, tween(3000, easing = FastOutSlowInEasing))
+                    glowAlpha.animateTo(0.35f, tween(3000, easing = FastOutSlowInEasing))
                 }
             }
             launch {
                 while (true) {
-                    ringAngle.animateTo(360f, tween(4200, easing = LinearEasing))
+                    ringAngle.animateTo(360f, tween(8400, easing = LinearEasing))
                     ringAngle.snapTo(0f)
                 }
             }
             launch {
                 while (true) {
-                    sparklePhase.animateTo(1f, tween(2600, easing = LinearEasing))
+                    sparklePhase.animateTo(1f, tween(5200, easing = LinearEasing))
                     sparklePhase.snapTo(0f)
                 }
             }
             launch {
                 while (true) {
-                    shimmer.animateTo(1f, tween(2200, easing = LinearEasing))
-                    delay(700)
+                    shimmer.animateTo(1f, tween(4400, easing = LinearEasing))
+                    delay(1400)
                     shimmer.snapTo(0f)
                 }
             }
             launch {
-                delay(250)
+                delay(500)
                 titleVisible = true
             }
         }
@@ -199,8 +199,11 @@ internal fun AnimatedIconSplash(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier.align(Alignment.Center),
+                contentAlignment = Alignment.Center
+            ) {
                 // 1) Çift katmanlı nefes alan parlama
                 Canvas(modifier = Modifier.size(230.dp)) {
                     drawCircle(
@@ -344,10 +347,13 @@ internal fun AnimatedIconSplash(
                     }
                 }
             }
-            // 6) Başlık + ışık süpürmesiyle senkron altın parıltı
+            // 6) Başlık — tam ortanın hemen altında, süpürmeyle senkron altın parıltı
             AnimatedVisibility(
                 visible = titleVisible,
-                enter = fadeIn(tween(650)) + slideInVertically(tween(650)) { it / 3 }
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .offset(y = 128.dp),
+                enter = fadeIn(tween(1300)) + slideInVertically(tween(1300)) { it / 3 }
             ) {
                 // Süpürme ortadan geçerken başlık altına çalar (0→1→0)
                 val titleGlow = 1f - abs(shimmer.value * 2f - 1f)
