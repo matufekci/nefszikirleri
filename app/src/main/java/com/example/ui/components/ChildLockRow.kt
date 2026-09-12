@@ -35,10 +35,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.vectorResource
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.data.model.AppStrings
@@ -72,7 +72,7 @@ fun ChildLockRow(onChanged: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = ImageVector.vectorResource(android.R.drawable.ic_lock_idle_lock),
+                imageVector = Icons.Default.Lock,
                 contentDescription = null,
                 tint = colors.primary,
                 modifier = Modifier.size(22.dp)
@@ -153,7 +153,7 @@ fun ChildLockBadge(lang: String, onUnlocked: () -> Unit) {
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = ImageVector.vectorResource(android.R.drawable.ic_lock_idle_lock),
+                imageVector = Icons.Default.Lock,
                 contentDescription = null,
                 tint = colors.primary,
                 modifier = Modifier.size(18.dp)
