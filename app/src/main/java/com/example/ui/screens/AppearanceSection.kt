@@ -14,6 +14,8 @@ import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import java.util.Locale
@@ -60,7 +63,7 @@ fun AppearanceSection(
     ) {
         // 1. TEMA SEÇİMİ
         SettingsCollapsibleCard(
-            title = strings.themeTitle.toTitleCase(),
+            title = strings.themeTitle,
             icon = Icons.Rounded.Palette,
             isExpanded = themeExpanded,
             onToggle = { themeExpanded = !themeExpanded },
@@ -77,8 +80,7 @@ fun AppearanceSection(
                     rowList.forEach { palette ->
                         val isSelected = normalizedCurrent == palette.id
 
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
+                        Column(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(16.dp))
@@ -98,34 +100,57 @@ fun AppearanceSection(
                                 .padding(vertical = 12.dp, horizontal = 10.dp)
                                 .testTag("theme_picker_${palette.id}")
                         ) {
-                            // Theme Color Dual Swatch (Primary + Background)
-                            Box(
-                                modifier = Modifier
-                                    .size(28.dp)
-                                    .clip(CircleShape)
-                                    .background(palette.bg)
-                                    .border(1.5.dp, palette.primary, CircleShape),
-                                contentAlignment = Alignment.Center
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
                             ) {
+                                // Theme Color Dual Swatch (Primary + Background)
                                 Box(
                                     modifier = Modifier
-                                        .size(14.dp)
+                                        .size(28.dp)
                                         .clip(CircleShape)
-                                        .background(palette.primary)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = UiText.themeName(palette.id, settings.lang),
-                                    style = MaterialTheme.typography.labelMedium.copy(
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
+                                        .background(palette.bg)
+                                        .border(1.5.dp, palette.primary, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(14.dp)
+                                            .clip(CircleShape)
+                                            .background(palette.primary)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.weight(1f))
+                                // Tema başına switch: açık olan switch, aktif temayı gösterir.
+                                // Tek seçimli olduğu için aktif temanın switch'i kapatılamaz
+                                // (bir tema her zaman aktif kalmalıdır).
+                                Switch(
+                                    checked = isSelected,
+                                    onCheckedChange = { on ->
+                                        if (on) {
+                                            onIncrementUsage("theme")
+                                            onSetTheme(palette.id)
+                                        }
+                                    },
+                                    colors = SwitchDefaults.colors(
+                                        checkedTrackColor = palette.primary,
+                                        checkedThumbColor = colors.card,
+                                        uncheckedTrackColor = colors.border,
+                                        uncheckedThumbColor = colors.textMuted
                                     ),
-                                    color = if (isSelected) palette.primary else colors.text,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
+                                    modifier = Modifier.scale(0.8f)
                                 )
                             }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = UiText.themeName(palette.id, settings.lang),
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
+                                ),
+                                color = if (isSelected) palette.primary else colors.text,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
                     if (rowList.size == 1) {

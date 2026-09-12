@@ -2050,7 +2050,7 @@ object AppStrings {
             settingsTitle = "Paramètres",
             language = "Choix de la Langue",
             langSelect = "Choix de la Langue",
-            themeTitle = "Thèmes Doux",
+            themeTitle = "Choix du thème",
             themeSelect = "Thèmes Doux",
             counterPrefsTitle = "Compteur, Vird & Rappels",
             countdownMode = "Mode Décompte",
