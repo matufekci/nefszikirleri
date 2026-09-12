@@ -2,14 +2,24 @@ package com.example.ui
 
 import android.app.Activity
 import android.view.WindowManager
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -28,6 +38,20 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import com.example.R
+import kotlinx.coroutines.launch
 import com.example.ui.components.SpiritualAmbientBackground
 import com.example.ui.components.SyncConflictDialog
 import com.example.data.model.AppStrings
@@ -135,14 +159,12 @@ fun MainApp(viewModel: ZikirViewModel) {
         } else {
             SpiritualAmbientBackground {
                 if (!state.isHydrated) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            color = colors.primary
-                        )
-                    }
+                    AnimatedIconSplash(
+                        primary = colors.primary,
+                        textColor = colors.text,
+                        title = strings.title,
+                        reduceMotion = shouldReduceMotion
+                    )
                 } else {
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                         val isWideScreen = maxWidth >= 600.dp
@@ -308,6 +330,133 @@ fun MainApp(viewModel: ZikirViewModel) {
             }
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * İlk açılış ekranı: eski yuvarlak spinner yerine uygulamanın kendi ikonu
+ * animasyonlu gösterilir.
+ *
+ * - İkon yumuşak bir zıplamayla (spring) ölçeklenerek belirir
+ * - Etrafında zikir halkası motifli, yavaş dönen çift yay
+ * - Arkasında nefes alan (kısılıp açılan) radyal parlama
+ * - Altında uygulama adı gecikmeli olarak belirir
+ *
+ * "Hareketi azalt" erişilebilirlik ayarı açıkken tüm animasyonlar statik
+ * tek kareye iner; içerik hazır olduğunda (isHydrated) yerini ana ekrana bırakır.
+ */
+@Composable
+private fun AnimatedIconSplash(
+    primary: Color,
+    textColor: Color,
+    title: String,
+    reduceMotion: Boolean
+) {
+    val iconScale = remember { Animatable(if (reduceMotion) 1f else 0.55f) }
+    val glowAlpha = remember { Animatable(if (reduceMotion) 0.55f else 0f) }
+    val ringAngle = remember { Animatable(0f) }
+    var titleVisible by remember { mutableStateOf(reduceMotion) }
+
+    LaunchedEffect(Unit) {
+        if (!reduceMotion) {
+            launch {
+                iconScale.animateTo(
+                    targetValue = 1f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                )
+            }
+            launch {
+                while (true) {
+                    glowAlpha.animateTo(0.85f, tween(1500, easing = FastOutSlowInEasing))
+                    glowAlpha.animateTo(0.35f, tween(1500, easing = FastOutSlowInEasing))
+                }
+            }
+            launch {
+                while (true) {
+                    ringAngle.animateTo(360f, tween(4200, easing = LinearEasing))
+                    ringAngle.snapTo(0f)
+                }
+            }
+            launch {
+                kotlinx.coroutines.delay(250)
+                titleVisible = true
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(contentAlignment = Alignment.Center) {
+                // 1) Nefes alan radyal parlama
+                Canvas(modifier = Modifier.size(220.dp)) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                primary.copy(alpha = 0.38f * glowAlpha.value),
+                                Color.Transparent
+                            )
+                        ),
+                        radius = size.minDimension / 2f
+                    )
+                }
+                // 2) Yavaş dönen çift yay (zikir halkası motifi)
+                Canvas(
+                    modifier = Modifier
+                        .size(148.dp)
+                        .rotate(ringAngle.value)
+                ) {
+                    val stroke = 3.dp.toPx()
+                    val arcSize = Size(size.width - stroke * 2f, size.height - stroke * 2f)
+                    drawArc(
+                        color = primary.copy(alpha = 0.85f),
+                        startAngle = 0f,
+                        sweepAngle = 100f,
+                        useCenter = false,
+                        topLeft = Offset(stroke, stroke),
+                        size = arcSize,
+                        style = Stroke(width = stroke, cap = StrokeCap.Round)
+                    )
+                    drawArc(
+                        color = primary.copy(alpha = 0.30f),
+                        startAngle = 180f,
+                        sweepAngle = 100f,
+                        useCenter = false,
+                        topLeft = Offset(stroke, stroke),
+                        size = arcSize,
+                        style = Stroke(width = stroke, cap = StrokeCap.Round)
+                    )
+                }
+                // 3) Uygulama ikonu
+                Image(
+                    painter = painterResource(R.mipmap.ic_launcher_round),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(112.dp)
+                        .scale(iconScale.value)
+                        .clip(CircleShape)
+                )
+            }
+            AnimatedVisibility(
+                visible = titleVisible,
+                enter = fadeIn(tween(650)) + slideInVertically(tween(650)) { it / 3 }
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 3.sp,
+                    color = textColor,
+                    modifier = Modifier.padding(top = 22.dp)
+                )
             }
         }
     }
