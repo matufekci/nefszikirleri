@@ -48,7 +48,6 @@ fun DhikrCircle(
     displayCount: Long,
     targetCount: Long,
     isCountdownMode: Boolean,
-    remainingLabel: String,
     arabicText: String,
     transliteration: String,
     lang: String = "tr",
@@ -60,7 +59,9 @@ fun DhikrCircle(
     val palette = remember(theme.id) { LuxuryCirclePalettes.get(theme) }
 
     val actualCount = if (isCountdownMode) (targetCount - displayCount).coerceAtLeast(0L) else displayCount
-    val hasStarted = actualCount > 0L || progress > 0.0001f
+    // hasStarted daima GERÇEK çekilen sayıya bakar; geri sayım modunda
+    // actualCount başta target olduğu için "başladı" sanılmasın.
+    val hasStarted = displayCount > 0L || progress > 0.0001f
 
     // Reduced Motion / Zen Mode algılaması
     val shouldReduceMotion = rememberShouldReduceMotion()
@@ -296,9 +297,9 @@ fun DhikrCircle(
 
                 Spacer(modifier = Modifier.height(if (isExtremeFontScale) 1.dp else 4.dp))
 
-                // BÜYÜK DİJİTAL SAYAÇ
+                // BÜYÜK DİJİTAL SAYAÇ — geri sayım modunda kalan (hedef − çekilen) azalır
                 Text(
-                    text = NumberFormatter.format(displayCount, lang),
+                    text = NumberFormatter.format(actualCount, lang),
                     style = when {
                         isExtremeFontScale -> MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold,
@@ -325,7 +326,9 @@ fun DhikrCircle(
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = if (isCountdownMode) remainingLabel else "/ ${NumberFormatter.format(targetCount, lang)}",
+                        // Geri sayımda büyük sayı zaten "kalan"ı gösterdiği için
+                        // alt etiket her iki modda da hedefi gösterir.
+                        text = "/ ${NumberFormatter.format(targetCount, lang)}",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.SemiBold,
                             color = palette.subText,
@@ -369,7 +372,6 @@ fun LuxuryDhikrCircle(
     displayCount: Long,
     targetCount: Long,
     isCountdownMode: Boolean,
-    remainingLabel: String,
     arabicText: String,
     transliteration: String,
     lang: String = "tr",
@@ -383,7 +385,6 @@ fun LuxuryDhikrCircle(
         displayCount = displayCount,
         targetCount = targetCount,
         isCountdownMode = isCountdownMode,
-        remainingLabel = remainingLabel,
         arabicText = arabicText,
         transliteration = transliteration,
         lang = lang,

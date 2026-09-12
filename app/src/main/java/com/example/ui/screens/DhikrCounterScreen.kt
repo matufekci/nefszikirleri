@@ -183,9 +183,7 @@ fun DhikrCounterScreen(
                 if (zenActive) {
                 // Tam ekran modunda SADECE ust bar (titresim + cikis) ve cember kalir.
                 val progress = if (currentZikir.target > 0) (currentZikir.count.toFloat() / currentZikir.target.toFloat()).coerceIn(0f, 1f) else 0f
-                val remaining = (currentZikir.target - currentZikir.count).coerceAtLeast(0L)
                 val transliteration = ZikirContent.getZikirTransliteration(currentZikir.id, state.settings.lang)
-                val remainingLabel = strings.remainingInThis.replace("{0}", NumberFormatter.format(remaining, state.settings.lang))
 
                 // Ust bar NORMAL MODLA BIREBIR AYNI: ayni padding, ayni 640dp
                 // genislik siniri, ayni CounterTopBar bileseni. Bu yuzden tam
@@ -224,7 +222,6 @@ fun DhikrCounterScreen(
                             displayCount = currentZikir.count,
                             targetCount = currentZikir.target,
                             isCountdownMode = state.settings.countdownMode,
-                            remainingLabel = remainingLabel,
                             arabicText = arabicText,
                             transliteration = transliteration,
                             lang = state.settings.lang,
@@ -268,9 +265,7 @@ fun DhikrCounterScreen(
                     // ==========================================
                     Spacer(modifier = Modifier.height(4.dp))
                     val progress = if (currentZikir.target > 0) (currentZikir.count.toFloat() / currentZikir.target.toFloat()).coerceIn(0f, 1f) else 0f
-                    val remaining = (currentZikir.target - currentZikir.count).coerceAtLeast(0L)
                     val transliteration = ZikirContent.getZikirTransliteration(currentZikir.id, state.settings.lang)
-                    val remainingLabel = strings.remainingInThis.replace("{0}", NumberFormatter.format(remaining, state.settings.lang))
 
                     DhikrCircle(
                         ringSize = calculatedRingSize,
@@ -278,7 +273,6 @@ fun DhikrCounterScreen(
                         displayCount = currentZikir.count,
                         targetCount = currentZikir.target,
                         isCountdownMode = state.settings.countdownMode,
-                        remainingLabel = remainingLabel,
                         arabicText = arabicText,
                         transliteration = transliteration,
                         lang = state.settings.lang,
