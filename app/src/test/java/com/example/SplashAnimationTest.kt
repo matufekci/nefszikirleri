@@ -41,7 +41,7 @@ class SplashAnimationTest {
         }
         // ~21 saniye sanal zaman: halka dönüşü (12500ms) 1,7 tur + snapTo sarması,
         // parlama döngüsü (4500ms x2), kıvılcım (7800ms), süpürme (6600ms+2100ms),
-        // spring ölçekleme ve 700ms gecikmeli başlık animasyonunu kapsar.
+        // spring ölçekleme ve 300ms gecikmeli başlık animasyonunu kapsar.
         repeat(210) { composeTestRule.mainClock.advanceTimeBy(100) }
         composeTestRule.waitForIdle()
 

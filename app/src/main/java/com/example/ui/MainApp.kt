@@ -138,14 +138,14 @@ fun MainApp(viewModel: ZikirViewModel) {
                 // Splash minimum kalış süresi: hızlı cihazda da başlık tam
                 // görünür ve rahat okunacak kadar ekranda kalır; hydration
                 // daha uzun sürerse bitişini bekler (içerik ondan önce
-                // gösterilemez). 4500ms = başlık ~2,3sn'de tam + ~2,2sn okuma.
+                // gösterilemez). 3000ms = başlık ~1,3sn'de tam + ~1,7sn okuma.
                 val splashStart = remember { System.currentTimeMillis() }
                 var showSplash by remember { mutableStateOf(true) }
                 LaunchedEffect(state.isHydrated) {
                     if (state.isHydrated) {
                         val elapsed =
                             (System.currentTimeMillis() - splashStart).coerceAtLeast(0L)
-                        val remaining = (4500L - elapsed).coerceAtLeast(0L)
+                        val remaining = (3000L - elapsed).coerceAtLeast(0L)
                         delay(remaining)
                         showSplash = false
                     }

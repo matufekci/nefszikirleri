@@ -187,7 +187,7 @@ internal fun AnimatedIconSplash(
                 }
             }
             launch {
-                delay(700)
+                delay(300)
                 titleVisible = true
             }
         }
@@ -353,7 +353,7 @@ internal fun AnimatedIconSplash(
                 modifier = Modifier
                     .align(Alignment.Center)
                     .offset(y = 128.dp),
-                enter = fadeIn(tween(1600)) + slideInVertically(tween(1600)) { it / 3 }
+                enter = fadeIn(tween(1000)) + slideInVertically(tween(1000)) { it / 3 }
             ) {
                 // Süpürme ortadan geçerken başlık altına çalar (0→1→0)
                 val titleGlow = 1f - abs(shimmer.value * 2f - 1f)
