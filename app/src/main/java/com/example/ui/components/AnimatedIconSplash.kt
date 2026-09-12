@@ -16,7 +16,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -42,11 +41,11 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,6 +53,7 @@ import com.example.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -344,32 +344,20 @@ internal fun AnimatedIconSplash(
                     }
                 }
             }
-            // 6) Başlık + altın shimmer
+            // 6) Başlık + ışık süpürmesiyle senkron altın parıltı
             AnimatedVisibility(
                 visible = titleVisible,
                 enter = fadeIn(tween(650)) + slideInVertically(tween(650)) { it / 3 }
             ) {
-                val shimmerStart = shimmer.value * 520f - 260f
+                // Süpürme ortadan geçerken başlık altına çalar (0→1→0)
+                val titleGlow = 1f - abs(shimmer.value * 2f - 1f)
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium.merge(
-                        TextStyle(
-                            fontWeight = FontWeight.SemiBold,
-                            letterSpacing = 4.sp,
-                            brush = if (reduceMotion) null else Brush.linearGradient(
-                                colors = listOf(
-                                    textColor,
-                                    textColor,
-                                    lerp(textColor, Color(0xFFFFE9B0), 0.9f),
-                                    textColor,
-                                    textColor
-                                ),
-                                start = Offset(shimmerStart, 0f),
-                                end = Offset(shimmerStart + 260f, 0f)
-                            ),
-                            color = if (reduceMotion) textColor else Color.Unspecified
-                        )
-                    ),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 4.sp,
+                    color = if (reduceMotion) textColor
+                    else lerp(textColor, gold, 0.5f * titleGlow),
                     modifier = Modifier.padding(top = 22.dp)
                 )
             }
