@@ -163,31 +163,31 @@ internal fun AnimatedIconSplash(
             }
             launch {
                 while (true) {
-                    glowAlpha.animateTo(0.85f, tween(3000, easing = FastOutSlowInEasing))
-                    glowAlpha.animateTo(0.35f, tween(3000, easing = FastOutSlowInEasing))
+                    glowAlpha.animateTo(0.85f, tween(4500, easing = FastOutSlowInEasing))
+                    glowAlpha.animateTo(0.35f, tween(4500, easing = FastOutSlowInEasing))
                 }
             }
             launch {
                 while (true) {
-                    ringAngle.animateTo(360f, tween(8400, easing = LinearEasing))
+                    ringAngle.animateTo(360f, tween(12500, easing = LinearEasing))
                     ringAngle.snapTo(0f)
                 }
             }
             launch {
                 while (true) {
-                    sparklePhase.animateTo(1f, tween(5200, easing = LinearEasing))
+                    sparklePhase.animateTo(1f, tween(7800, easing = LinearEasing))
                     sparklePhase.snapTo(0f)
                 }
             }
             launch {
                 while (true) {
-                    shimmer.animateTo(1f, tween(4400, easing = LinearEasing))
-                    delay(1400)
+                    shimmer.animateTo(1f, tween(6600, easing = LinearEasing))
+                    delay(2100)
                     shimmer.snapTo(0f)
                 }
             }
             launch {
-                delay(500)
+                delay(700)
                 titleVisible = true
             }
         }
@@ -353,7 +353,7 @@ internal fun AnimatedIconSplash(
                 modifier = Modifier
                     .align(Alignment.Center)
                     .offset(y = 128.dp),
-                enter = fadeIn(tween(1300)) + slideInVertically(tween(1300)) { it / 3 }
+                enter = fadeIn(tween(1600)) + slideInVertically(tween(1600)) { it / 3 }
             ) {
                 // Süpürme ortadan geçerken başlık altına çalar (0→1→0)
                 val titleGlow = 1f - abs(shimmer.value * 2f - 1f)
