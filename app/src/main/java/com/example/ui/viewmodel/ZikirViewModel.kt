@@ -713,8 +713,7 @@ class ZikirViewModel(
 
     fun setDailyTarget(target: Long) {
         viewModelScope.launch {
-            // Tempo matematiği: 1.140.000 zikir / 6 ay hedefi → günlük ihtiyaç 3-5 bin bandında.
-            updateSettingsSafely { it.copy(dailyTarget = target.coerceIn(3000L, 5000L)) }
+            updateSettingsSafely { it.copy(dailyTarget = target.coerceIn(500L, 500000L)) }
         }
     }
 
