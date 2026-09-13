@@ -334,12 +334,23 @@ class ZikirViewModel(
                 val overall7DayAvg = sevenDaysList.sumOf { it.amount } / 7L
                 val current7DayAvg = if (overall7DayAvg > 0) overall7DayAvg else 0L
 
-                // Son 7 günlük ortalamaya dayalı tahmini bitiş süreleri
+                // Son 7 günlük ortalamaya dayalı tahmini bitiş süreleri.
+                // 2 yılı aşan öngörüler anlamsız olduğundan ekrana null gider
+                // ve istatistik "hesaplanıyor" yazar; 2 yılın altına inince
+                // gerçek tarih görünmeye başlar.
+                val twoYearsMs = 2L * 365 * 24 * 60 * 60 * 1000
+                val nowMs = System.currentTimeMillis()
                 val overallEstDays = if (overall7DayAvg > 0) (overallRemaining + overall7DayAvg - 1) / overall7DayAvg else 0L
-                val overallEstDate = if (overallEstDays > 0) System.currentTimeMillis() + (overallEstDays * 24 * 60 * 60 * 1000L) else null
+                val overallEstDate = if (overallEstDays > 0) {
+                    (nowMs + overallEstDays * 24 * 60 * 60 * 1000L)
+                        .takeIf { it <= nowMs + twoYearsMs }
+                } else null
 
                 val currentEstDays = if (current7DayAvg > 0) (currentRemaining + current7DayAvg - 1) / current7DayAvg else 0L
-                val currentEstDate = if (currentEstDays > 0) System.currentTimeMillis() + (currentEstDays * 24 * 60 * 60 * 1000L) else null
+                val currentEstDate = if (currentEstDays > 0) {
+                    (nowMs + currentEstDays * 24 * 60 * 60 * 1000L)
+                        .takeIf { it <= nowMs + twoYearsMs }
+                } else null
 
                 // 30 Days Chart (SQL günlük toplam haritasından)
                 val thirtyDaysList = mutableListOf<DayChartItem>()

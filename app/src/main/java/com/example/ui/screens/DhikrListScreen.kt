@@ -81,7 +81,8 @@ fun DhikrListScreen(
             val estDaysBadge: String? = if (isUnlocked && !isCompleted && zikir.count > 0) {
                 val dailyAvg = if (state.currentAveragePerDay > 0) state.currentAveragePerDay else state.settings.dailyTarget.coerceAtLeast(1000L)
                 val daysLeft = if (dailyAvg > 0) (remainingCount + dailyAvg - 1) / dailyAvg else 0L
-                if (daysLeft in 1..999) {
+                // 2 yıla kadar göster (730 gün); üzeri rozet üretmez
+                if (daysLeft in 1..730) {
                     "~${NumberFormatter.formatNumber(daysLeft, state.settings.lang)} ${strings.dayUnit}"
                 } else null
             } else null

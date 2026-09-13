@@ -9,11 +9,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import com.example.util.ChildLockPrefs
-import com.example.ui.components.ChildLockBadge
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -97,18 +92,6 @@ fun DhikrCounterScreen(
     // sekmeler hic gizlenmiyordu.
     val isZenMode = state.isZenMode
 
-    // Cocuk kilidi durumu — ayarlardan her donuste (ON_RESUME) tazelenir.
-    var childLocked by remember { mutableStateOf(ChildLockPrefs.isEnabled(context)) }
-    val lockLifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lockLifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                childLocked = ChildLockPrefs.isEnabled(context)
-            }
-        }
-        lockLifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lockLifecycleOwner.lifecycle.removeObserver(observer) }
-    }
 
     // Zen Modunda Sistem Barlarını Gizleme
     val activity = context as? Activity
@@ -337,20 +320,6 @@ fun DhikrCounterScreen(
                 }
             }
 
-            // Çocuk kilidi rozeti: kilit açıkken ekranın altında durur;
-            // 3 sn basılı tutma + çarpma sorusuyla açılır.
-            if (childLocked) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 96.dp)
-                ) {
-                    ChildLockBadge(
-                        lang = state.settings.lang,
-                        onUnlocked = { childLocked = false }
-                    )
-                }
-            }
         }
     }
 

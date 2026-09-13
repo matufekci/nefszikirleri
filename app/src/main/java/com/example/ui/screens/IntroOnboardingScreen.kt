@@ -64,7 +64,8 @@ fun IntroOnboardingScreen(
 
     var currentLang by remember(state.settings.lang) { mutableStateOf(state.settings.lang) }
     var currentStep by rememberSaveable { mutableStateOf(0) }
-    val totalSteps = 3
+    // Karşılama tek sayfa: yalnızca dil seçimi + Google girişi
+    val totalSteps = 1
 
     val shouldReduceMotion = rememberShouldReduceMotion()
 
@@ -166,22 +167,15 @@ fun IntroOnboardingScreen(
                             haloScale = haloScale,
                             haloAlpha = haloAlpha,
                             shimmerRotation = shimmerRotation,
-                            lang = currentLang
-                        )
-                        1 -> LanguageSelectionPage(
-                            currentLang = currentLang,
+                            lang = currentLang,
                             onSelectLang = { code ->
                                 currentLang = code
                                 viewModel.setLanguage(code)
-                            }
+                            },
+                            onSignInGoogle = { viewModel.signInWithGoogle(context) },
+                            isSignedIn = currentUser != null
                         )
-                        2 -> CompletionPage(
-                            currentUser = currentUser,
-                            isSyncing = isCloudSyncing,
-                            onSignIn = { viewModel.signInWithGoogle(context) },
-                            onSignOut = { viewModel.signOut() },
-                            lang = currentLang
-                        )
+
                     }
                 }
             }

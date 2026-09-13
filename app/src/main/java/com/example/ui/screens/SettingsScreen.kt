@@ -54,6 +54,7 @@ fun SettingsScreen(
         }
     }
 
+    var childLockExpanded by remember { mutableStateOf(false) }
     var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
     val importFileLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -100,9 +101,13 @@ fun SettingsScreen(
 
         item { Spacer(modifier = Modifier.height(14.dp)) }
 
-        // 2b. ÇOCUK KİLİDİ
+        // 2b. ÇOCUK KİLİDİ (katlanır kart; kapatma doğrulamalı)
         item {
-            com.example.ui.components.ChildLockRow(onChanged = {})
+            com.example.ui.components.ChildLockSection(
+                lang = state.settings.lang,
+                isExpanded = childLockExpanded,
+                onToggle = { childLockExpanded = !childLockExpanded }
+            )
         }
 
         item { Spacer(modifier = Modifier.height(14.dp)) }
