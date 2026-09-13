@@ -19,10 +19,6 @@ import androidx.compose.ui.unit.Dp
 enum class ThemeStyle {
     NEON_CYBER,
     GLASS_LIGHT,
-    DEEP_TECH,
-    SOFT_MINIMAL,
-    OLED_GLOW,
-    METALLIC_GOLD,
     OBSIDIAN_GLASS
 }
 
@@ -92,30 +88,6 @@ fun AppCard(
 ) {
     val colors = LocalAppColors.current
     when (colors.themeStyle) {
-        ThemeStyle.METALLIC_GOLD -> {
-            Surface(
-                shape = shape,
-                color = colors.card,
-                border = BorderStroke(
-                    1.2.dp,
-                    Brush.sweepGradient(
-                        listOf(
-                            colors.gold.copy(alpha = 0.85f),
-                            Color(0xFFFFFBEB).copy(alpha = 0.95f),
-                            colors.primary.copy(alpha = 0.40f),
-                            Color(0xFFD4AF37).copy(alpha = 0.85f)
-                        )
-                    )
-                ),
-                modifier = modifier.shadow(
-                    elevation = 14.dp,
-                    shape = shape,
-                    spotColor = colors.gold.copy(alpha = 0.55f),
-                    ambientColor = colors.primary.copy(alpha = 0.25f)
-                ),
-                content = content
-            )
-        }
         ThemeStyle.OBSIDIAN_GLASS -> {
             Surface(
                 shape = shape,
@@ -175,38 +147,6 @@ fun AppCard(
                     spotColor = colors.primary.copy(alpha = 0.12f),
                     ambientColor = Color(0x0A000000)
                 ),
-                content = content
-            )
-        }
-        ThemeStyle.DEEP_TECH -> {
-            Surface(
-                shape = shape,
-                color = colors.card,
-                border = BorderStroke(1.2.dp, Brush.verticalGradient(listOf(colors.primary.copy(alpha = 0.8f), colors.card.copy(alpha=0f)))),
-                modifier = modifier,
-                content = content
-            )
-        }
-        ThemeStyle.SOFT_MINIMAL -> {
-            Surface(
-                shape = shape,
-                color = colors.card,
-                border = BorderStroke(1.dp, colors.border),
-                modifier = modifier.shadow(
-                    elevation = if (colors.isDark) 0.dp else 4.dp,
-                    shape = shape,
-                    spotColor = Color(0x1F000000),
-                    ambientColor = Color(0x0F000000)
-                ),
-                content = content
-            )
-        }
-        ThemeStyle.OLED_GLOW -> {
-             Surface(
-                shape = shape,
-                color = colors.card,
-                border = BorderStroke(1.dp, colors.border),
-                modifier = modifier.shadow(6.dp, shape, spotColor = colors.primary, ambientColor = colors.primary),
                 content = content
             )
         }
@@ -350,17 +290,6 @@ object AppPalettes {
     // Renk Temaları Listesi (Beyaz, Yeşil, Siyah, Pembe Lüks) - Canonical 4
     val ALL = listOf(HadraGunduz, HadraGece, Siyah, PembeLux)
 
-    // Legacy Aliases for backward compat
-    val Emerald = HadraGece
-    val Rahle = HadraGunduz
-    val Obsidian = Siyah
-    val Beyaz = HadraGunduz
-    val Yesil = HadraGece
-    val CyberNeon = HadraGece
-    val GlassCloud = HadraGunduz
-    val DeepTech = HadraGece
-    val SoftMinimal = HadraGunduz
-    val OledGlow = Siyah
 
     // Full mapping table: legacy 10 + aliases -> canonical
     private val legacyMapping = mapOf(

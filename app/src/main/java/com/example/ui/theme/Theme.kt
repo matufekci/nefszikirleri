@@ -17,7 +17,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 
-val LocalAppColors = staticCompositionLocalOf { AppPalettes.Emerald }
+val LocalAppColors = staticCompositionLocalOf { AppPalettes.HadraGece }
 
 @Composable
 fun NefsZikirTheme(
