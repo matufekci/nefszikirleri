@@ -128,41 +128,6 @@ fun StatCollapsibleCard(
 /**
  * Vakit Yoğunluğu İkonu
  */
-@Composable
-fun TimeSlotCustomIcon(idx: Int, tint: Color, modifier: Modifier = Modifier) {
-    val vectorIcon = when (idx) {
-        0 -> Icons.Rounded.WbTwilight
-        1 -> Icons.Rounded.WbSunny
-        2 -> Icons.Rounded.NightsStay
-        3 -> Icons.Rounded.DarkMode
-        else -> Icons.Rounded.WbSunny
-    }
-
-    Box(
-        modifier = modifier
-            .size(26.dp)
-            .shadow(
-                elevation = 4.dp,
-                shape = CircleShape,
-                spotColor = tint.copy(alpha = 0.5f),
-                ambientColor = tint.copy(alpha = 0.2f)
-            )
-            .clip(CircleShape)
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(tint.copy(alpha = 0.22f), tint.copy(alpha = 0.05f), Color.Transparent)
-                )
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = vectorIcon,
-            contentDescription = null,
-            tint = tint,
-            modifier = Modifier.size(15.dp)
-        )
-    }
-}
 
 /**
  * Rozet Öğesi Kartı

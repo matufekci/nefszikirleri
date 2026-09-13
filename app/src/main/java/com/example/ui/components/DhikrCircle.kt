@@ -379,31 +379,3 @@ fun DhikrCircle(
 /**
  * Geriye dönük uyumluluk için takma ad (Alias)
  */
-@Composable
-fun LuxuryDhikrCircle(
-    ringSize: Dp,
-    progress: Float,
-    displayCount: Long,
-    targetCount: Long,
-    isCountdownMode: Boolean,
-    arabicText: String,
-    transliteration: String,
-    lang: String = "tr",
-    isZenMode: Boolean = false,
-    onTap: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    DhikrCircle(
-        ringSize = ringSize,
-        progress = progress,
-        displayCount = displayCount,
-        targetCount = targetCount,
-        isCountdownMode = isCountdownMode,
-        arabicText = arabicText,
-        transliteration = transliteration,
-        lang = lang,
-        isZenMode = isZenMode,
-        onTap = onTap,
-        modifier = modifier
-    )
-}
