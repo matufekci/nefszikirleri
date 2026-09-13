@@ -51,13 +51,10 @@ interface IUiTranslationsPart2 {
     val inactivityNotifTitle: String
     val hapticTitle: String
     val hapticOff: String
-    val fullscreenTap: String
     val roundCompletedTitle: String
     val roundCompletedDesc: String
     val startNewRoundBtn: String
     val nextZikirBtn: String
-    val sidebarTitle: String
-    val quickSwitch: String
     val mashaallah: String
     val congratsDesc: String
     val alhamdulillah: String
@@ -128,6 +125,7 @@ interface IUiTranslationsPart3 {
     val importStatsBackupError: String
     val importStatsConfirmTitle: String
     val importStatsConfirmMsg: String
+    val confirmAction: String
     val cancelAction: String
     val fastJumpTitle: String
     val fastJumpConfirmMsg: String
@@ -146,9 +144,13 @@ interface IUiTranslationsPart3 {
     val cloudSyncTitle: String
     val collapse: String
     val expand: String
+    val deleteBtn: String
     val appLogo: String
+    val backBtn: String
+    val nextBtn: String
     val selected: String
     val adaptiveReminderNotifTitle: String
+    val spiritualVerses: List<SpiritualVerse>
 }
 
 data class SpiritualVerse(
@@ -208,13 +210,10 @@ data class UiTranslationsPart2(
     override val inactivityNotifTitle: String,
     override val hapticTitle: String,
     override val hapticOff: String,
-    override val fullscreenTap: String,
     override val roundCompletedTitle: String,
     override val roundCompletedDesc: String,
     override val startNewRoundBtn: String,
     override val nextZikirBtn: String,
-    override val sidebarTitle: String,
-    override val quickSwitch: String,
     override val mashaallah: String,
     override val congratsDesc: String,
     override val alhamdulillah: String,
@@ -287,6 +286,7 @@ data class UiTranslationsPart3(
     override val importStatsBackupError: String,
     override val importStatsConfirmTitle: String,
     override val importStatsConfirmMsg: String,
+    override val confirmAction: String,
     override val cancelAction: String,
     override val fastJumpTitle: String,
     override val fastJumpConfirmMsg: String,
@@ -303,9 +303,13 @@ data class UiTranslationsPart3(
     override val cloudSyncTitle: String,
     override val collapse: String,
     override val expand: String,
+    override val deleteBtn: String,
     override val appLogo: String,
+    override val backBtn: String,
+    override val nextBtn: String,
     override val selected: String,
     override val adaptiveReminderNotifTitle: String,
+    override val spiritualVerses: List<SpiritualVerse>
 ) : IUiTranslationsPart3
 
 class UiTranslations(
@@ -367,13 +371,10 @@ object AppStrings {
             inactivityNotifTitle = "⚠️ Zikir Vaktiniz Geçiyor",
             hapticTitle = "Titreşimli Tesbih Hissi",
             hapticOff = "Titreşimi Kapat",
-            fullscreenTap = "Tam Ekran Zikir",
             roundCompletedTitle = "{0}. Tur Tamamlandı!",
             roundCompletedDesc = "15 zikrin tamamının hedefine başarıyla ulaştınız. Cenab-ı Hak virdinizi dergah-ı izzetinde kabul eylesin.",
             startNewRoundBtn = "🔄 Yeni Tura Başla",
             nextZikirBtn = "Sıradaki Zikre Geç",
-            sidebarTitle = "Hızlı Erişim",
-            quickSwitch = "Zikir Değiştir",
             mashaallah = "Maşallah!",
             congratsDesc = "Bu mübarek zikrin hedefini muvaffakiyetle tamamladınız.",
             alhamdulillah = "Elhamdülillah",
@@ -443,6 +444,7 @@ object AppStrings {
             importStatsBackupError = "Yedek dosyası okunamadı veya format geçersiz!",
             importStatsConfirmTitle = "Yedeği Geri Yükle",
             importStatsConfirmMsg = "Yedek dosyasındaki veriler mevcut verilerin üzerine yazılacaktır. Devam edilsin mi?",
+            confirmAction = "Geri Yükle",
             cancelAction = "İptal",
             fastJumpTitle = "Hızlı İntikal (Sıçrama)",
             fastJumpConfirmMsg = "Bu zikirden ({0}) mi devam etmek istiyorsunuz? Onaylarsanız, önceki tüm zikirler ({1}) otomatik olarak tamamlanmış sayılacak ve {0} zikrinin kilidi açılacaktır.",
@@ -461,9 +463,64 @@ object AppStrings {
             cloudSyncTitle = "Bulut Eşitleme",
             collapse = "Daralt",
             expand = "Genişlet",
+            deleteBtn = "Sil",
             appLogo = "Nefs Zikirleri Amblemi",
+            backBtn = "Geri",
+            nextBtn = "İleri",
             selected = "Seçili",
             adaptiveReminderNotifTitle = "Son zamanlarda zikrini azalttın",
+            spiritualVerses = listOf(
+                SpiritualVerse(
+                    surah = "Tâhâ Suresi, 124. Ayet",
+                    verseText = "Kim Benim zikrimden (Kur'an'dan ve Beni anmaktan) yüz çevirirse, şüphesiz onun sıkıntılı (dar) bir geçimi olur ve kıyamet günü onu kör olarak haşrederiz.",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "Zuhruf Suresi, 36. Ayet",
+                    verseText = "Kim Rahman'ın zikrinden (Kur'an'dan ve ilahi hatırlatmadan) göz yumarsa (yüz çevirirse), Biz ona bir şeytan musallat ederiz; artık o, onun kesintisiz arkadaşıdır.",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "Cinn Suresi, 17. Ayet",
+                    verseText = "O'nun zikrinden (Kur'an'dan) yüz çevirenleri Allah, sarp ve şiddetli bir azaba sürükler.",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "En'âm Suresi, 44. Ayet",
+                    verseText = "Kendilerine hatırlatılanı (zikri) unuttuklarında, üzerlerine her şeyin kapılarını açtık. Nihayet kendilerine verilenler yüzünden şımardıkları an, onları ansızın yakaladık; birdenbire hepsi ümitsizliğe kapıldılar.",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "Münâfikûn Suresi, 9. Ayet",
+                    verseText = "Ey iman edenler! Mallarınız da çocuklarınız da sizi Allah'ı zikretmekten alıkoymasın. Kim bunu yaparsa, işte onlar ziyana uğrayanların ta kendileridir.",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "Bakara Suresi, 152. Ayet",
+                    verseText = "Öyleyse yalnız Beni anın ki Ben de sizi anayım. Bana şükredin, nankörlük etmeyin.",
+                    type = "glad_tidings"
+                ),
+                SpiritualVerse(
+                    surah = "Ahzâb Suresi, 41-42. Ayetler",
+                    verseText = "Ey iman edenler! Allah'ı çokça zikredin ve O'nu sabah akşam tesbih edip yüceltin.",
+                    type = "glad_tidings"
+                ),
+                SpiritualVerse(
+                    surah = "Rad Suresi, 28. Ayet",
+                    verseText = "Onlar, iman edenler ve kalpleri Allah'ın zikriyle huzura kavuşanlardır. Dikkat edin! Kalpler ancak Allah'ın zikriyle mutmain olur.",
+                    type = "glad_tidings"
+                ),
+                SpiritualVerse(
+                    surah = "Ahzâb Suresi, 35. Ayet",
+                    verseText = "Allah'ı çok zikreden erkekler ve çok zikreden kadınlar var ya; işte Allah onlar için bir mağfiret ve büyük bir mükâfat hazırlamıştır.",
+                    type = "glad_tidings"
+                ),
+                SpiritualVerse(
+                    surah = "Ankebût Suresi, 45. Ayet",
+                    verseText = "Şüphesiz Allah'ı zikretmek en büyük (ibadet)tir. Allah ne yaptığınızı çok iyi bilir.",
+                    type = "glad_tidings"
+                )
+            )
         )
     )
 
@@ -518,13 +575,10 @@ object AppStrings {
             inactivityNotifTitle = "⚠️ مضى وقت الذكر",
             hapticTitle = "الاهتزاز اللمسي للسبحة",
             hapticOff = "إيقاف الاهتزاز",
-            fullscreenTap = "التسبيح على كامل الشاشة",
             roundCompletedTitle = "اكتملت الدورة رقم {0}!",
             roundCompletedDesc = "تم بحمد الله ختم جميع الأذكار الـ 15 بنجاح. تقبل الله طاعتكم.",
             startNewRoundBtn = "🔄 بدء دورة جديدة",
             nextZikirBtn = "الانتقال للذكر التالي",
-            sidebarTitle = "وصول سريع",
-            quickSwitch = "تغيير الذكر",
             mashaallah = "ما شاء الله!",
             congratsDesc = "تم بحمد الله إتمام هذا الورد المبارك بنجاح.",
             alhamdulillah = "الحمد لله",
@@ -594,6 +648,7 @@ object AppStrings {
             importStatsBackupError = "فشل في قراءة ملف النسخة الاحتياطية أو التنسيق غير صالح!",
             importStatsConfirmTitle = "استعادة النسخة الاحتياطية",
             importStatsConfirmMsg = "سيتم استبدال البيانات الحالية ببيانات النسخة. هل تريد المتابعة؟",
+            confirmAction = "استعادة",
             cancelAction = "إلغاء",
             fastJumpTitle = "الانتقال السريع (التقدم المباشر)",
             fastJumpConfirmMsg = "هل ترغب في المتابعة من هذه المرتبة ({0})؟ عند التأكيد، سيتم اعتبار جميع الأذكار السابقة ({1}) مكتملة وسيتم فتح {0} مباشرة.",
@@ -612,9 +667,64 @@ object AppStrings {
             cloudSyncTitle = "المزامنة السحابية",
             collapse = "طي",
             expand = "توسيع",
+            deleteBtn = "حذف",
             appLogo = "شعار أذكار النفس",
+            backBtn = "رجوع",
+            nextBtn = "التالي",
             selected = "محدد",
             adaptiveReminderNotifTitle = "لقد قللت من أذكارك مؤخراً",
+            spiritualVerses = listOf(
+                SpiritualVerse(
+                    surah = "سورة طه، الآية ١٢٤",
+                    verseText = "وَمَنْ أَعْرَضَ عَن ذِكْرِي فَإِنَّ لَهُ مَعِيشَةً ضَنكًا وَنَحْشُرُهُ يَوْمَ الْقِيَامَةِ أَعْمَىٰ",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "سورة الزخرف، الآية ٣٦",
+                    verseText = "وَمَن يَعْشُ عَن ذِكْرِ الرَّحْمَٰنِ نُقَيِّضْ لَهُ شَيْطَانًا فَهُوَ لَهُ قَرِينٌ",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "سورة الجن، الآية ١٧",
+                    verseText = "وَمَن يُعْرِضْ عَن ذِكْرِ رَبِّهِ يَسْلُكْهُ عَذَابًا صَعَدًا",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "سورة الأنعام، الآية ٤٤",
+                    verseText = "فَلَمَّا نَسُوا مَا ذُكِّرُوا بِهِ فَتَحْنَا عَلَيْهِمْ أَبْوَابَ كُلِّ شَيْءٍ حَتَّىٰ إِذَا فَرِحُوا بِمَا أُوتُوا أَخَذْنَاهُم بَغْتَةً فَإِذَا هُم مُّبْلِسُونَ",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "سورة المنافقون، الآية ٩",
+                    verseText = "يَا أَيُّهَا الَّذِينَ آمَنُوا لَا تُلْهِكُمْ أَمْوَالُكُمْ وَلَا أَوْلَادُكُمْ عَن ذِكْرِ اللَّهِ ۚ وَمَن يَفْعَلْ ذَٰلِكَ فَأُولَٰئِكَ هُمُ الْخَاسِرُونَ",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "سورة البقرة، الآية ١٥٢",
+                    verseText = "فَاذْكُرُونِي أَذْكُرْكُمْ وَاشْكُرُوا لِي وَلَا تَكْفُرُونِ",
+                    type = "glad_tidings"
+                ),
+                SpiritualVerse(
+                    surah = "سورة الأحزاب، الآيات ٤١-٤٢",
+                    verseText = "يَا أَيُّهَا الَّذِينَ آمَنُوا اذْكُرُوا اللَّهَ ذِكْرًا كَثِيرًا ۝ وَسَبِّحُوهُ بُكْرَةً وَأَصِيلًا",
+                    type = "glad_tidings"
+                ),
+                SpiritualVerse(
+                    surah = "سورة الرعد، الآية ٢٨",
+                    verseText = "الَّذِينَ آمَنُوا وَتَطْمَئِنُّ قُلُوبُهُم بِذِكْرِ اللَّهِ ۗ أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ",
+                    type = "glad_tidings"
+                ),
+                SpiritualVerse(
+                    surah = "سورة الأحزاب، الآية ٣٥",
+                    verseText = "وَالذَّاكِرِينَ اللَّهَ كَثِيرًا وَالذَّاكِرَاتِ أَعَدَّ اللَّهُ لَهُم مَّغْفِرَةً وَأَجْرًا عَظِيمًا",
+                    type = "glad_tidings"
+                ),
+                SpiritualVerse(
+                    surah = "سورة العنكبوت، الآية ٤٥",
+                    verseText = "وَلَذِكْرُ اللَّهِ أَكْبَرُ ۗ وَاللَّهُ يَعْلَمُ مَا تَصْنَعُونَ",
+                    type = "glad_tidings"
+                )
+            )
         )
     )
 
@@ -669,13 +779,10 @@ object AppStrings {
             inactivityNotifTitle = "⚠️ Dhikr Reminder",
             hapticTitle = "Haptic Vibration Feedback",
             hapticOff = "Disable Haptics",
-            fullscreenTap = "Full Screen Tap",
             roundCompletedTitle = "Round {0} Completed!",
             roundCompletedDesc = "You have successfully completed all 15 dhikr targets. May Allah accept your devotion.",
             startNewRoundBtn = "🔄 Start New Round",
             nextZikirBtn = "Proceed to Next Dhikr",
-            sidebarTitle = "Quick Access",
-            quickSwitch = "Switch Dhikr",
             mashaallah = "Masha'Allah!",
             congratsDesc = "You have successfully completed this sacred dhikr target.",
             alhamdulillah = "Alhamdulillah",
@@ -745,6 +852,7 @@ object AppStrings {
             importStatsBackupError = "Failed to read backup file or invalid format!",
             importStatsConfirmTitle = "Restore Backup",
             importStatsConfirmMsg = "Backup data will overwrite current progress. Continue?",
+            confirmAction = "Restore",
             cancelAction = "Cancel",
             fastJumpTitle = "Fast Forward (Direct Jump)",
             fastJumpConfirmMsg = "Do you want to continue from this dhikr ({0})? If confirmed, all previous dhikrs ({1}) will be marked as completed and {0} will be unlocked.",
@@ -763,9 +871,64 @@ object AppStrings {
             cloudSyncTitle = "Cloud Sync",
             collapse = "Collapse",
             expand = "Expand",
+            deleteBtn = "Delete",
             appLogo = "Nefs Dhikr Logo",
+            backBtn = "Back",
+            nextBtn = "Next",
             selected = "Selected",
             adaptiveReminderNotifTitle = "You've decreased your dhikr lately",
+            spiritualVerses = listOf(
+                SpiritualVerse(
+                    surah = "Surah Ta-Ha, Verse 124",
+                    verseText = "And whoever turns away from My remembrance - indeed, he will have a depressed life, and We will gather him on the Day of Resurrection blind.",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "Surah Az-Zukhruf, Verse 36",
+                    verseText = "And whoever is blinded from remembrance of the Most Merciful - We appoint for him a devil, and he is to him a companion.",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "Surah Al-Jinn, Verse 17",
+                    verseText = "And whoever turns away from the remembrance of his Lord - He will put him into arduous punishment.",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "Surah Al-An'am, Verse 44",
+                    verseText = "So when they forgot that by which they had been reminded, We opened to them the doors of every [good] thing until, when they rejoiced in that which they were given, We seized them suddenly, and at once they were in despair.",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "Surah Al-Munafiqun, Verse 9",
+                    verseText = "O you who have believed, let not your wealth and your children divert you from remembrance of Allah. And whoever does that - then those are the losers.",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "Surah Al-Baqarah, Verse 152",
+                    verseText = "So remember Me; I will remember you. And be grateful to Me and do not deny Me.",
+                    type = "glad_tidings"
+                ),
+                SpiritualVerse(
+                    surah = "Surah Al-Ahzab, Verses 41-42",
+                    verseText = "O you who have believed, remember Allah with much remembrance and glorify Him morning and afternoon.",
+                    type = "glad_tidings"
+                ),
+                SpiritualVerse(
+                    surah = "Surah Ar-Ra'd, Verse 28",
+                    verseText = "Those who have believed and whose hearts are assured by the remembrance of Allah. Unquestionably, by the remembrance of Allah hearts are assured.",
+                    type = "glad_tidings"
+                ),
+                SpiritualVerse(
+                    surah = "Surah Al-Ahzab, Verse 35",
+                    verseText = "...and the men who remember Allah often and the women who do so - for them Allah has prepared forgiveness and a great reward.",
+                    type = "glad_tidings"
+                ),
+                SpiritualVerse(
+                    surah = "Surah Al-Ankabut, Verse 45",
+                    verseText = "...and the remembrance of Allah is greater. And Allah knows that which you do.",
+                    type = "glad_tidings"
+                )
+            )
         )
     )
 
@@ -820,13 +983,10 @@ object AppStrings {
             inactivityNotifTitle = "⚠️ Dhikr-Zeit verstreicht",
             hapticTitle = "Haptisches Feedback",
             hapticOff = "Vibration Deaktivieren",
-            fullscreenTap = "Vollbild-Dhikr",
             roundCompletedTitle = "Runde {0} Abgeschlossen!",
             roundCompletedDesc = "Sie haben alle 15 Dhikr-Ziele erreicht. Möge Allah Ihr Gebet annehmen.",
             startNewRoundBtn = "🔄 Neue Runde Starten",
             nextZikirBtn = "Zum nächsten Dhikr",
-            sidebarTitle = "Schnellzugriff",
-            quickSwitch = "Dhikr wechseln",
             mashaallah = "Maschallaha!",
             congratsDesc = "Sie haben das Ziel dieses gesegneten Dhikr erreicht.",
             alhamdulillah = "Alhamdulillah",
@@ -896,6 +1056,7 @@ object AppStrings {
             importStatsBackupError = "Sicherungsdatei konnte nicht gelesen werden oder Format ungültig!",
             importStatsConfirmTitle = "Sicherung wiederherstellen",
             importStatsConfirmMsg = "Sicherungsdaten überschreiben den aktuellen Stand. Fortfahren?",
+            confirmAction = "Wiederherstellen",
             cancelAction = "Abbrechen",
             fastJumpTitle = "Schneller Übergang (Sprung)",
             fastJumpConfirmMsg = "Möchten Sie mit dieser Stufe ({0}) fortfahren? Bei Bestätigung werden alle vorherigen Dhikr ({1}) als abgeschlossen markiert und {0} wird freigeschaltet.",
@@ -914,9 +1075,64 @@ object AppStrings {
             cloudSyncTitle = "Cloud-Synchronisierung",
             collapse = "Einklappen",
             expand = "Ausklappen",
+            deleteBtn = "Löschen",
             appLogo = "Nefs Dhikr Logo",
+            backBtn = "Zurück",
+            nextBtn = "Weiter",
             selected = "Ausgewählt",
             adaptiveReminderNotifTitle = "Sie haben Ihren Zikr in letzter Zeit reduziert",
+            spiritualVerses = listOf(
+                SpiritualVerse(
+                    surah = "Sure Ta-Ha, Vers 124",
+                    verseText = "Wer sich aber von Meiner Ermahnung abwendet, der wird ein enges Leben führen, und Wir werden ihn am Tag der Auferstehung blind versammeln.",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "Sure Az-Zukhruf, Vers 36",
+                    verseText = "Wer für die Ermahnung des Allerbarmers blind ist, dem bestimmen Wir einen Satan, der sein ständiger Begleiter sein wird.",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "Sure Al-Dschinn, Vers 17",
+                    verseText = "Und wer sich von der Ermahnung seines Herrn abwendet, den wird Er in eine immer schwerere Strafe stecken.",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "Sure Al-An'am, Vers 44",
+                    verseText = "Als sie dann vergaßen, woran sie erinnert worden waren, öffneten Wir ihnen die Tore aller Dinge. Als sie sich schließlich über das freuten, was ihnen gegeben worden war, ergriffen Wir sie plötzlich, und da waren sie verzweifelt.",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "Sure Al-Munafiqun, Vers 9",
+                    verseText = "O die ihr glaubt, weder euer Besitz noch eure Kinder sollen euch vom Gedenken an Allah ablenken. Wer das tut, das sind die Verlierer.",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "Sure Al-Baqarah, Vers 152",
+                    verseText = "Gedenkt Meiner, so gedenke Ich eurer. Seid Mir dankbar und seid nicht undankbar.",
+                    type = "glad_tidings"
+                ),
+                SpiritualVerse(
+                    surah = "Sure Al-Ahzab, Verse 41-42",
+                    verseText = "O die ihr glaubt, gedenkt Allahs in häufigem Gedenken und preist Ihn morgens und abends.",
+                    type = "glad_tidings"
+                ),
+                SpiritualVerse(
+                    surah = "Sure Ar-Ra'd, Vers 28",
+                    verseText = "Diejenigen, die glauben und deren Herzen im Gedenken Allahs Ruhe finden. Wahrlich, im Gedenken Allahs finden die Herzen Ruhe.",
+                    type = "glad_tidings"
+                ),
+                SpiritualVerse(
+                    surah = "Sure Al-Ahzab, Vers 35",
+                    verseText = "...und die Männer, die Allahs viel gedenken, und die Frauen, die (Seiner) gedenken - für sie alle hat Allah Vergebung und gewaltigen Lohn bereitet.",
+                    type = "glad_tidings"
+                ),
+                SpiritualVerse(
+                    surah = "Sure Al-Ankabut, Vers 45",
+                    verseText = "...und das Gedenken Allahs ist gewiss das Größte. Und Allah weiß, was ihr tut.",
+                    type = "glad_tidings"
+                )
+            )
         )
     )
 
@@ -971,13 +1187,10 @@ object AppStrings {
             inactivityNotifTitle = "⚠️ Rappel de Vird",
             hapticTitle = "Vibration Haptique",
             hapticOff = "Désactiver la Vibration",
-            fullscreenTap = "Dhikr Plein Écran",
             roundCompletedTitle = "Tour {0} Terminé !",
             roundCompletedDesc = "Vous avez complété avec succès les 15 objectifs. Qu'Allah accepte vos invocations.",
             startNewRoundBtn = "🔄 Commencer un Nouveau Tour",
             nextZikirBtn = "Passer au dhikr suivant",
-            sidebarTitle = "Accès Rapide",
-            quickSwitch = "Changer de dhikr",
             mashaallah = "Macha'Allah !",
             congratsDesc = "Vous avez complété avec succès l'objectif de ce noble dhikr.",
             alhamdulillah = "Alhamdoulillah",
@@ -1047,6 +1260,7 @@ object AppStrings {
             importStatsBackupError = "Échec de lecture du fichier de sauvegarde ou format non valide !",
             importStatsConfirmTitle = "Restaurer la sauvegarde",
             importStatsConfirmMsg = "Les données de sauvegarde écraseront la progression actuelle. Continuer ?",
+            confirmAction = "Restaurer",
             cancelAction = "Annuler",
             fastJumpTitle = "Saut Rapide (Passage Direct)",
             fastJumpConfirmMsg = "Souhaitez-vous continuer à partir de ce niveau ({0}) ? Si vous confirmez, tous les dhikrs précédents ({1}) seront considérés comme terminés et {0} sera débloqué.",
@@ -1065,9 +1279,64 @@ object AppStrings {
             cloudSyncTitle = "Synchronisation Cloud",
             collapse = "Réduire",
             expand = "Développer",
+            deleteBtn = "Supprimer",
             appLogo = "Logo Nefs Dhikr",
+            backBtn = "Retour",
+            nextBtn = "Suivant",
             selected = "Sélectionné",
             adaptiveReminderNotifTitle = "Vous avez réduit votre dhikr ces derniers temps",
+            spiritualVerses = listOf(
+                SpiritualVerse(
+                    surah = "Sourate Ta-Ha, Verset 124",
+                    verseText = "Et quiconque se détourne de Mon Rappel, mènera certes une vie pleine de gêne, et le Jour de la Résurrection Nous l'amènerons aveugle au rassemblement.",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "Sourate Az-Zukhruf, Verset 36",
+                    verseText = "Et quiconque s'aveugle (et s'écarte) du rappel du Tout Miséricordieux, Nous lui désignons un diable qui devient son compagnon inséparable.",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "Sourate Al-Jinn, Verset 17",
+                    verseText = "Et quiconque se détourne du rappel de son Seigneur, Il l'achemine vers un châtiment sans cesse croissant.",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "Sourate Al-An'am, Verset 44",
+                    verseText = "Puis, lorsqu'ils eurent oublié ce qu'on leur avait rappelé, Nous leur ouvrîmes les portes de toute chose; puis, lorsqu'ils eurent exulté de joie en raison de ce qui leur avait été donné, Nous les saisîmes soudain, et les voilà désespérés.",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "Sourate Al-Munafiqun, Verset 9",
+                    verseText = "Ô vous qui avez cru ! Que ni vos biens ni vos enfants ne vous distraient du rappel d'Allah. Et quiconque fait cela... alors ceux-là sont les perdants.",
+                    type = "warning"
+                ),
+                SpiritualVerse(
+                    surah = "Sourate Al-Baqarah, Verset 152",
+                    verseText = "Souvenez-vous de Moi donc, Je vous récompenserai. Remerciez-Moi et ne soyez pas ingrats envers Moi.",
+                    type = "glad_tidings"
+                ),
+                SpiritualVerse(
+                    surah = "Sourate Al-Ahzab, Versets 41-42",
+                    verseText = "Ô vous qui croyez ! Évoquez Allah d'une façon abondante et glorifiez-Le à la pointe et au déclin du jour.",
+                    type = "glad_tidings"
+                ),
+                SpiritualVerse(
+                    surah = "Sourate Ar-Ra'd, Verset 28",
+                    verseText = "Ceux qui ont cru, et dont les cœurs s'apaisent à l'évocation d'Allah. N'est-ce point par l'évocation d'Allah que se tranquillisent les cœurs ?",
+                    type = "glad_tidings"
+                ),
+                SpiritualVerse(
+                    surah = "Sourate Al-Ahzab, Verset 35",
+                    verseText = "...les invocateurs fréquents d'Allah et les invocatrices : Allah a préparé pour eux un pardon et une énorme récompense.",
+                    type = "glad_tidings"
+                ),
+                SpiritualVerse(
+                    surah = "Sourate Al-Ankabut, Verset 45",
+                    verseText = "...et le rappel d'Allah est certes ce qu'il y a de plus grand. Et Allah sait ce que vous faites.",
+                    type = "glad_tidings"
+                )
+            )
         )
     )
     fun get(lang: String): UiTranslations {
