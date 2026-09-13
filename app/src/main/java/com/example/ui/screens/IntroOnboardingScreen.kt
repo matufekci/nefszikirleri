@@ -61,6 +61,7 @@ fun IntroOnboardingScreen(
     val colors = LocalAppColors.current
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val isCloudSyncing by viewModel.isCloudSyncing.collectAsStateWithLifecycle()
+    val syncMessage by viewModel.cloudSyncMessage.collectAsStateWithLifecycle()
 
     var currentLang by remember(state.settings.lang) { mutableStateOf(state.settings.lang) }
     var currentStep by rememberSaveable { mutableStateOf(0) }
@@ -181,7 +182,8 @@ fun IntroOnboardingScreen(
                             isSyncing = isCloudSyncing,
                             onSignIn = { viewModel.signInWithGoogle(context) },
                             onSignOut = { viewModel.signOut() },
-                            lang = currentLang
+                            lang = currentLang,
+                            message = syncMessage
                         )
 
                     }
