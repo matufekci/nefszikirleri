@@ -135,7 +135,7 @@ class AuthManager(private val context: Context) {
                 Result.failure(IllegalStateException("Beklenmeyen kimlik doğrulama yanıtı."))
             }
         } catch (e: GetCredentialCancellationException) {
-            Result.failure(Exception("Giriş işlemi iptal edildi."))
+            Result.failure(SignInCancelledException())
         } catch (e: NoCredentialException) {
             if (com.example.BuildConfig.DEBUG) {
                 Log.w("AuthManager", "No credentials available on device/emulator", e)
@@ -185,14 +185,16 @@ class AuthManager(private val context: Context) {
             if (com.example.BuildConfig.DEBUG) {
                 Log.e("AuthManager", "Firebase auth error: ${e.javaClass.simpleName}", e)
             }
-            Result.failure(Exception("Google girişi başarısız: ${e.message ?: e.javaClass.simpleName}"))
+            // Sebep (cause) bilerek ekleniyor: CloudErrorMapper zinciri
+            // tarayip "ag yok" / "yetki yok" gibi durumlari ayirt edebilsin.
+            Result.failure(Exception("Google girişi başarısız: ${e.message ?: e.javaClass.simpleName}", e))
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
             if (com.example.BuildConfig.DEBUG) {
                 Log.e("AuthManager", "Google Sign-In failed", e)
             }
             val msg = e.localizedMessage ?: "Google girişi sırasında bir hata oluştu."
-            Result.failure(Exception(msg))
+            Result.failure(Exception(msg, e))
         }
     }
 
@@ -211,3 +213,15 @@ class AuthManager(private val context: Context) {
         }
     }
 }
+
+/**
+ * Kullanici Google hesap seciciyi KENDI ISTEGIYLE kapatti.
+ *
+ * Neden ayri tip: bu bir hata degildir. Eskiden duz `Exception(...)` ile
+ * dondugu icin cagri tarafi bunu gercek bir giris hatasindan ayirt edemiyor
+ * ve ekranda kirmizi bir "Giris islemi iptal edildi" mesaji cikiyordu.
+ * Artik ViewModel bu tipi gorunce mesaj GOSTERMEZ.
+ */
+class SignInCancelledException(
+    message: String = "Sign-in cancelled by the user."
+) : Exception(message)

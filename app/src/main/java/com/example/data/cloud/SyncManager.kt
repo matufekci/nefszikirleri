@@ -214,15 +214,31 @@ class SyncManager {
                     for (c in oldHistoryChunks.documents) {
                         try {
                             c.reference.delete().await()
-                        } catch (_: Exception) {}
+                        } catch (e: Exception) {
+                            if (e is kotlinx.coroutines.CancellationException) throw e
+                            // GC best-effort; ama sessiz yutma teshisi imkansiz
+                            // kiliyordu. Davranis degismedi, sadece loglandi.
+                            if (com.example.BuildConfig.DEBUG) {
+                                Log.d("SyncManager", "cleanupOldSnapshots: history chunk silinemedi (${c.id})", e)
+                            }
+                        }
                     }
                     try {
                         snap.reference.delete().await()
-                    } catch (_: Exception) {}
+                    } catch (e: Exception) {
+                        if (e is kotlinx.coroutines.CancellationException) throw e
+                        if (com.example.BuildConfig.DEBUG) {
+                            Log.d("SyncManager", "cleanupOldSnapshots: eski snapshot silinemedi (${snap.id})", e)
+                        }
+                    }
                 }
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             // Garbage collection best-effort, snapshot isolation is preserved
+            if (com.example.BuildConfig.DEBUG) {
+                Log.d("SyncManager", "cleanupOldSnapshots: eski snapshot listesi okunamadi", e)
+            }
         }
     }
 
@@ -235,7 +251,10 @@ class SyncManager {
             val userDocRef = firestore.collection("users").document(userId)
             val userDoc = userDocRef.get().await()
             if (!userDoc.exists()) {
-                return Result.failure(Exception("Bulutta henüz kayıtlı bir zikir yedeği bulunamadı."))
+                // Duz Exception yerine ayirt edilebilir tip: bu bir ariza degil,
+                // "ilk giris" durumudur. CloudErrorMapper bunu tanir ve
+                // kullaniciya teknik mesaj yerine 5 dilde "bulutta yedek yok" der.
+                return Result.failure(NoCloudBackupException())
             }
 
             // Versioned snapshot pointer kontrolü

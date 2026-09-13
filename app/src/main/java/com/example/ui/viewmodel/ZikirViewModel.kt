@@ -26,6 +26,7 @@ import com.example.data.model.ZikirContent
 import com.example.data.model.ZikirHistory
 import com.example.data.repository.ZikirRepository
 import com.example.util.ChildLockPrefs
+import com.example.util.CloudErrorMapper
 import com.example.util.HapticHelper
 import com.example.util.NotificationScheduler
 import com.example.util.MonotonicTime
@@ -938,13 +939,13 @@ class ZikirViewModel(
                     }
                 } else {
                     withContext(Dispatchers.Main) {
-                        onError(result.exceptionOrNull()?.localizedMessage ?: "Export Error")
+                        onError(CloudErrorMapper.resolve(result.exceptionOrNull(), _uiState.value.settings.lang, UiText.exportStatsError))
                     }
                 }
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 withContext(Dispatchers.Main) {
-                    onError(e.localizedMessage ?: "Export & Share Error")
+                    onError(CloudErrorMapper.resolve(e, _uiState.value.settings.lang, UiText.exportStatsError))
                 }
             }
         }
@@ -979,7 +980,7 @@ class ZikirViewModel(
                     } else {
                         val ex = result.exceptionOrNull()
                         if (ex is com.example.data.backup.PasswordRequiredException) {
-                            withContext(Dispatchers.Main) { onError(ex.localizedMessage ?: "Parola gerekli") }
+                            withContext(Dispatchers.Main) { onError(UiText.passwordRequired.get(_uiState.value.settings.lang)) }
                             return@launch
                         }
                         if (ex is com.example.data.backup.WrongPasswordException) {
@@ -1051,7 +1052,7 @@ class ZikirViewModel(
                                 withContext(Dispatchers.Main) { onSuccess(restoredZikirs.size) }
                             } catch (fallbackE: Exception) {
                                 withContext(Dispatchers.Main) {
-                                    onError(fallbackE.localizedMessage ?: strings.importStatsBackupError)
+                                    onError(CloudErrorMapper.resolve(fallbackE, _uiState.value.settings.lang, strings.importStatsBackupError))
                                 }
                             }
                         }
@@ -1060,7 +1061,7 @@ class ZikirViewModel(
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 withContext(Dispatchers.Main) {
-                    onError(e.localizedMessage ?: strings.importStatsBackupError)
+                    onError(CloudErrorMapper.resolve(e, _uiState.value.settings.lang, strings.importStatsBackupError))
                 }
             }
         }
@@ -1087,9 +1088,19 @@ class ZikirViewModel(
                     syncCloudAfterSignIn(user.uid)
                 },
                 onFailure = { error ->
-                    val msg = error.localizedMessage ?: strings.cloudGenericSignInError
-                    _cloudSyncMessage.value = msg
-                    onResult(false, msg)
+                    // Kullanici Google seciciyi KENDI istedigiyle kapattiysa
+                    // ekranda hata mesaji gosterilmez (bu bir hata degil).
+                    if (CloudErrorMapper.isCancelled(error)) {
+                        onResult(false, null)
+                    } else {
+                        val msg = CloudErrorMapper.resolve(
+                            error,
+                            _uiState.value.settings.lang,
+                            strings.cloudGenericSignInError
+                        )
+                        _cloudSyncMessage.value = msg
+                        onResult(false, msg)
+                    }
                 }
             )
         }
@@ -1164,8 +1175,11 @@ class ZikirViewModel(
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 _isCloudSyncing.value = false
-                _cloudSyncMessage.value = e.localizedMessage
-                    ?: AppStrings.get(lang).cloudGenericRestoreError
+                _cloudSyncMessage.value = CloudErrorMapper.resolve(
+                    e,
+                    lang,
+                    AppStrings.get(lang).cloudGenericRestoreError
+                )
             }
         }
     }
@@ -1194,14 +1208,20 @@ class ZikirViewModel(
                     _cloudSyncMessage.value = UiText.cloudNoBackupUploadedLocal.get(lang)
                 },
                 onFailure = { e ->
-                    _cloudSyncMessage.value = e.localizedMessage
-                        ?: AppStrings.get(lang).cloudGenericBackupError
+                    _cloudSyncMessage.value = CloudErrorMapper.resolve(
+                        e,
+                        lang,
+                        AppStrings.get(lang).cloudGenericBackupError
+                    )
                 }
             )
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
-            _cloudSyncMessage.value = e.localizedMessage
-                ?: AppStrings.get(lang).cloudGenericBackupError
+            _cloudSyncMessage.value = CloudErrorMapper.resolve(
+                e,
+                lang,
+                AppStrings.get(lang).cloudGenericBackupError
+            )
         } finally {
             _isCloudSyncing.value = false
         }
@@ -1255,7 +1275,7 @@ class ZikirViewModel(
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 val strings = AppStrings.get(_uiState.value.settings.lang)
-                val msg = e.localizedMessage ?: strings.cloudGenericRestoreError
+                val msg = CloudErrorMapper.resolve(e, _uiState.value.settings.lang, strings.cloudGenericRestoreError)
                 _cloudSyncMessage.value = msg
             }
         }
@@ -1357,7 +1377,7 @@ class ZikirViewModel(
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 val strings = AppStrings.get(_uiState.value.settings.lang)
-                val msg = e.localizedMessage ?: strings.cloudGenericRestoreError
+                val msg = CloudErrorMapper.resolve(e, _uiState.value.settings.lang, strings.cloudGenericRestoreError)
                 _cloudSyncMessage.value = msg
             }
         }
@@ -1410,7 +1430,7 @@ class ZikirViewModel(
                             _isCloudSyncing.value = false
                             withContext(Dispatchers.Main) { onComplete(false, msg) }
                         } else {
-                            val msg = error.localizedMessage ?: strings.cloudGenericBackupError
+                            val msg = CloudErrorMapper.resolve(error, _uiState.value.settings.lang, strings.cloudGenericBackupError)
                             _cloudSyncMessage.value = msg
                             _isCloudSyncing.value = false
                             withContext(Dispatchers.Main) { onComplete(false, msg) }
@@ -1420,7 +1440,7 @@ class ZikirViewModel(
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 _isCloudSyncing.value = false
-                val msg = e.localizedMessage ?: strings.cloudGenericBackupError
+                val msg = CloudErrorMapper.resolve(e, _uiState.value.settings.lang, strings.cloudGenericBackupError)
                 _cloudSyncMessage.value = msg
                 withContext(Dispatchers.Main) { onComplete(false, msg) }
             }
@@ -1478,7 +1498,7 @@ class ZikirViewModel(
                         withContext(Dispatchers.Main) { onComplete(true, null) }
                     },
                     onFailure = { error ->
-                        val msg = error.localizedMessage ?: strings.cloudGenericRestoreError
+                        val msg = CloudErrorMapper.resolve(error, _uiState.value.settings.lang, strings.cloudGenericRestoreError)
                         _cloudSyncMessage.value = msg
                         _isCloudSyncing.value = false
                         withContext(Dispatchers.Main) { onComplete(false, msg) }
@@ -1487,7 +1507,7 @@ class ZikirViewModel(
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 _isCloudSyncing.value = false
-                val msg = e.localizedMessage ?: strings.cloudGenericRestoreError
+                val msg = CloudErrorMapper.resolve(e, _uiState.value.settings.lang, strings.cloudGenericRestoreError)
                 _cloudSyncMessage.value = msg
                 withContext(Dispatchers.Main) { onComplete(false, msg) }
             }

@@ -172,6 +172,61 @@ object UiText {
         "Falsches Passwort",
         "Mot de passe incorrect"
     )
+
+    // ------------------------------------------- bulut / yedek hata siniflari
+    // Neden var: bulut ve yedek hatalarinda `e.localizedMessage` dogrudan
+    // kullaniciya gosteriliyordu; Firestore/Firebase mesajlari Ingilizce ve
+    // teknik (orn. "UNAVAILABLE: Unable to resolve host"). CloudErrorMapper
+    // hatayi siniflandirip asagidaki 5 dilli metinlerden birini secer.
+    val cloudErrorNetwork = L10n(
+        "İnternet bağlantısı kurulamadı. Bağlantını kontrol edip tekrar dene.",
+        "تعذّر الاتصال بالإنترنت. تحقّق من الاتصال ثم أعد المحاولة.",
+        "Could not connect to the Internet. Check your connection and try again.",
+        "Internetverbindung konnte nicht hergestellt werden. Prüfe deine Verbindung und versuche es erneut.",
+        "Connexion Internet impossible. Vérifie ta connexion puis réessaie."
+    )
+    val cloudErrorPermission = L10n(
+        "Bulut yedeğine erişim izni verilmedi. Google hesabınla giriş yapıp tekrar dene.",
+        "لم يُسمح بالوصول إلى النسخة الاحتياطية في السحابة. سجّل الدخول بحساب Google ثم أعد المحاولة.",
+        "Access to the cloud backup was denied. Sign in with your Google account and try again.",
+        "Zugriff auf die Cloud-Sicherung nicht erlaubt. Melde dich mit deinem Google-Konto an und versuche es erneut.",
+        "Accès à la sauvegarde cloud refusé. Connecte-toi avec ton compte Google puis réessaie."
+    )
+    val cloudErrorNoBackup = L10n(
+        "Bulutta kayıtlı bir yedek bulunamadı.",
+        "لا توجد نسخة احتياطية محفوظة في السحابة.",
+        "No backup is stored in the cloud.",
+        "In der Cloud ist keine Sicherung gespeichert.",
+        "Aucune sauvegarde enregistrée dans le cloud."
+    )
+    val cloudErrorCorrupt = L10n(
+        "Buluttaki yedek okunamadı (veri bütünlüğü doğrulanamadı). Yerel verilerin güvende.",
+        "تعذّرت قراءة النسخة الاحتياطية في السحابة (تعذّر التحقق من سلامة البيانات). بياناتك المحلية بأمان.",
+        "The cloud backup could not be read (data integrity could not be verified). Your local data is safe.",
+        "Die Cloud-Sicherung konnte nicht gelesen werden (Datenintegrität nicht bestätigt). Deine lokalen Daten sind sicher.",
+        "La sauvegarde cloud n'a pas pu être lue (intégrité des données non vérifiée). Tes données locales sont en sécurité."
+    )
+    val cloudErrorCancelled = L10n(
+        "Bulut işlemi yarım kaldı; verilerin cihazında duruyor. Tekrar deneyebilirsin.",
+        "توقّفت عملية السحابة في منتصفها؛ بياناتك ما زالت على جهازك. يمكنك المحاولة مرة أخرى.",
+        "The cloud operation was interrupted; your data is still on this device. You can try again.",
+        "Der Cloud-Vorgang wurde unterbrochen; deine Daten sind weiterhin auf diesem Gerät. Versuche es erneut.",
+        "L'opération cloud a été interrompue ; tes données sont toujours sur cet appareil. Réessaie."
+    )
+    val exportStatsError = L10n(
+        "Yedek dosyası oluşturulamadı veya paylaşılamadı.",
+        "تعذّر إنشاء ملف النسخة الاحتياطية أو مشاركته.",
+        "The backup file could not be created or shared.",
+        "Sicherungsdatei konnte nicht erstellt oder geteilt werden.",
+        "Le fichier de sauvegarde n'a pas pu être créé ou partagé."
+    )
+    val passwordRequired = L10n(
+        "Bu yedek parola ile korunuyor; parolayı gir.",
+        "هذه النسخة الاحتياطية محمية بكلمة مرور؛ أدخل كلمة المرور.",
+        "This backup is password-protected; enter the password.",
+        "Diese Sicherung ist passwortgeschützt; bitte Passwort eingeben.",
+        "Cette sauvegarde est protégée par mot de passe ; saisis le mot de passe."
+    )
     val syncConflictDetected = L10n(
         "Senkronizasyon çakışması algılandı.",
         "تم اكتشاف تعارض في المزامنة.",
