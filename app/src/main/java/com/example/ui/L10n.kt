@@ -165,13 +165,6 @@ object UiText {
     val cancel = L10n("İptal", "إلغاء", "Cancel", "Abbrechen", "Annuler")
 
     // ------------------------------------------------------- bildirim / hata
-    val notificationPermissionNeeded = L10n(
-        "Hatırlatıcıları alabilmek için bildirim iznine ihtiyacımız var",
-        "نحتاج إذن الإشعارات لتصلك التذكيرات",
-        "We need notification permission to send you reminders",
-        "Wir benötigen die Benachrichtigungsberechtigung für Erinnerungen",
-        "Nous avons besoin de l'autorisation de notifications pour les rappels"
-    )
     val wrongPassword = L10n(
         "Yanlış parola",
         "كلمة مرور خاطئة",

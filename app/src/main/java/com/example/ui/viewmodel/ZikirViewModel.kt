@@ -764,11 +764,6 @@ class ZikirViewModel(
         }
     }
 
-    fun toggleFullScreenTap() {
-        viewModelScope.launch {
-            updateSettingsSafely { it.copy(fullScreenTap = !it.fullScreenTap) }
-        }
-    }
 
     fun toggleKeepAwake() {
         viewModelScope.launch {
@@ -788,9 +783,6 @@ class ZikirViewModel(
         _uiState.update { it.copy(showRoundModal = show) }
     }
 
-    fun toggleSidebar(open: Boolean) {
-        _uiState.update { it.copy(isSidebarOpen = open) }
-    }
 
     fun toggleZenMode(enabled: Boolean? = null) {
         _uiState.update { current ->
@@ -799,13 +791,6 @@ class ZikirViewModel(
         }
     }
 
-    fun setCounterTexture(texture: String) {
-        viewModelScope.launch {
-            val allowed = setOf("none", "geometric", "kaaba", "floral", "tasbih", "stars")
-            val safe = if (texture in allowed) texture else "geometric"
-            updateSettingsSafely { it.copy(counterTexture = safe) }
-        }
-    }
 
     fun setFontScale(scale: Float) {
         viewModelScope.launch {
@@ -841,11 +826,6 @@ class ZikirViewModel(
         }
     }
 
-    fun toggleAutoReorder() {
-        viewModelScope.launch {
-            updateSettingsSafely { it.copy(autoReorderSettings = !it.autoReorderSettings) }
-        }
-    }
 
     fun incrementSettingUsage(category: String) {
         viewModelScope.launch {
