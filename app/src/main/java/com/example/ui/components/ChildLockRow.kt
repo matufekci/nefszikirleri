@@ -238,7 +238,7 @@ private fun ChildLockMathDialog(lang: String, onDismiss: () -> Unit, onSuccess: 
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(strings.dismiss, color = colors.textMuted)
+                Text(strings.cancel, color = colors.textMuted)
             }
         }
     )

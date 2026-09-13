@@ -16,6 +16,7 @@ import com.example.util.EveningReminderMessages
 import com.example.util.NumberFormatter
 import com.example.util.NotificationScheduler
 import java.util.Calendar
+import kotlinx.coroutines.launch
 
 /**
  * Günlük hedef hatırlatıcısı (ayar gerektirmez, her kurulumda aktiftir):
