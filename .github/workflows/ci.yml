@@ -159,6 +159,17 @@ jobs:
         run: ./gradlew assembleDebug -x test --stacktrace 2>&1 | tee build-apk-only.log
         continue-on-error: true
 
+      # Log/artifact depolari erisilemez oldugunda derleyici hatalari
+      # annotation olarak da gorunur (check-runs API'sinden okunabilir).
+      - name: Derleyici hatalarini annotation olarak bildir
+        if: always()
+        run: |
+          if [ -f build-apk-only.log ]; then
+            grep -E "^e: " build-apk-only.log | head -30 | while IFS= read -r line; do
+              echo "::error::${line}"
+            done
+          fi
+
       - name: Upload debug APK
         if: always()
         uses: actions/upload-artifact@v4
