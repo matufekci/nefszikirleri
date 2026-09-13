@@ -14,6 +14,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Bildirim tap UX'i: hatirlatma bildirimine dokunan kullanici
+        // dogrudan zikirc (sayac) sekmesine iner.
+        intent.getStringExtra("open_tab")?.let { viewModel.setTab(it) }
         enableEdgeToEdge()
 
         setContent {

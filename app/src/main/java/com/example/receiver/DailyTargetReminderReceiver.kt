@@ -106,6 +106,7 @@ class DailyTargetReminderReceiver : BroadcastReceiver() {
 
                 val launchIntent = Intent(context, MainActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    putExtra("open_tab", "zikir")
                 }
                 val notificationId =
                     if (type == TYPE_EVENING) NOTIFICATION_ID_EVENING else NOTIFICATION_ID_NUDGE
