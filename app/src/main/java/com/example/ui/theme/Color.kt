@@ -378,7 +378,7 @@ object AppPalettes {
         // Black family -> Siyah
         "siyah" to Siyah, "obsidian" to Siyah, "black" to Siyah,
         "pembe" to PembeLux, "pembe_lux" to PembeLux, "pink" to PembeLux,
-        "rose" to PembeLux, "pinky" to PembeLux,
+        "pinky" to PembeLux,
         "oniks" to Siyah, "oled" to Siyah, "pure_black" to Siyah
     )
 

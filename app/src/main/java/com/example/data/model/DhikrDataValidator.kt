@@ -217,8 +217,8 @@ object DhikrDataValidator {
         // Canonical 3 + legacy 10 + aliases for backward compat (must stay in sync with Color.kt + firestore.rules)
         val ALLOWED_THEMES = setOf(
             // Canonical (new)
-            "hadra_gunduz", "hadra_gece", "siyah",
-            "beyaz", "yesil", "black",
+            "hadra_gunduz", "hadra_gece", "siyah", "pembe_lux",
+            "beyaz", "yesil", "black", "pembe", "pink", "pinky",
             // Legacy (old 10)
             "emerald", "night", "rose", "olive", "light", "obsidian", "kisve", "turq", "amethyst", "sahara",
             // Additional legacy aliases
