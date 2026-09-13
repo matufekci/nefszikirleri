@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -18,10 +17,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.graphics.Color
+import com.example.ui.components.AnimatedIconSplash
+import kotlinx.coroutines.delay
 import com.example.ui.components.SpiritualAmbientBackground
+import com.example.ui.components.SyncConflictDialog
 import com.example.data.model.AppStrings
 import com.example.ui.components.BadgeCelebrationDialog
 import com.example.ui.components.DhikrBottomBar
@@ -57,16 +66,41 @@ import com.example.ui.theme.NefsZikirTheme
 import com.example.ui.viewmodel.ZikirViewModel
 import com.example.util.rememberShouldReduceMotion
 
+// statusBarsIgnoringVisibility deneysel (ExperimentalLayoutApi) isaretli.
+// Bu API'yi bilerek kullaniyoruz: tam ekran modunda durum cubugu gizlense
+// de ayni yuksekligi raporlamasi gerekiyor, aksi halde ust bar zipliyor.
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MainApp(viewModel: ZikirViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    // Bulut/yerel çakışması. Bu akış eskiden HİÇBİR yerde izlenmiyordu;
+    // diyalog bu yüzden hiç görünmüyor, "Geri Yükle" sessizce hiçbir şey
+    // yüklemeden bitiyordu.
+    val syncConflict by viewModel.syncConflictState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val shouldReduceMotion = rememberShouldReduceMotion(state.isZenMode)
+    val shouldReduceMotion = rememberShouldReduceMotion()
 
     // SharedPreferences to track if user completed the initial intro onboarding
     val prefs = remember { context.getSharedPreferences("nefs_app_prefs", Context.MODE_PRIVATE) }
     var showIntro by remember {
         mutableStateOf(!prefs.getBoolean("intro_completed", false))
+    }
+
+    // Bildirimler ayarsız ve otomatiktir (tempo matematiği + hareketsizlik ağı).
+    // Android 13+ izni ilk açılışta bir kez istenir; ret halinde bildirimler
+    // sessizce devre dışı kalır, uygulama çalışmaya devam eder.
+    val notificationPermissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { /* sonuc bilincli olarak islenmiyor */ }
+    LaunchedEffect(Unit) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.POST_NOTIFICATIONS
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 
     // Keep screen awake effect
@@ -101,15 +135,28 @@ fun MainApp(viewModel: ZikirViewModel) {
             )
         } else {
             SpiritualAmbientBackground {
-                if (!state.isHydrated) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            color = colors.primary
-                        )
+                // Splash minimum kalış süresi: hızlı cihazda da başlık tam
+                // görünür ve rahat okunacak kadar ekranda kalır; hydration
+                // daha uzun sürerse bitişini bekler (içerik ondan önce
+                // gösterilemez). 3000ms = başlık ~1,3sn'de tam + ~1,7sn okuma.
+                val splashStart = remember { System.currentTimeMillis() }
+                var showSplash by remember { mutableStateOf(true) }
+                LaunchedEffect(state.isHydrated) {
+                    if (state.isHydrated) {
+                        val elapsed =
+                            (System.currentTimeMillis() - splashStart).coerceAtLeast(0L)
+                        val remaining = (3000L - elapsed).coerceAtLeast(0L)
+                        delay(remaining)
+                        showSplash = false
                     }
+                }
+                if (showSplash) {
+                    AnimatedIconSplash(
+                        primary = colors.primary,
+                        textColor = colors.text,
+                        title = strings.title,
+                        reduceMotion = shouldReduceMotion
+                    )
                 } else {
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                         val isWideScreen = maxWidth >= 600.dp
@@ -117,15 +164,42 @@ fun MainApp(viewModel: ZikirViewModel) {
                     Scaffold(
                         topBar = {
                             // Üstte sadece güvenli durum çubuğu boşluğu (Safe status bar insets)
-                            Spacer(modifier = Modifier.statusBarsPadding())
+                            //
+                            // ONEMLI: statusBarsPadding() KULLANILMIYOR. Tam ekran (zen)
+                            // modunda sistem barlari gizlendigi icin statusBarsPadding
+                            // sifira cokuyor ve tum icerik bir anda yukari zipliyordu.
+                            // statusBarsIgnoringVisibility, bar gizli olsa da ayni
+                            // yuksekligi raporlar; boylece ust barin yeri sabit kalir.
+                            Spacer(
+                                modifier = Modifier.windowInsetsPadding(
+                                    WindowInsets.statusBarsIgnoringVisibility
+                                )
+                            )
                         },
                         bottomBar = {
-                            if (!isWideScreen && !state.isZenMode) {
-                                DhikrBottomBar(
-                                    currentTab = state.tab,
-                                    lang = state.settings.lang,
-                                    onTabSelected = { viewModel.setTab(it) }
-                                )
+                            if (!isWideScreen) {
+                                // Alt sekmeler tam ekrana gecince ANI kaybolmasin;
+                                // suzulerek asagi insin. Aksi halde ekranin alt
+                                // boslugu bir anda buyuyor ve gecis "keskin"
+                                // gorunuyordu.
+                                // Zen geçişinde sekme çubuğu EN SON sıyrılan parçadır:
+                                // önce günlük hedef kartı (0 ms), sonra eylem butonları
+                                // (120 ms), en son sekmeler (240 ms) — yumuşak sıralı geçiş.
+                                AnimatedVisibility(
+                                    visible = !state.isZenMode,
+                                    enter = fadeIn(tween(300, delayMillis = 200)) + slideInVertically(
+                                        tween(420, delayMillis = 200, easing = FastOutSlowInEasing)
+                                    ) { it / 2 },
+                                    exit = fadeOut(tween(480, delayMillis = 240)) + slideOutVertically(
+                                        tween(560, delayMillis = 240, easing = FastOutSlowInEasing)
+                                    ) { it / 2 }
+                                ) {
+                                    DhikrBottomBar(
+                                        currentTab = state.tab,
+                                        lang = state.settings.lang,
+                                        onTabSelected = { viewModel.setTab(it) }
+                                    )
+                                }
                             }
                         },
                         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
@@ -177,6 +251,21 @@ fun MainApp(viewModel: ZikirViewModel) {
                     }
 
                     // MODALS & CELEBRATIONS
+
+            // Bulut yedeği bulundu / çakışma: kullanıcıya NE YAPILACAĞI SORULUR.
+            // (Google girişi sonrası otomatik çalışır; sekmeden bağımsız
+            // görünebilmesi için kök composable'da tutuluyor.)
+            syncConflict?.let { conflict ->
+                SyncConflictDialog(
+                    lang = state.settings.lang,
+                    remoteBackupTimestamp = conflict.lastSyncedAt,
+                    onDismissRequest = { viewModel.dismissSyncConflict() },
+                    onKeepLocal = { viewModel.resolveConflictWithLocalOverwrite() },
+                    onUseRemote = { viewModel.resolveConflictWithRemote() },
+                    onMerge = { viewModel.resolveConflictWithMerge() }
+                )
+            }
+
             state.badgeCelebrationData?.let { badge ->
                 BadgeCelebrationDialog(
                     badge = badge,
@@ -198,12 +287,14 @@ fun MainApp(viewModel: ZikirViewModel) {
             }
 
             state.infoModalZikirId?.let { zikirId ->
-                val targetCount = state.zikirs.find { it.id == zikirId }?.target ?: 0L
+                val infoZikir = state.zikirs.find { it.id == zikirId }
                 ZikirInfoDialog(
                     zikirId = zikirId,
                     lang = state.settings.lang,
-                    targetCount = targetCount,
-                    onDismiss = { viewModel.openInfoModal(null) }
+                    targetCount = infoZikir?.target ?: 0L,
+                    onDismiss = { viewModel.openInfoModal(null) },
+                    startedAt = infoZikir?.startedAt,
+                    completedAt = infoZikir?.completedAt
                 )
             }
 

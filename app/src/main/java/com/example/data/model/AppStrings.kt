@@ -83,8 +83,6 @@ interface IUiTranslationsPart1 {
     val counterUp: String
     val dailyTargetTitle: String
     val dailyTargetLabel: String
-    val hapticFeedback: String
-    val hapticFeedbackDesc: String
     val keepAwake: String
     val keepAwakeDesc: String
     val remindersTitle: String
@@ -111,7 +109,6 @@ interface IUiTranslationsPart2 {
     val inactivityAlertOn: String
     val inactivityAlertOff: String
     val inactivityNotifTitle: String
-    val inactivityNotifBody: String
     val hapticTitle: String
     val hapticDesc: String
     val hapticOn: String
@@ -184,7 +181,6 @@ interface IUiTranslationsPart3 {
     val activeLevel: String
     val general: String
     val levelFinished: String
-    val timeDensity: String
     val badgeTitle: String
     val recordCount: String
     val streakDay: String
@@ -238,12 +234,6 @@ interface IUiTranslationsPart3 {
     val range6Months: String
     val chartTitle: String
     val chartSubtitle: String
-    val timeDistTitle: String
-    val timeDistSubtitle: String
-    val timeSlotDawn: String
-    val timeSlotDay: String
-    val timeSlotEvening: String
-    val timeSlotNight: String
     val sequenceWarningTitle: String
     val sequenceWarningDesc: String
     val goToRequiredZikir: String
@@ -392,8 +382,6 @@ data class UiTranslationsPart1(
     override val counterUp: String,
     override val dailyTargetTitle: String,
     override val dailyTargetLabel: String,
-    override val hapticFeedback: String,
-    override val hapticFeedbackDesc: String,
     override val keepAwake: String,
     override val keepAwakeDesc: String,
     override val remindersTitle: String,
@@ -420,7 +408,6 @@ data class UiTranslationsPart2(
     override val inactivityAlertOn: String,
     override val inactivityAlertOff: String,
     override val inactivityNotifTitle: String,
-    override val inactivityNotifBody: String,
     override val hapticTitle: String,
     override val hapticDesc: String,
     override val hapticOn: String,
@@ -495,7 +482,6 @@ data class UiTranslationsPart3(
     override val activeLevel: String,
     override val general: String,
     override val levelFinished: String,
-    override val timeDensity: String,
     override val badgeTitle: String,
     override val recordCount: String,
     override val streakDay: String,
@@ -549,12 +535,6 @@ data class UiTranslationsPart3(
     override val range6Months: String,
     override val chartTitle: String,
     override val chartSubtitle: String,
-    override val timeDistTitle: String,
-    override val timeDistSubtitle: String,
-    override val timeSlotDawn: String,
-    override val timeSlotDay: String,
-    override val timeSlotEvening: String,
-    override val timeSlotNight: String,
     override val sequenceWarningTitle: String,
     override val sequenceWarningDesc: String,
     override val goToRequiredZikir: String,
@@ -704,8 +684,6 @@ object AppStrings {
             counterUp = "İleri Sayım (0'dan Hedefe)",
             dailyTargetTitle = "Günlük Hedef",
             dailyTargetLabel = "Günlük Zikir Miktarı",
-            hapticFeedback = "Dokunsal Titreşim",
-            hapticFeedbackDesc = "Her dokunuşta ve 33/100 katlarında tesbih hissi verir",
             keepAwake = "Ekranı Sürekli Açık Tut",
             keepAwakeDesc = "Zikir sekmesindeyken ekranın kararmasını önler",
             remindersTitle = "Bildirim ve Hatırlatıcılar",
@@ -731,7 +709,6 @@ object AppStrings {
             inactivityAlertOn = "24 Saat Uyarısını Aç",
             inactivityAlertOff = "24 Saat Uyarısını Kapat",
             inactivityNotifTitle = "⚠️ Zikir Vaktiniz Geçiyor",
-            inactivityNotifBody = "Son zikrinizin üzerinden 24 saat geçti. Günlük virdinizi aksatmamak için zikrinizi tamamlayınız.",
             hapticTitle = "Titreşimli Tesbih Hissi",
             hapticDesc = "Her dokunuşta ve 33/100 katlarında dokunsal titreşim verir.",
             hapticOn = "Titreşimi Aç",
@@ -803,7 +780,6 @@ object AppStrings {
             activeLevel = "Aktif Zikir",
             general = "Genel",
             levelFinished = "Tamamlananlar",
-            timeDensity = "Yoğunluk & Alışkanlık",
             badgeTitle = "Zikir & İstikrar Nişanları",
             recordCount = "Kayıt",
             streakDay = "Gün",
@@ -857,12 +833,6 @@ object AppStrings {
             range6Months = "6 Ay",
             chartTitle = "İlerleme Grafiği",
             chartSubtitle = "Dönemsel vird yoğunluğu",
-            timeDistTitle = "Vakit Dağılımı",
-            timeDistSubtitle = "Günün saatlerine göre dağılım",
-            timeSlotDawn = "Seher / Fecr (04:00 - 08:00)",
-            timeSlotDay = "Gündüz / İkindi (08:00 - 17:00)",
-            timeSlotEvening = "Akşam / Yatsı (17:00 - 23:00)",
-            timeSlotNight = "Gece / Teheccüd (23:00 - 04:00)",
             sequenceWarningTitle = "Zikir Sırası Uyarısı",
             sequenceWarningDesc = "{0}. zikre geçmeden evvel, önceki zikirlerin tamamlanması gereklidir.",
             goToRequiredZikir = "Kaldığım Zikre Git ({0})",
@@ -1058,8 +1028,6 @@ object AppStrings {
             counterUp = "عد تصاعدي (من الصفر إلى الهدف)",
             dailyTargetTitle = "هدف الورد اليومي",
             dailyTargetLabel = "كمية الذكر اليومية",
-            hapticFeedback = "الاهتزاز اللمسي",
-            hapticFeedbackDesc = "اهتزاز لطيف مع كل تسبيحة وعند الـ 33 والـ 100",
             keepAwake = "إبقاء الشاشة مفعلة",
             keepAwakeDesc = "يمنع انطفاء الشاشة أثناء التلاوة",
             remindersTitle = "التنبيهات والمواعيد",
@@ -1085,7 +1053,6 @@ object AppStrings {
             inactivityAlertOn = "تفعيل تنبيه ٢٤ ساعة",
             inactivityAlertOff = "إيقاف تنبيه ٢٤ ساعة",
             inactivityNotifTitle = "⚠️ مضى وقت الذكر",
-            inactivityNotifBody = "مضت 24 ساعة منذ آخر ورد. لا تدع الغفلة تقطعك وأكمل وردك اليومي.",
             hapticTitle = "الاهتزاز اللمسي للسبحة",
             hapticDesc = "اهتزاز خفيف مع كل تسبيحة وعند الـ 33 والـ 100.",
             hapticOn = "تفعيل الاهتزاز",
@@ -1157,7 +1124,6 @@ object AppStrings {
             activeLevel = "الذكر النشط",
             general = "عام",
             levelFinished = "أذكار مكتملة",
-            timeDensity = "كثافة الوقت وعادات الذكر",
             badgeTitle = "أوسمة الاستمرار والتسلسل",
             recordCount = "سجلات",
             streakDay = "أيام",
@@ -1211,12 +1177,6 @@ object AppStrings {
             range6Months = "٦ أشهر",
             chartTitle = "رسم التقدم",
             chartSubtitle = "كثافة الورد اليومي",
-            timeDistTitle = "توزيع الأوقات",
-            timeDistSubtitle = "توزيع الأذكار حسب أوقات اليوم",
-            timeSlotDawn = "السحر والفجر (٠٤:٠٠ - ٠٨:٠٠)",
-            timeSlotDay = "النهار والضحى (٠٨:٠٠ - ١٧:٠٠)",
-            timeSlotEvening = "المساء والمغرب (١٧:٠٠ - ٢٣:٠٠)",
-            timeSlotNight = "الليل والتهجد (٢٣:٠٠ - ٠٤:٠٠)",
             sequenceWarningTitle = "تنبيه ترتيب الأذكار والمقامات",
             sequenceWarningDesc = "وفقاً للآداب والترتيب الروحي المبارك، كل مرتبة هي تمهيد لما بعدها. يرجى إتمام الأوراد السابقة قبل الانتقال إلى المرتبة رقم {0}.",
             goToRequiredZikir = "الانتقال إلى الذكر المطلوب ({0})",
@@ -1412,8 +1372,6 @@ object AppStrings {
             counterUp = "Forward Count (0 to Target)",
             dailyTargetTitle = "Daily Vird Target",
             dailyTargetLabel = "Daily Dhikr Target",
-            hapticFeedback = "Haptic Vibration",
-            hapticFeedbackDesc = "Tactile pulse on every tap and intervals of 33/100",
             keepAwake = "Keep Screen Awake",
             keepAwakeDesc = "Prevents screen sleep while on Dhikr counter",
             remindersTitle = "Notifications & Reminders",
@@ -1439,7 +1397,6 @@ object AppStrings {
             inactivityAlertOn = "Enable 24h Alert",
             inactivityAlertOff = "Disable 24h Alert",
             inactivityNotifTitle = "⚠️ Dhikr Reminder",
-            inactivityNotifBody = "24 hours have passed since your last dhikr. Open the app to complete your daily vird.",
             hapticTitle = "Haptic Vibration Feedback",
             hapticDesc = "Vibrates on every tap and pulses at multiples of 33 and 100.",
             hapticOn = "Enable Haptics",
@@ -1511,7 +1468,6 @@ object AppStrings {
             activeLevel = "Active Dhikr",
             general = "Overall",
             levelFinished = "Finished Dhikrs",
-            timeDensity = "Time Density & Dhikr Habit",
             badgeTitle = "Sequence & Consistency Badges",
             recordCount = "Records",
             streakDay = "Days",
@@ -1565,12 +1521,6 @@ object AppStrings {
             range6Months = "6 Months",
             chartTitle = "Progress Chart",
             chartSubtitle = "Recitation volume",
-            timeDistTitle = "Time Distribution",
-            timeDistSubtitle = "Distribution by time of day",
-            timeSlotDawn = "Dawn / Fajr (04:00 - 08:00)",
-            timeSlotDay = "Daytime / Asr (08:00 - 17:00)",
-            timeSlotEvening = "Evening / Maghrib (17:00 - 23:00)",
-            timeSlotNight = "Night / Tahajjud (23:00 - 04:00)",
             sequenceWarningTitle = "Sequence Order Required",
             sequenceWarningDesc = "Before reciting Dhikr {0}, previous dhikrs must be completed.",
             goToRequiredZikir = "Go to Active Dhikr ({0})",
@@ -1766,8 +1716,6 @@ object AppStrings {
             counterUp = "Vorwärts (0 zum Ziel)",
             dailyTargetTitle = "Tagesziel",
             dailyTargetLabel = "Tägliche Dhikr-Menge",
-            hapticFeedback = "Haptisches Feedback",
-            hapticFeedbackDesc = "Vibriert bei jedem Tastendruck und bei 33/100",
             keepAwake = "Bildschirm anlassen",
             keepAwakeDesc = "Verhindert die Bildschirmsperre",
             remindersTitle = "Benachrichtigungen",
@@ -1793,7 +1741,6 @@ object AppStrings {
             inactivityAlertOn = "24h-Warnung Aktivieren",
             inactivityAlertOff = "24h-Warnung Deaktivieren",
             inactivityNotifTitle = "⚠️ Dhikr-Zeit verstreicht",
-            inactivityNotifBody = "Seit Ihrem letzten Dhikr sind 24 Stunden vergangen. Setzen Sie Ihren Vird fort.",
             hapticTitle = "Haptisches Feedback",
             hapticDesc = "Vibriert bei jedem Tastendruck und bei 33/100.",
             hapticOn = "Vibration Aktivieren",
@@ -1865,7 +1812,6 @@ object AppStrings {
             activeLevel = "Aktiver Dhikr",
             general = "Gesamt",
             levelFinished = "Beendete Dhikrs",
-            timeDensity = "Zeitdichte & Dhikr-Gewohnheit",
             badgeTitle = "Sequenz- & Beständigkeitsabzeichen",
             recordCount = "Einträge",
             streakDay = "Tage",
@@ -1919,12 +1865,6 @@ object AppStrings {
             range6Months = "6 Monate",
             chartTitle = "Fortschrittsdiagramm",
             chartSubtitle = "Rezitationsvolumen",
-            timeDistTitle = "Zeitverteilung",
-            timeDistSubtitle = "Verteilung nach Tageszeiten",
-            timeSlotDawn = "Morgengrauen (04:00 - 08:00)",
-            timeSlotDay = "Tagsüber (08:00 - 17:00)",
-            timeSlotEvening = "Abend (17:00 - 23:00)",
-            timeSlotNight = "Nacht (23:00 - 04:00)",
             sequenceWarningTitle = "Reihenfolge-Warnung",
             sequenceWarningDesc = "In der spirituellen Disziplin baut jede Stufe auf der vorherigen auf. Bevor Sie Stufe {0} rezitieren, müssen vorherige Stufen abgeschlossen sein.",
             goToRequiredZikir = "Zu aktiver Stufe gehen ({0})",
@@ -2110,7 +2050,7 @@ object AppStrings {
             settingsTitle = "Paramètres",
             language = "Choix de la Langue",
             langSelect = "Choix de la Langue",
-            themeTitle = "Thèmes Doux",
+            themeTitle = "Choix du thème",
             themeSelect = "Thèmes Doux",
             counterPrefsTitle = "Compteur, Vird & Rappels",
             countdownMode = "Mode Décompte",
@@ -2120,8 +2060,6 @@ object AppStrings {
             counterUp = "Compte Progressif (0 à Objectif)",
             dailyTargetTitle = "Objectif Quotidien",
             dailyTargetLabel = "Objectif Quotidien de Dhikr",
-            hapticFeedback = "Vibration Haptique",
-            hapticFeedbackDesc = "Impulsion tactile à chaque tap et aux multiples de 33/100",
             keepAwake = "Garder l'écran allumé",
             keepAwakeDesc = "Empêche l'extinction de l'écran pendant le dhikr",
             remindersTitle = "Notifications et Rappels",
@@ -2147,7 +2085,6 @@ object AppStrings {
             inactivityAlertOn = "Activer l'Alerte 24h",
             inactivityAlertOff = "Désactiver l'Alerte 24h",
             inactivityNotifTitle = "⚠️ Rappel de Vird",
-            inactivityNotifBody = "24 heures se sont écoulées depuis votre dernier dhikr. Complétez votre vird quotidien.",
             hapticTitle = "Vibration Haptique",
             hapticDesc = "Vibre à chaque tap et par pulsation à 33 et 100.",
             hapticOn = "Activer la Vibration",
@@ -2219,7 +2156,6 @@ object AppStrings {
             activeLevel = "Dhikr Actif",
             general = "Général",
             levelFinished = "Dhikrs terminés",
-            timeDensity = "Densité Temporelle & Habitude de Dhikr",
             badgeTitle = "Badges de Séquence et de Régularité",
             recordCount = "Enregistrements",
             streakDay = "Jours",
@@ -2273,12 +2209,6 @@ object AppStrings {
             range6Months = "6 Mois",
             chartTitle = "Graphique de progression",
             chartSubtitle = "Volume de récitation",
-            timeDistTitle = "Distribution horaire",
-            timeDistSubtitle = "Répartition selon les heures du jour",
-            timeSlotDawn = "Aube (04:00 - 08:00)",
-            timeSlotDay = "Journée (08:00 - 17:00)",
-            timeSlotEvening = "Soirée (17:00 - 23:00)",
-            timeSlotNight = "Nuit (23:00 - 04:00)",
             sequenceWarningTitle = "Avertissement d'Ordre de Séquence",
             sequenceWarningDesc = "Selon la convenance spirituelle, chaque étape prépare à la suivante. Veuillez compléter les niveaux précédents avant le niveau {0}.",
             goToRequiredZikir = "Aller au Dhikr requis ({0})",

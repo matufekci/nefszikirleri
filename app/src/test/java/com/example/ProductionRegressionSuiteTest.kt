@@ -591,7 +591,7 @@ class ProductionRegressionSuiteTest {
         val results = coroutineScope {
             (1..20).map {
                 async(Dispatchers.Default) {
-                    AdaptiveReminderManager.tryReserveQuota(context)
+                    AdaptiveReminderManager.tryReserveQuota(context, 4)
                 }
             }.awaitAll()
         }

@@ -372,7 +372,7 @@ fun DhikrNavRail(
                                     fontSize = 11.5.sp
                                 ),
                                 textAlign = TextAlign.Center,
-                                maxLines = 1
+                                maxLines = 2
                             )
                         }
                     } else {
@@ -403,7 +403,7 @@ fun DhikrNavRail(
                                     fontSize = 11.5.sp
                                 ),
                                 textAlign = TextAlign.Center,
-                                maxLines = 1
+                                maxLines = 2
                             )
                         }
                     }

@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package com.example.ui.screens
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -198,9 +200,11 @@ fun DhikrListScreen(
                         .weight(1f)
                         .padding(vertical = 3.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .clickable {
-                            selectedTerkipForStatusDialog = zikir
-                        }
+                        // Uzun basınca başlangıç/bitiş tarihli detay diyaloğu açılır
+                        .combinedClickable(
+                            onClick = { selectedTerkipForStatusDialog = zikir },
+                            onLongClick = { selectedZikirForVirtueDialog = zikir }
+                        )
                         .testTag("list_zikir_card_${zikir.id}")
                 ) {
                     Column(
@@ -397,7 +401,9 @@ fun DhikrListScreen(
             zikirId = zikir.id,
             lang = state.settings.lang,
             targetCount = zikir.target,
-            onDismiss = { selectedZikirForVirtueDialog = null }
+            onDismiss = { selectedZikirForVirtueDialog = null },
+            startedAt = zikir.startedAt,
+            completedAt = zikir.completedAt
         )
     }
 }

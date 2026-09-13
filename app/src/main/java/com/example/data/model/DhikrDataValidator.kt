@@ -153,28 +153,34 @@ object DhikrDataValidator {
             throw IllegalArgumentException("Strict Restore Validation Error: Invalid Zikir count (${zikir.count}) for target (${zikir.target})")
         }
         
-        // invalid startedAt: if present and <= 0
-        if (zikir.startedAt != null && zikir.startedAt <= 0L) {
+        // BULUT/DOSYA YAZICISI `null` DEGERINI 0 OLARAK KAYDEDIYOR
+        // (ornegin SyncManager.backupToCloud: startedAt/completedAt ?: 0L).
+        // Bu yuzden 0 "bozuk veri" DEGIL, "alan yok" demektir ve null'a
+        // normalize edilir. Eskiden 0 geldigi anda throw edilirdi ve
+        // uygulama KENDI yazdigi yedegi "Invalid completedAt (0)" diyerek
+        // reddederdi; geri yukleme hic calismiyordu.
+        // NEGATIF zaman damgalari ise uygulamanin yazicisindan asla
+        // gelemez; bunlar gercekten bozuk veri olarak birakildi.
+        if (zikir.startedAt != null && zikir.startedAt < 0L) {
             throw IllegalArgumentException("Strict Restore Validation Error: Invalid startedAt (${zikir.startedAt})")
         }
-        // missing startedAt for count > 0
-        if (zikir.startedAt == null && zikir.count > 0L) {
-            throw IllegalArgumentException("Strict Restore Validation Error: Missing startedAt when count > 0")
-        }
-
-        // invalid completedAt: if present and <= 0 or before startedAt
-        if (zikir.completedAt != null && zikir.completedAt <= 0L) {
+        if (zikir.completedAt != null && zikir.completedAt < 0L) {
             throw IllegalArgumentException("Strict Restore Validation Error: Invalid completedAt (${zikir.completedAt})")
         }
-        if (zikir.startedAt != null && zikir.completedAt != null && zikir.completedAt < zikir.startedAt) {
-            throw IllegalArgumentException("Strict Restore Validation Error: completedAt is earlier than startedAt")
+        val startedAt = if (zikir.startedAt == 0L) null else zikir.startedAt
+        val completedAt = if (zikir.completedAt == 0L) null else zikir.completedAt
+
+        if (startedAt == null && zikir.count > 0L) {
+            throw IllegalArgumentException("Strict Restore Validation Error: Missing startedAt when count > 0")
         }
-        // missing completedAt for count >= target
-        if (zikir.completedAt == null && zikir.count >= zikir.target) {
+        if (completedAt == null && zikir.count >= zikir.target) {
             throw IllegalArgumentException("Strict Restore Validation Error: Missing completedAt when count >= target")
         }
+        if (startedAt != null && completedAt != null && completedAt < startedAt) {
+            throw IllegalArgumentException("Strict Restore Validation Error: completedAt is earlier than startedAt")
+        }
 
-        return zikir
+        return zikir.copy(startedAt = startedAt, completedAt = completedAt)
     }
 
     fun validateHistoryStrict(history: ZikirHistory): ZikirHistory {
@@ -211,8 +217,8 @@ object DhikrDataValidator {
         // Canonical 3 + legacy 10 + aliases for backward compat (must stay in sync with Color.kt + firestore.rules)
         val ALLOWED_THEMES = setOf(
             // Canonical (new)
-            "hadra_gunduz", "hadra_gece", "siyah",
-            "beyaz", "yesil", "black",
+            "hadra_gunduz", "hadra_gece", "siyah", "pembe_lux",
+            "beyaz", "yesil", "black", "pembe", "pink", "pinky",
             // Legacy (old 10)
             "emerald", "night", "rose", "olive", "light", "obsidian", "kisve", "turq", "amethyst", "sahara",
             // Additional legacy aliases

@@ -256,8 +256,22 @@ class SyncManager {
                 val id = parseIntStrict(m["id"], "zikirId")
                 val target = parseLongStrict(m["target"], "target")
                 val count = parseLongStrict(m["count"], "count")
-                val startedAt = if (m["startedAt"] != null && m["startedAt"] != "null") parseLongStrict(m["startedAt"], "startedAt") else null
-                val completedAt = if (m["completedAt"] != null && m["completedAt"] != "null") parseLongStrict(m["completedAt"], "completedAt") else null
+                val rawStarted = if (m["startedAt"] != null && m["startedAt"] != "null") parseLongStrict(m["startedAt"], "startedAt") else null
+                val rawCompleted = if (m["completedAt"] != null && m["completedAt"] != "null") parseLongStrict(m["completedAt"], "completedAt") else null
+                // BULUT YAZICISI `null` DEGERINI 0 OLARAK KAYDEDIYOR
+                // (backupToCloud: startedAt/completedAt ?: 0L). Bu yuzden 0 ya da
+                // negatif bir deger "bozuk" degil, "yok" demektir. Normallemeden
+                // once strict dogrulamaya sokarsak uygulama KENDI yazdigi yedegi
+                // "Invalid completedAt (0)" diyerek reddediyor ve geri yukleme
+                // hic calismiyordu.
+                // NOT: yalnizca 0 normalize edilir; NEGATIF degerler bilerek
+                // strict dogrulamaya duser ve orada reddedilir (bozuk veri).
+                var startedAt = if (rawStarted == 0L) null else rawStarted
+                var completedAt = if (rawCompleted == 0L) null else rawCompleted
+                // Eski yedeklerde 0 saklandigi icin eksik kalan capraz alanlari
+                // (esnek dogrulayiciyla ayni sekilde) geri kazan:
+                if (startedAt == null && count > 0L) startedAt = System.currentTimeMillis()
+                if (completedAt == null && count >= target) completedAt = startedAt ?: System.currentTimeMillis()
                 try {
                     com.example.data.model.DhikrDataValidator.validateZikirStrict(
                         Zikir(id = id, target = target, count = count, startedAt = startedAt, completedAt = completedAt)

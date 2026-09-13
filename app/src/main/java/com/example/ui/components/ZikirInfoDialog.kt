@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -45,7 +46,9 @@ fun ZikirInfoDialog(
     zikirId: Int,
     lang: String,
     targetCount: Long,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    startedAt: Long? = null,
+    completedAt: Long? = null
 ) {
     val context = LocalContext.current
     val colors = LocalAppColors.current
@@ -115,6 +118,35 @@ fun ZikirInfoDialog(
                 Spacer(modifier = Modifier.height(10.dp))
                 HorizontalDivider(color = colors.border)
                 Spacer(modifier = Modifier.height(10.dp))
+
+                // Başlangıç / Bitiş tarihleri (DB'de zaten tutuluyordu; burada
+                // görünür hale geldi — bitmemişse "devam ediyor").
+                if (startedAt != null || completedAt != null) {
+                    val dateFmt = androidx.compose.runtime.remember {
+                        java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM)
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "${com.example.ui.UiText.dateStart.get(lang)}: " +
+                                (startedAt?.let { dateFmt.format(java.util.Date(it)) } ?: "—"),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textMuted
+                        )
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Text(
+                            text = "${com.example.ui.UiText.dateEnd.get(lang)}: " +
+                                (completedAt?.let { dateFmt.format(java.util.Date(it)) }
+                                    ?: com.example.ui.UiText.dateOngoing.get(lang)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textMuted
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
 
                 Text(
                     text = strings.zikirInfoModalTitle,

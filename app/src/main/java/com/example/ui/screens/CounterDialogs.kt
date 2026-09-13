@@ -281,7 +281,7 @@ fun DailyTargetDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    listOf(1000L, 3000L, 5000L, 10000L, 20000L).forEach { target ->
+                    listOf(1000L, 3000L, 5000L, 10000L).forEach { target ->
                         val isSelected = settings.dailyTarget == target
                         Surface(
                             shape = RoundedCornerShape(10.dp),

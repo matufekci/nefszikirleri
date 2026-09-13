@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -89,7 +91,8 @@ fun QuickAccessDrawer(
                 color = colors.card,
                 shape = RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp),
                 modifier = Modifier
-                    .width(268.dp)
+                    .fillMaxWidth(0.85f)
+                    .widthIn(max = 268.dp)
                     .fillMaxHeight(0.85f)
                     .clickable(enabled = false) {}
                     .shadow(

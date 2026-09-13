@@ -116,7 +116,6 @@ class ZikirRepository(
     val recentHistory: Flow<List<ZikirHistory>> = historyDao.observeRecentHistory(50)
     val distinctActiveDates: Flow<List<String>> = historyDao.observeDistinctActiveDates()
     val totalRecited: Flow<Long> = historyDao.observeTotalRecited()
-    val allSlots: Flow<List<ReminderSlot>> = reminderDao.getAllSlots()
     val settings: Flow<AppSettings?> = settingsDao.getSettings()
 
     fun observeDailyStats(fromTimestamp: Long): Flow<List<DailyAggregate>> =
@@ -501,21 +500,5 @@ class ZikirRepository(
             )
             settingsDao.insertOrUpdate(finalSettings)
         }
-    }
-
-    suspend fun getAllSlotsList(): List<ReminderSlot> {
-        return reminderDao.getAllSlotsList()
-    }
-
-    suspend fun addReminderSlot(hour: Int, minute: Int) {
-        reminderDao.insert(ReminderSlot(hour = hour, minute = minute, isEnabled = true))
-    }
-
-    suspend fun updateReminderSlot(slot: ReminderSlot) {
-        reminderDao.update(slot)
-    }
-
-    suspend fun removeReminderSlot(id: Long) {
-        reminderDao.deleteById(id)
     }
 }

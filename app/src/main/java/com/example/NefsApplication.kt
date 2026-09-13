@@ -62,6 +62,30 @@ class NefsApplication : Application(), Configuration.Provider {
         super.onCreate()
         initializeAppCheck()
         scheduleDailyEvaluation(this)
+        scheduleInactivityVerseAlert()
+    }
+
+    /**
+     * Manevi hareketsizlik hatırlatıcısını yürürlüğe sokar: kullanıcı
+     * [com.example.util.AdaptiveReminderManager.INACTIVITY_TRIGGER_DAYS] gün boyunca
+     * zikir çekmezse 5 uyarı + 5 müjde ayetinden sıradaki ayet bildirim olarak gider.
+     * Alarm her zikirde tazelenir; alıcı tarafında gerçek hareketsizlik ayrıca doğrulanır.
+     */
+    private fun scheduleInactivityVerseAlert() {
+        try {
+            Class.forName("org.robolectric.RobolectricTestRunner")
+            return // Robolectric testlerinde alarm kurma
+        } catch (_: ClassNotFoundException) {
+            // normal çalışma
+        }
+        try {
+            com.example.util.NotificationScheduler(this).scheduleInactivityAlert(true)
+            com.example.util.NotificationScheduler(this).scheduleDailyTargetReminders()
+        } catch (e: Exception) {
+            if (BuildConfig.DEBUG) {
+                Log.e("NefsApplication", "Failed to schedule inactivity verse alert", e)
+            }
+        }
     }
 
     private fun initializeAppCheck() {
@@ -92,7 +116,7 @@ class NefsApplication : Application(), Configuration.Provider {
             }
 
             // If FirebaseApp is null or has no options, skip
-            if (firebaseApp.options.projectId.isBlank() || firebaseApp.options.projectId == "nefs-zikirleri" && firebaseApp.options.applicationId.contains("REDACTED")) {
+            if (firebaseApp.options.projectId.isNullOrBlank() || firebaseApp.options.projectId == "nefs-zikirleri" && firebaseApp.options.applicationId.contains("REDACTED")) {
                 // Check if it's dummy config
                 try {
                     val appId = firebaseApp.options.applicationId
@@ -146,7 +170,4 @@ class NefsApplication : Application(), Configuration.Provider {
             .setMinimumLoggingLevel(android.util.Log.INFO)
             .build()
 
-    private fun setupWorkManager() {
-        scheduleDailyEvaluation(this)
-    }
 }

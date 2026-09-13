@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import com.example.ui.UiText
+
 import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -55,7 +57,7 @@ fun CloudSection(
     var accountExpanded by rememberSaveable { mutableStateOf(false) }
 
     val headerTitle = if (currentUser != null) {
-        currentUser.displayName ?: "Google Hesabı"
+        currentUser.displayName ?: UiText.googleAccount.get(lang)
     } else {
         when (lang.lowercase()) {
             "ar" -> "النسخ الاحتياطي والمزامنة"
@@ -65,10 +67,11 @@ fun CloudSection(
             else -> "Yedekleme ve Senkronizasyon"
         }
     }
+    // Ayarlar başlıklarında alt başlık gösterilmiyor; sadece bağlı hesap bilgisi kalır.
     val headerSubtitle = if (currentUser != null) {
-        currentUser.email ?: "Bağlandı"
+        currentUser.email ?: UiText.connected.get(lang)
     } else {
-        getSettingsSummary("backup_and_sync", lang)
+        ""
     }
 
     Surface(
@@ -129,13 +132,15 @@ fun CloudSection(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Text(
-                            text = headerSubtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.textMuted,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        if (headerSubtitle.isNotBlank()) {
+                            Text(
+                                text = headerSubtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.textMuted,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
 
@@ -224,16 +229,16 @@ fun CloudSection(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Google ile Giriş Yap",
+                            text = UiText.signInWithGoogle.get(lang),
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
                         )
                     }
                 } else {
                     val lastSyncText = if (lastSyncTimestamp != null && lastSyncTimestamp > 0L) {
                         val sdf = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
-                        "Son Eşitleme: ${sdf.format(Date(lastSyncTimestamp))}"
+                        UiText.lastSyncAt.format(lang, sdf.format(Date(lastSyncTimestamp)))
                     } else {
-                        "Otomatik Eşitleme Aktif"
+                        UiText.autoSyncActive.get(lang)
                     }
 
                     Row(
@@ -299,7 +304,7 @@ fun CloudSection(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Buluta Yedekle",
+                                text = UiText.backupToCloud.get(lang),
                                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
                             )
                         }
@@ -325,7 +330,7 @@ fun CloudSection(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Geri Yükle",
+                                text = UiText.restore.get(lang),
                                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
                             )
                         }
