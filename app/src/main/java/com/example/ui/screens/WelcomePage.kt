@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -30,10 +29,7 @@ fun WelcomePage(
     haloAlpha: Float,
     shimmerRotation: Float,
     lang: String,
-    modifier: Modifier = Modifier,
-    onSelectLang: ((String) -> Unit)? = null,
-    onSignInGoogle: (() -> Unit)? = null,
-    isSignedIn: Boolean = false
+    modifier: Modifier = Modifier
 ) {
     val colors = LocalAppColors.current
     val strings = AppStrings.get(lang)
@@ -104,32 +100,5 @@ fun WelcomePage(
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-        // Karşılama ekranında YALNIZCA dil seçimi + Google girişi
-        if (onSelectLang != null) {
-            Spacer(modifier = Modifier.height(18.dp))
-            LanguageSelectionPage(
-                currentLang = lang,
-                onSelectLang = onSelectLang
-            )
-        }
-
-        if (onSignInGoogle != null) {
-            Spacer(modifier = Modifier.height(14.dp))
-            if (isSignedIn) {
-                Text(
-                    text = com.example.ui.UiText.welcomeSignedIn.get(lang),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.success,
-                    textAlign = TextAlign.Center
-                )
-            } else {
-                OutlinedButton(onClick = onSignInGoogle) {
-                    Text(
-                        text = com.example.ui.UiText.welcomeGoogle.get(lang),
-                        color = colors.text
-                    )
-                }
-            }
-        }
     }
 }

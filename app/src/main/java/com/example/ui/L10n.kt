@@ -63,9 +63,6 @@ object UiText {
     val adultCheckTitle = L10n("Yetişkin doğrulaması", "تحقق البالغين", "Adult verification", "Erwachsenen-Verifikation", "Vérification adulte")
     val adultCheckWrong = L10n("Yanlış cevap — kilit kalıyor.", "إجابة خاطئة — يبقى القفل.", "Wrong answer — still locked.", "Falsche Antwort — bleibt gesperrt.", "Réponse fausse — reste verrouillé.")
 
-    // ------------------------------------------------- karsilama
-    val welcomeGoogle = L10n("Google ile devam et", "المتابعة عبر Google", "Continue with Google", "Mit Google fortfahren", "Continuer avec Google")
-    val welcomeSignedIn = L10n("Google hesabı bağlı", "حساب Google متصل", "Google account connected", "Google-Konto verbunden", "Compte Google connecté")
 
     // ------------------------------------------------- tarihler
     val dateStart = L10n("Başlangıç", "البداية", "Start", "Beginn", "Début")
