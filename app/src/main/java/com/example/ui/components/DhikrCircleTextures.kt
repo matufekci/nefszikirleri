@@ -438,6 +438,71 @@ object LuxuryCirclePalettes {
                 )
             )
 
+            // PEMBE LÜKS • Açık pudra zemin + ahududu/roze altın çember
+            "pembe_lux", "pembe", "pink", "pinky" -> DhikrCirclePalette(
+                effectType = CircleEffectType.ROSE_PETAL_AURA,
+                outerBezel = listOf(
+                    Color(0xFFD6367F),
+                    Color(0xFFC08A3E),
+                    Color(0xFFE56FA8),
+                    Color(0xFFFBD3E3),
+                    Color(0xFFB02568),
+                    Color(0xFFD6367F)
+                ),
+                innerDisc = listOf(
+                    Color(0xFFFFFFFF),
+                    Color(0xFFFFF1F6),
+                    Color(0xFFFBD3E3)
+                ),
+                innerBorder = Color(0xFFF3B8D0),
+                baseTrack = Color(0xFFF8C3D9).copy(alpha = 0.50f),
+                baseTrackLight = Color(0xFFFBD3E3).copy(alpha = 0.70f),
+                baseTrackDark = Color(0xFFE593B8).copy(alpha = 0.55f),
+                specularHighlight = Color(0xFFFFFFFF).copy(alpha = 0.80f),
+                outerRimHighlight = Color(0xFFFFFFFF).copy(alpha = 0.70f),
+                innerRimHighlight = Color(0xFFFFFFFF).copy(alpha = 0.45f),
+                progressArc = listOf(
+                    Color(0xFFD6367F),
+                    Color(0xFFE56FA8),
+                    Color(0xFFF28CBB),
+                    Color(0xFFC08A3E),
+                    Color(0xFFE3B36A),
+                    Color(0xFFFFF7FB)
+                ),
+                progressBloom = listOf(
+                    Color(0xFFD6367F).copy(alpha = 0.30f),
+                    Color(0xFFE56FA8).copy(alpha = 0.50f),
+                    Color(0xFFF28CBB).copy(alpha = 0.65f),
+                    Color(0xFFE3B36A).copy(alpha = 0.75f),
+                    Color(0xFFFFE9F2).copy(alpha = 0.85f)
+                ),
+                liquidWave = listOf(
+                    Color.Transparent,
+                    Color(0xFFE56FA8).copy(alpha = 0.45f),
+                    Color(0xFFFFFFFF).copy(alpha = 0.90f),
+                    Color(0xFFFBD3E3).copy(alpha = 0.60f),
+                    Color.Transparent
+                ),
+                tipGlow = listOf(
+                    Color(0xFFFFE9F2).copy(alpha = 0.90f),
+                    Color(0xFFD6367F).copy(alpha = 0.50f),
+                    Color.Transparent
+                ),
+                tipCore = Color(0xFFFFF7FB),
+                arabicText = Color(0xFFC08A3E),
+                countText = Color(0xFF471D33),
+                subText = Color(0xFF8C5A72),
+                badgeBg = Color(0xFFD6367F).copy(alpha = 0.12f),
+                badgeBorder = Color(0xFFD6367F).copy(alpha = 0.40f),
+                badgeText = Color(0xFFB02568),
+                ambientGlow = listOf(
+                    Color(0xFFE56FA8).copy(alpha = 0.22f),
+                    Color(0xFFD6367F).copy(alpha = 0.14f),
+                    Color(0xFFE3B36A).copy(alpha = 0.10f),
+                    Color.Transparent
+                )
+            )
+
             else -> get(com.example.ui.theme.AppPalettes.HadraGece)
         }
     }

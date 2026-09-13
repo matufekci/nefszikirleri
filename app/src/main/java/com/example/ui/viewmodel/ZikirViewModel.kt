@@ -525,6 +525,7 @@ class ZikirViewModel(
     }
 
     fun decrementCount(amount: Long) {
+        if (isChildLocked()) return
         val state = _uiState.value
         val currentZikir = state.currentZikir ?: return
         if (currentZikir.count <= 0) return

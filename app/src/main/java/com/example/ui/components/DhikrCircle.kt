@@ -72,6 +72,16 @@ fun DhikrCircle(
         onTap = onTap,
         shouldReduceMotion = shouldReduceMotion
     )
+    // Sayaç HER ARTIŞTA tap nabzını oynat — çember dışı dokunuşlar
+    // (zen modda ekranın herhangi bir yeri, manuel ekleme) dahil.
+    val prevDisplayCount = remember { mutableStateOf(displayCount) }
+    androidx.compose.runtime.LaunchedEffect(displayCount) {
+        if (displayCount > prevDisplayCount.value) {
+            animState.playTapPulse()
+        }
+        prevDisplayCount.value = displayCount
+    }
+
     val animatedProgress by animState.animatedProgress
     val breathingAura by animState.breathingAura
     val bezelShimmerAngle by animState.bezelShimmerAngle
@@ -112,7 +122,10 @@ fun DhikrCircle(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) {
-                    animState.triggerTap()
+                    // Tap animasyonu çembere özel değil: sayı her nereden
+                    // artarsa artsın (çember, zen her-yer, manuel) aşağıdaki
+                    // LaunchedEffect nabzı tetikler.
+                    onTap()
                 }
                 .testTag("giant_tap_button"),
             contentAlignment = Alignment.Center

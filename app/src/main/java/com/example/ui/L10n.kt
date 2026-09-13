@@ -60,8 +60,6 @@ object UiText {
         "Activé : le compteur ignore les appuis ; les enfants ne peuvent rien modifier."
     )
     val lockHoldHint = L10n("Kilidi açmak için 3 sn basılı tut", "اضغط مطولاً ٣ ثوانٍ لفتح القفل", "Hold 3 s to unlock", "3 s halten zum Entsperren", "Maintenir 3 s pour déverrouiller")
-    val adultCheckTitle = L10n("Yetişkin doğrulaması", "تحقق البالغين", "Adult verification", "Erwachsenen-Verifikation", "Vérification adulte")
-    val adultCheckWrong = L10n("Yanlış cevap — kilit kalıyor.", "إجابة خاطئة — يبقى القفل.", "Wrong answer — still locked.", "Falsche Antwort — bleibt gesperrt.", "Réponse fausse — reste verrouillé.")
 
     // ------------------------------------------------- tarihler
     val dateStart = L10n("Başlangıç", "البداية", "Start", "Beginn", "Début")

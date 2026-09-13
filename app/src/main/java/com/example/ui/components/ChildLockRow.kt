@@ -4,7 +4,6 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,16 +14,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,7 +37,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.data.model.AppStrings
 import com.example.ui.UiText
 import com.example.ui.theme.LocalAppColors
 import com.example.util.AdaptiveReminderManager
@@ -109,9 +104,9 @@ fun ChildLockRow(onChanged: () -> Unit) {
  */
 @Composable
 fun ChildLockBadge(lang: String, onUnlocked: () -> Unit) {
+    val contextForLock = LocalContext.current
     val colors = LocalAppColors.current
     var pressing by remember { mutableStateOf(false) }
-    var showMath by remember { mutableStateOf(false) }
     val progress by animateFloatAsState(
         targetValue = if (pressing) 1f else 0f,
         animationSpec = tween(durationMillis = 3000, easing = LinearEasing),
@@ -120,7 +115,8 @@ fun ChildLockBadge(lang: String, onUnlocked: () -> Unit) {
     LaunchedEffect(progress, pressing) {
         if (pressing && progress >= 0.999f) {
             pressing = false
-            showMath = true
+            ChildLockPrefs.setEnabled(contextForLock, false)
+            onUnlocked()
         }
     }
 
@@ -167,79 +163,4 @@ fun ChildLockBadge(lang: String, onUnlocked: () -> Unit) {
         )
     }
 
-    if (showMath) {
-        ChildLockMathDialog(
-            lang = lang,
-            onDismiss = { showMath = false },
-            onSuccess = {
-                showMath = false
-                onUnlocked()
-            }
-        )
-    }
-}
-
-/** Basit çarpma sorusuyla yetişkin doğrulaması. */
-@Composable
-private fun ChildLockMathDialog(lang: String, onDismiss: () -> Unit, onSuccess: () -> Unit) {
-    val context = LocalContext.current
-    val colors = LocalAppColors.current
-    val strings = AppStrings.get(lang)
-    val (a, b) = remember { (2..9).random() to (2..9).random() }
-    val correct = a * b
-    val options = remember {
-        val wrongs = mutableSetOf<Int>()
-        while (wrongs.size < 3) {
-            val w = correct + listOf(-9, -7, -5, 5, 7, 9, 11).random()
-            if (w != correct && w > 0) wrongs.add(w)
-        }
-        (listOf(correct) + wrongs.toList()).shuffled()
-    }
-    var wrongTry by remember { mutableStateOf(false) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = colors.card,
-        title = {
-            Text(UiText.adultCheckTitle.get(lang), color = colors.text)
-        },
-        text = {
-            Column {
-                Text(
-                    "$a × $b = ?",
-                    color = colors.text,
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    options.forEach { option ->
-                        OutlinedButton(onClick = {
-                            if (option == correct) {
-                                ChildLockPrefs.setEnabled(context, false)
-                                onSuccess()
-                            } else {
-                                wrongTry = true
-                            }
-                        }) {
-                            Text(option.toString(), color = colors.text)
-                        }
-                    }
-                }
-                if (wrongTry) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        UiText.adultCheckWrong.get(lang),
-                        color = colors.error,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(strings.cancel, color = colors.textMuted)
-            }
-        }
-    )
 }

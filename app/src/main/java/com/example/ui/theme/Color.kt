@@ -313,37 +313,37 @@ object AppPalettes {
         )
     )
 
-    // 4. PEMBE LÜKS (Kadınlar için: derin erik zemin, canlı pembe + roze altın,
-    //    yüksek parlama/metalik yansıma ile ışıltılı "cicili bicili" his)
+    // 4. PEMBE LÜKS (AÇIK TON: pudra/gül zemini, ahududu primary + roze altın;
+    //    ışıltılı "cicili bicili" ama ferah, gündüz kullanıma uygun)
     val PembeLux = AppThemeColors(
         id = "pembe_lux",
         name = "Pembe Lüks",
-        bg = Color(0xFF241019), // deri erik / bordo-kakül zemin
-        surface = Color(0xFF2F1622),
-        card = Color(0xFF3B1B2C),
-        inputBg = Color(0xFF4A2439),
-        primary = Color(0xFFEE6FAE), // canlı orkide pembesi
-        primaryVariant = Color(0xFFD14E93),
-        secondary = Color(0xFFF9A8CD),
-        gold = Color(0xFFE5B769), // roze altın vurgu
-        text = Color(0xFFFCEEF5),
-        textMuted = Color(0xFFD5A9C0),
-        border = Color(0xFFEE6FAE).copy(alpha = 0.38f),
+        bg = Color(0xFFFFF1F6), // pudra pembe zemin
+        surface = Color(0xFFFEE4EE),
+        card = Color(0xFFFBD3E3),
+        inputBg = Color(0xFFF8C3D9),
+        primary = Color(0xFFD6367F), // ahududu pembesi (açık zeminde okunur)
+        primaryVariant = Color(0xFFB02568),
+        secondary = Color(0xFFE56FA8),
+        gold = Color(0xFFC08A3E), // sıcak roze altın vurgu
+        text = Color(0xFF471D33), // koyu erik metin
+        textMuted = Color(0xFF8C5A72),
+        border = Color(0xFFD6367F).copy(alpha = 0.35f),
         success = Color(0xFF10B981),
         error = Color(0xFFEF4444),
-        isDark = true,
-        glowColor = Color(0xFFEE6FAE).copy(alpha = 0.30f),
-        themeStyle = ThemeStyle.OLED_GLOW,
-        isMetallic = true,
-        specularIntensity = 0.90f,
-        glowIntensity = 0.40f,
-        reflectionColor = Color(0xFFF9CFE4),
+        isDark = false,
+        glowColor = Color(0xFFE56FA8).copy(alpha = 0.25f),
+        themeStyle = ThemeStyle.GLASS_LIGHT,
+        isMetallic = false,
+        specularIntensity = 0.55f,
+        glowIntensity = 0.25f,
+        reflectionColor = Color(0xFFFFFFFF),
         actionShadow = ActionShadowSpec(
             elevation = 4.5.dp,
-            spotAlpha = 0.45f,
-            ambientAlpha = 0.22f,
-            spotColor = Color(0xFFEE6FAE),
-            ambientColor = Color(0xFF3B1B2C)
+            spotAlpha = 0.18f,
+            ambientAlpha = 0.10f,
+            spotColor = Color(0xFFD6367F),
+            ambientColor = Color(0xFFFBD3E3)
         )
     )
 

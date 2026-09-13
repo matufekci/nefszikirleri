@@ -69,93 +69,77 @@ fun AppearanceSection(
             strings = strings
         ) {
             val normalizedCurrent = AppPalettes.normalizeId(settings.themeName)
-            val chunks = AppPalettes.ALL.chunked(2)
-            chunks.forEachIndexed { rowIndex, rowList ->
-                if (rowIndex > 0) Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    rowList.forEach { palette ->
-                        val isSelected = normalizedCurrent == palette.id
+            // Alt alta İNCE kartlar: her satırda mini önizleme + switch,
+            // yükseklik switch'e göre kompakt tutulur.
+            AppPalettes.ALL.forEachIndexed { index, palette ->
+                if (index > 0) Spacer(modifier = Modifier.height(6.dp))
+                val isSelected = normalizedCurrent == palette.id
 
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(
-                                    if (isSelected) palette.primary.copy(alpha = 0.18f) else colors.inputBg
-                                )
-                                .border(
-                                    width = if (isSelected) 2.dp else 1.dp,
-                                    color = if (isSelected) palette.primary else colors.border,
-                                    shape = RoundedCornerShape(16.dp)
-                                )
-                                .clickable {
-                                    onIncrementUsage("theme")
-                                    onSetTheme(palette.id)
-                                    themeExpanded = false
-                                }
-                                .padding(vertical = 12.dp, horizontal = 10.dp)
-                                .testTag("theme_picker_${palette.id}")
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                // Mini tema önizlemesi: ufak dikdörtgen kart,
-                                // arka plan ve yazı rengi TEMANIN KENDİ renkleri —
-                                // kullanıcı seçmeden önce temayı sezer.
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(palette.bg)
-                                        .border(
-                                            1.dp,
-                                            palette.primary.copy(alpha = 0.6f),
-                                            RoundedCornerShape(10.dp)
-                                        )
-                                        .padding(vertical = 8.dp, horizontal = 6.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = UiText.themeName(palette.id, settings.lang),
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            fontWeight = FontWeight.Bold
-                                        ),
-                                        color = palette.primary,
-                                        textAlign = TextAlign.Center,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(4.dp))
-                                // Tema başına switch: açık olan switch, aktif temayı gösterir.
-                                // Tek seçimli olduğu için aktif temanın switch'i kapatılamaz
-                                // (bir tema her zaman aktif kalmalıdır).
-                                Switch(
-                                    checked = isSelected,
-                                    onCheckedChange = { on ->
-                                        if (on) {
-                                            onIncrementUsage("theme")
-                                            onSetTheme(palette.id)
-                                        }
-                                    },
-                                    colors = SwitchDefaults.colors(
-                                        checkedTrackColor = palette.primary,
-                                        checkedThumbColor = colors.card,
-                                        uncheckedTrackColor = colors.border,
-                                        uncheckedThumbColor = colors.textMuted
-                                    ),
-                                    modifier = Modifier.scale(0.8f)
-                                )
-                            }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (isSelected) palette.primary.copy(alpha = 0.14f) else colors.inputBg
+                        )
+                        .border(
+                            width = if (isSelected) 1.6.dp else 1.dp,
+                            color = if (isSelected) palette.primary else colors.border,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .clickable {
+                            onIncrementUsage("theme")
+                            onSetTheme(palette.id)
                         }
+                        .padding(vertical = 6.dp, horizontal = 10.dp)
+                        .testTag("theme_picker_${palette.id}"),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Mini tema önizlemesi: ufak dikdörtgen kart, arka plan ve
+                    // yazı rengi TEMANIN KENDİ renkleri — seçmeden önce sezersin.
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(palette.bg)
+                            .border(
+                                1.dp,
+                                palette.primary.copy(alpha = 0.6f),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(vertical = 5.dp, horizontal = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = UiText.themeName(palette.id, settings.lang),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = palette.primary,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
-                    if (rowList.size == 1) {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    // Tema başına switch: aktif temanın switch'i açıktır;
+                    // tek seçimli olduğu için kapatılamaz (bir tema her zaman aktif).
+                    Switch(
+                        checked = isSelected,
+                        onCheckedChange = { on ->
+                            if (on) {
+                                onIncrementUsage("theme")
+                                onSetTheme(palette.id)
+                            }
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedTrackColor = palette.primary,
+                            checkedThumbColor = colors.card,
+                            uncheckedTrackColor = colors.border,
+                            uncheckedThumbColor = colors.textMuted
+                        ),
+                        modifier = Modifier.scale(0.8f)
+                    )
                 }
             }
         }

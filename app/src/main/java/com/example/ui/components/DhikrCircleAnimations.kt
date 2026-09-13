@@ -35,7 +35,11 @@ data class DhikrCircleAnimationState(
     val tipLuster: State<Float>,
     val arabicGlowPulse: State<Float>,
     val arabicShimmerOffset: State<Float>,
-    val triggerTap: () -> Unit
+    val triggerTap: () -> Unit,
+    // Sadece görsel tap nabzını oynatır (sayaç artırmaz). Çember dışındaki
+    // dokunuşlar (zen her-yer, manuel ekleme) da aynı animasyonu tetiklesin
+    // diye sayaç artışından ayrı olarak çağrılabilir.
+    val playTapPulse: () -> Unit
 )
 
 /**
@@ -64,6 +68,8 @@ fun rememberDhikrCircleAnimations(
                 onTap()
             }
         }
+        // Reduced motion: görsel nabız yok
+        val playTapPulse: () -> Unit = remember { { } }
 
         return DhikrCircleAnimationState(
             animatedProgress = staticProgress,
@@ -77,7 +83,8 @@ fun rememberDhikrCircleAnimations(
             tipLuster = staticOne,
             arabicGlowPulse = staticOne,
             arabicShimmerOffset = staticZero,
-            triggerTap = triggerTap
+            triggerTap = triggerTap,
+            playTapPulse = playTapPulse
         )
     }
 
@@ -170,7 +177,7 @@ fun rememberDhikrCircleAnimations(
         label = "arabic_shimmer_offset"
     )
 
-    val triggerTap: () -> Unit = remember(onTap) {
+    val playTapPulse: () -> Unit = remember {
         {
             coroutineScope.launch {
                 tapScale.animateTo(0.962f, tween(35, easing = LinearEasing))
@@ -180,6 +187,12 @@ fun rememberDhikrCircleAnimations(
                 tapLuminescence.snapTo(1.0f)
                 tapLuminescence.animateTo(0f, tween(450, easing = FastOutSlowInEasing))
             }
+        }
+    }
+
+    val triggerTap: () -> Unit = remember(onTap, playTapPulse) {
+        {
+            playTapPulse()
             onTap()
         }
     }
@@ -196,6 +209,7 @@ fun rememberDhikrCircleAnimations(
         tipLuster = tipLuster,
         arabicGlowPulse = arabicGlowPulse,
         arabicShimmerOffset = arabicShimmerOffset,
-        triggerTap = triggerTap
+        triggerTap = triggerTap,
+        playTapPulse = playTapPulse
     )
 }

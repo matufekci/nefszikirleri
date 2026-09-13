@@ -28,10 +28,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.automirrored.rounded.List
 import androidx.compose.animation.core.tween
 import androidx.compose.material3.Card
@@ -193,10 +192,12 @@ fun DhikrCounterScreen(
                     }
                 }
         ) {
+            // Not: scroll yok — agirlıklı çember kutusu her iki modda da dikey
+            // olarak merkezlenir; zen'de alt bölüm sirilınca çember yumusakça
+            // ekranın tam ortasına süzülür.
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 14.dp, vertical = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -224,19 +225,29 @@ fun DhikrCounterScreen(
                 val progress = if (currentZikir.target > 0) (currentZikir.count.toFloat() / currentZikir.target.toFloat()).coerceIn(0f, 1f) else 0f
                 val transliteration = ZikirContent.getZikirTransliteration(currentZikir.id, state.settings.lang)
 
-                DhikrCircle(
-                    ringSize = calculatedRingSize,
-                    progress = progress,
-                    displayCount = currentZikir.count,
-                    targetCount = currentZikir.target,
-                    isCountdownMode = state.settings.countdownMode,
-                    arabicText = arabicText,
-                    transliteration = transliteration,
-                    lang = state.settings.lang,
-                    isZenMode = isZenMode,
-                    onTap = { viewModel.incrementCount(1) },
-                    modifier = Modifier.testTag("dhikr_circle_tap_area")
-                )
+                // Çember her iki modda AYNI boyutta kalır; alt bölüm zen'de
+                // sıyrıldıkça bu ağırlıklı kutu çemberi yumuşakça ekranın tam
+                // ortasına taşır (boyut sıçraması yok).
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    DhikrCircle(
+                        ringSize = calculatedRingSize,
+                        progress = progress,
+                        displayCount = currentZikir.count,
+                        targetCount = currentZikir.target,
+                        isCountdownMode = state.settings.countdownMode,
+                        arabicText = arabicText,
+                        transliteration = transliteration,
+                        lang = state.settings.lang,
+                        isZenMode = isZenMode,
+                        onTap = { viewModel.incrementCount(1) },
+                        modifier = Modifier.testTag("dhikr_circle_tap_area")
+                    )
+                }
                 Spacer(modifier = Modifier.height(4.dp))
 
                 // ==========================================
@@ -275,7 +286,7 @@ fun DhikrCounterScreen(
                                 SpiritualFlameIcon(tint = colors.gold, size = 14.dp)
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "${'$'}{strings.dailyTargetTitle}: ${'$'}{NumberFormatter.format(state.todayRecited, state.settings.lang)} / ${'$'}{NumberFormatter.format(dailyTarget, state.settings.lang)} (%${'$'}dailyPercent)",
+                                    text = "${strings.dailyTargetTitle}: ${NumberFormatter.format(state.todayRecited, state.settings.lang)} / ${NumberFormatter.format(dailyTarget, state.settings.lang)} (%$dailyPercent)",
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                                     color = colors.text
                                 )
