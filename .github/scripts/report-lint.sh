@@ -41,10 +41,31 @@ warn="$(count Warning)"
 
 # En sik tekrar eden sorun kimlikleri: sayiyi gormek yetmiyor, HANGI kuralin
 # tekrarladigini da gormek gerekiyor (log dosyalari bu ortamdan indirilemiyor).
+# Lint XML'i her niteligi AYRI SATIRA yaziyor (id, severity, message ...),
+# bu yuzden tek satirlik grep ile id+severity cifti yakalanmiyor. Asagidaki
+# awk hem cok satirli (gercek lint cikti) hem tek satirli bicimi isler:
+# <issue ile baslar, id/severity'yi biriktirir, satirda ">" gorunce yazar.
+issue_pairs() {
+  # Her <issue ...> blogunu tampona biriktir (cok satirli olabilir), tag
+  # kapaninca (satirda ">") ilk id= ve severity= degerlerini yaz.
+  # id, lint XML'inde ilk nitelik oldugu icin "ilk eslesme" dogru degeri verir.
+  awk '
+    /<issue/ { inissue = 1; buf = "" }
+    inissue {
+      buf = buf " " $0
+      if (index($0, ">") > 0) {
+        id = ""; sev = ""
+        if (match(buf, /id="[^"]*"/))       id  = substr(buf, RSTART + 4,  RLENGTH - 5)
+        if (match(buf, /severity="[^"]*"/)) sev = substr(buf, RSTART + 10, RLENGTH - 11)
+        if (id != "" && sev != "") print sev, id
+        inissue = 0
+      }
+    }
+  ' "$XML" 2>/dev/null
+}
+
 top_ids() {
-  grep -o '<issue[^>]*>' "$XML" 2>/dev/null \
-    | sed -n 's/.*id="\([^"]*\)".*severity="\([^"]*\)".*/\2 \1/p' \
-    | awk -v s="$1" '$1 == s { print $2 }' \
+  issue_pairs | awk -v s="$1" '$1 == s { print $2 }' \
     | sort | uniq -c | sort -rn | head -5 \
     | awk '{ printf "%s(%s) ", $2, $1 }'
 }
