@@ -66,7 +66,7 @@ issue_pairs() {
 
 top_ids() {
   issue_pairs | awk -v s="$1" '$1 == s { print $2 }' \
-    | sort | uniq -c | sort -rn | head -5 \
+    | sort | uniq -c | sort -rn | head -8 \
     | awk '{ printf "%s(%s) ", $2, $1 }'
 }
 
