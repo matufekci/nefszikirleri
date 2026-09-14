@@ -10,6 +10,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.ui.UiText
@@ -38,10 +39,14 @@ fun SyncConflictDialog(
     onUseRemote: () -> Unit,
     onMerge: () -> Unit
 ) {
-    val dateText = if (remoteBackupTimestamp > 0L) {
-        SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date(remoteBackupTimestamp))
-    } else {
-        "-"
+    // Her recomposition'da formatlayici + metin yeniden uretiliyordu.
+    // Deger ayni; sadece zamana bagli olarak bir kez hesaplanip saklaniyor.
+    val dateText = remember(remoteBackupTimestamp) {
+        if (remoteBackupTimestamp > 0L) {
+            SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date(remoteBackupTimestamp))
+        } else {
+            "-"
+        }
     }
 
     AlertDialog(

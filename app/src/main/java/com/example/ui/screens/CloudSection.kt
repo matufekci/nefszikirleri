@@ -14,6 +14,7 @@ import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -234,11 +235,15 @@ fun CloudSection(
                         )
                     }
                 } else {
-                    val lastSyncText = if (lastSyncTimestamp != null && lastSyncTimestamp > 0L) {
-                        val sdf = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
-                        UiText.lastSyncAt.format(lang, sdf.format(Date(lastSyncTimestamp)))
-                    } else {
-                        UiText.autoSyncActive.get(lang)
+                    // Formatlayici + metin her recomposition'da yeniden
+                    // uretiliyordu; deger ayni, hesap zaman damgasina gore saklaniyor.
+                    val lastSyncText = remember(lastSyncTimestamp, lang) {
+                        if (lastSyncTimestamp != null && lastSyncTimestamp > 0L) {
+                            val sdf = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+                            UiText.lastSyncAt.format(lang, sdf.format(Date(lastSyncTimestamp)))
+                        } else {
+                            UiText.autoSyncActive.get(lang)
+                        }
                     }
 
                     Row(
