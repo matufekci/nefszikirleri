@@ -1093,7 +1093,7 @@ class ZikirViewModel(
                     if (CloudErrorMapper.isCancelled(error)) {
                         onResult(false, null)
                     } else {
-                        val msg = CloudErrorMapper.resolve(
+                        val msg = CloudErrorMapper.resolveSignIn(
                             error,
                             _uiState.value.settings.lang,
                             strings.cloudGenericSignInError

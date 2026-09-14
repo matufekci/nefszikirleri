@@ -5,6 +5,8 @@ import com.example.data.backup.WrongPasswordException
 import com.example.data.cloud.CloudDataCorruptionException
 import com.example.data.cloud.NoCloudBackupException
 import com.example.data.cloud.SignInCancelledException
+import com.example.data.cloud.SignInErrorKind
+import com.example.data.cloud.SignInFailedException
 import com.example.ui.L10n
 import com.example.ui.UiText
 
@@ -83,6 +85,42 @@ object CloudErrorMapper {
         BackupErrorKind.PASSWORD_WRONG -> UiText.wrongPassword
         BackupErrorKind.CANCELLED -> UiText.cloudErrorCancelled
         BackupErrorKind.UNKNOWN -> null
+    }
+
+    /**
+     * Google ile giris hatalari icin cozum. Once `SignInFailedException`
+     * sinifina bakar (AuthManager'in urettigi tipli hata), bulamazsa genel
+     * bulut siniflandirmasina duser, o da olmazsa `fallback` kullanilir.
+     */
+    fun resolveSignIn(error: Throwable?, lang: String, fallback: String): String {
+        val kind = signInKind(error)
+        if (kind != null) {
+            textForSignIn(kind)?.let { return it.get(lang) }
+        }
+        return resolve(error, lang, fallback)
+    }
+
+    /** Zincirde `SignInFailedException` ara (sarmalanmis olabilir). */
+    fun signInKind(error: Throwable?): SignInErrorKind? {
+        var current: Throwable? = error
+        var hops = 0
+        while (current != null && hops < MAX_CAUSE_HOPS) {
+            hops++
+            if (current is SignInFailedException) return current.kind
+            current = current.cause
+        }
+        return null
+    }
+
+    fun textForSignIn(kind: SignInErrorKind): L10n? = when (kind) {
+        SignInErrorKind.CONFIG_BROKEN -> UiText.signInConfigBroken
+        SignInErrorKind.NO_ACCOUNT -> UiText.signInNoAccount
+        SignInErrorKind.SIGNIN_SETUP -> UiText.signInSetupError
+        SignInErrorKind.SIGNIN_RETRY -> UiText.signInRetry
+        SignInErrorKind.ACCOUNT_COLLISION -> UiText.signInAccountCollision
+        SignInErrorKind.USER_DISABLED -> UiText.signInUserDisabled
+        SignInErrorKind.NETWORK -> UiText.cloudErrorNetwork
+        SignInErrorKind.UNKNOWN -> null
     }
 
     private fun classifyByShape(t: Throwable): BackupErrorKind? {

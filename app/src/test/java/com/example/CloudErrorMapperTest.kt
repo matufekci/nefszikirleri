@@ -5,6 +5,8 @@ import com.example.data.backup.WrongPasswordException
 import com.example.data.cloud.CloudDataCorruptionException
 import com.example.data.cloud.NoCloudBackupException
 import com.example.data.cloud.SignInCancelledException
+import com.example.data.cloud.SignInErrorKind
+import com.example.data.cloud.SignInFailedException
 import com.example.ui.UiText
 import com.example.util.BackupErrorKind
 import com.example.util.CloudErrorMapper
@@ -137,5 +139,82 @@ class CloudErrorMapperTest {
             UiText.cloudErrorNoBackup.get("tr"),
             UiText.exportStatsError.get("tr")
         )
+    }
+
+    @Test
+    fun `giris hatasi sinifi 5 dilde metne cevrilir`() {
+        val langs = listOf("tr", "ar", "en", "de", "fr")
+        val kinds = listOf(
+            SignInErrorKind.CONFIG_BROKEN,
+            SignInErrorKind.NO_ACCOUNT,
+            SignInErrorKind.SIGNIN_SETUP,
+            SignInErrorKind.SIGNIN_RETRY,
+            SignInErrorKind.ACCOUNT_COLLISION,
+            SignInErrorKind.USER_DISABLED,
+            SignInErrorKind.NETWORK
+        )
+        for (kind in kinds) {
+            val texts = langs.map { lang ->
+                val text = CloudErrorMapper.textForSignIn(kind)?.get(lang)
+                assertTrue("Metin yok: $kind/$lang", !text.isNullOrBlank())
+                text!!
+            }
+            assertEquals("Dillerden biri digeriyle ayni: $kind", 5, texts.toSet().size)
+            // Fallback'e (AppStrings.cloudGenericSignInError) dusmemeli.
+            for (lang in langs) {
+                assertNotEquals(
+                    "FALLBACK",
+                    CloudErrorMapper.resolveSignIn(SignInFailedException(kind, "log"), lang, "FALLBACK")
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `giris hatasi sarmalanmis olsa bile sinifi bulunur`() {
+        val wrapped = RuntimeException(
+            "dis sarmalayici",
+            SignInFailedException(SignInErrorKind.NO_ACCOUNT, "NoCredentialException")
+        )
+        assertEquals(SignInErrorKind.NO_ACCOUNT, CloudErrorMapper.signInKind(wrapped))
+        assertEquals(
+            UiText.signInNoAccount.get("ar"),
+            CloudErrorMapper.resolveSignIn(wrapped, "ar", "FALLBACK")
+        )
+    }
+
+    @Test
+    fun `sinifsiz giris hatasi fallbacke duser ama ag hatasi yakalanir`() {
+        assertEquals(
+            "FALLBACK",
+            CloudErrorMapper.resolveSignIn(
+                SignInFailedException(SignInErrorKind.UNKNOWN, "GetCredentialException: unknown"),
+                "de",
+                "FALLBACK"
+            )
+        )
+        assertEquals(
+            UiText.cloudErrorNetwork.get("de"),
+            CloudErrorMapper.resolveSignIn(
+                SignInFailedException(SignInErrorKind.NETWORK, "FirebaseNetworkException"),
+                "de",
+                "FALLBACK"
+            )
+        )
+        // Giris hatasi olmayan bir ag hatasi da ayni metne duser.
+        assertEquals(
+            UiText.cloudErrorNetwork.get("tr"),
+            CloudErrorMapper.resolveSignIn(
+                Exception("UNAVAILABLE: Unable to resolve host"),
+                "tr",
+                "FALLBACK"
+            )
+        )
+    }
+
+    @Test
+    fun `iptal edilen giris hata metni uretmez`() {
+        assertTrue(CloudErrorMapper.isCancelled(SignInCancelledException()))
+        assertNull(CloudErrorMapper.signInKind(SignInCancelledException()))
     }
 }

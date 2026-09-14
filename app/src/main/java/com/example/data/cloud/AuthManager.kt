@@ -66,7 +66,9 @@ class AuthManager(private val context: Context) {
      * web istemci kimligi uydurma bir projeye aitti. Boyle bir build'i
      * kullanici butona basar basmaz, net bir mesajla yakaliyoruz.
      *
-     * @return sorun varsa kullaniciya gosterilecek mesaj, yoksa null
+     * @return sorun varsa LOG icin teknik detay, yoksa null.
+     *         Kullaniciya gosterilen metin `SignInErrorKind.CONFIG_BROKEN`
+     *         uzerinden 5 dilde uretilir (CloudErrorMapper.resolveSignIn).
      */
     private fun detectBrokenFirebaseConfig(): String? {
         val projectId = try {
@@ -90,7 +92,9 @@ class AuthManager(private val context: Context) {
                 if (com.example.BuildConfig.DEBUG) {
                     Log.e("AuthManager", problem)
                 }
-                return Result.failure(Exception(problem))
+                return Result.failure(
+                    SignInFailedException(SignInErrorKind.CONFIG_BROKEN, problem)
+                )
             }
 
             val webClientId = try {
@@ -99,11 +103,21 @@ class AuthManager(private val context: Context) {
                 if (com.example.BuildConfig.DEBUG) {
                     Log.e("AuthManager", "default_web_client_id not found in strings.xml", e)
                 }
-                return Result.failure(Exception("Google istemci kimliği yapılandırılamadı. google-services.json dosyasını kontrol edin."))
+                return Result.failure(
+                    SignInFailedException(
+                        SignInErrorKind.CONFIG_BROKEN,
+                        "default_web_client_id is missing from google-services.json"
+                    )
+                )
             }
 
             if (webClientId.isBlank() || webClientId == "REDACTED" || webClientId.contains("REDACTED")) {
-                return Result.failure(Exception("Google istemci kimliği geçersiz veya örnek dosyadan geliyor. Gerçek google-services.json gerekli."))
+                return Result.failure(
+                    SignInFailedException(
+                        SignInErrorKind.CONFIG_BROKEN,
+                        "default_web_client_id is blank or a placeholder (REDACTED)"
+                    )
+                )
             }
 
             val googleIdOption = GetGoogleIdOption.Builder()
@@ -128,11 +142,20 @@ class AuthManager(private val context: Context) {
 
                 val authCredential = GoogleAuthProvider.getCredential(idToken, null)
                 val authResult = auth.signInWithCredential(authCredential).await()
-                val user = authResult.user ?: throw IllegalStateException("Kullanıcı bilgisi alınamadı.")
+                val user = authResult.user
+                    ?: throw SignInFailedException(
+                        SignInErrorKind.SIGNIN_RETRY,
+                        "authResult.user was null after signInWithCredential"
+                    )
                 _currentUser.value = user
                 Result.success(user)
             } else {
-                Result.failure(IllegalStateException("Beklenmeyen kimlik doğrulama yanıtı."))
+                Result.failure(
+                    SignInFailedException(
+                        SignInErrorKind.SIGNIN_RETRY,
+                        "Unexpected credential type: ${credential.type}"
+                    )
+                )
             }
         } catch (e: GetCredentialCancellationException) {
             Result.failure(SignInCancelledException())
@@ -140,61 +163,106 @@ class AuthManager(private val context: Context) {
             if (com.example.BuildConfig.DEBUG) {
                 Log.w("AuthManager", "No credentials available on device/emulator", e)
             }
-            Result.failure(Exception("Bu uygulama için kullanılabilir bir Google hesabı bulunamadı. " +
-                    "Önce cihaz ayarlarında bir Google hesabının ekli olduğundan emin ol; hesap ekliyse " +
-                    "bu APK'nin imza sertifikası (SHA-1) Firebase'e kayıtlı değildir."))
+            Result.failure(
+                SignInFailedException(
+                    SignInErrorKind.NO_ACCOUNT,
+                    "NoCredentialException: no usable Google account on this device",
+                    e
+                )
+            )
         } catch (e: GetCredentialProviderConfigurationException) {
             if (com.example.BuildConfig.DEBUG) {
                 Log.e("AuthManager", "Credential provider configuration error", e)
             }
-            Result.failure(Exception("Google Hizmetleri yapılandırması doğrulanamadı."))
+            Result.failure(
+                SignInFailedException(
+                    SignInErrorKind.SIGNIN_SETUP,
+                    "GetCredentialProviderConfigurationException",
+                    e
+                )
+            )
         } catch (e: GetCredentialCustomException) {
             if (com.example.BuildConfig.DEBUG) {
                 Log.e("AuthManager", "Credential custom error: ${e.type}", e)
             }
-            Result.failure(Exception("Google kimlik doğrulama hatası (${e.type}). " +
-                    "Bu genelde APK'nin imza SHA-1 değerinin veya web istemci kimliğinin " +
-                    "Firebase Console'da kayıtlı olmadığı anlamına gelir."))
+            Result.failure(
+                SignInFailedException(
+                    SignInErrorKind.SIGNIN_SETUP,
+                    "GetCredentialCustomException: ${e.type}",
+                    e
+                )
+            )
         } catch (e: GetCredentialException) {
             if (com.example.BuildConfig.DEBUG) {
                 Log.e("AuthManager", "GetCredentialException", e)
             }
-            Result.failure(Exception("Giriş yapılamadı (${e.message ?: "Bilinmeyen hata"})."))
+            Result.failure(
+                SignInFailedException(
+                    SignInErrorKind.UNKNOWN,
+                    "GetCredentialException: ${e.message ?: "unknown"}",
+                    e
+                )
+            )
         } catch (e: FirebaseNetworkException) {
             if (com.example.BuildConfig.DEBUG) {
                 Log.w("AuthManager", "Network error during Google sign-in", e)
             }
-            Result.failure(Exception("İnternet bağlantısı kurulamadı. Bağlantını kontrol edip tekrar dene."))
+            Result.failure(
+                SignInFailedException(SignInErrorKind.NETWORK, "FirebaseNetworkException during sign-in", e)
+            )
         } catch (e: FirebaseAuthInvalidCredentialsException) {
             if (com.example.BuildConfig.DEBUG) {
                 Log.e("AuthManager", "Invalid credential", e)
             }
-            Result.failure(Exception("Google kimlik bilgisi Firebase tarafından reddedildi. " +
-                "Bu APK'nin imzası veya yapılandırması hesabınla eşleşmiyor."))
+            Result.failure(
+                SignInFailedException(
+                    SignInErrorKind.SIGNIN_SETUP,
+                    "FirebaseAuthInvalidCredentialsException",
+                    e
+                )
+            )
         } catch (e: FirebaseAuthUserCollisionException) {
             if (com.example.BuildConfig.DEBUG) {
                 Log.w("AuthManager", "Account collision", e)
             }
-            Result.failure(Exception("Bu e-posta adresi başka bir giriş yöntemiyle zaten kayıtlı."))
+            Result.failure(
+                SignInFailedException(SignInErrorKind.ACCOUNT_COLLISION, "FirebaseAuthUserCollisionException", e)
+            )
         } catch (e: FirebaseAuthInvalidUserException) {
             if (com.example.BuildConfig.DEBUG) {
                 Log.w("AuthManager", "Invalid user", e)
             }
-            Result.failure(Exception("Bu Google hesabı devre dışı bırakılmış veya silinmiş."))
+            Result.failure(
+                SignInFailedException(SignInErrorKind.USER_DISABLED, "FirebaseAuthInvalidUserException", e)
+            )
         } catch (e: FirebaseAuthException) {
             if (com.example.BuildConfig.DEBUG) {
                 Log.e("AuthManager", "Firebase auth error: ${e.javaClass.simpleName}", e)
             }
-            // Sebep (cause) bilerek ekleniyor: CloudErrorMapper zinciri
-            // tarayip "ag yok" / "yetki yok" gibi durumlari ayirt edebilsin.
-            Result.failure(Exception("Google girişi başarısız: ${e.message ?: e.javaClass.simpleName}", e))
+            Result.failure(
+                SignInFailedException(
+                    SignInErrorKind.UNKNOWN,
+                    "FirebaseAuthException: ${e.message ?: e.javaClass.simpleName}",
+                    e
+                )
+            )
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
             if (com.example.BuildConfig.DEBUG) {
                 Log.e("AuthManager", "Google Sign-In failed", e)
             }
-            val msg = e.localizedMessage ?: "Google girişi sırasında bir hata oluştu."
-            Result.failure(Exception(msg, e))
+            if (e is SignInFailedException) {
+                // Yukarida firlatilan sinifli hata: sarmalanmadan gecirilir,
+                // yoksa kind bilgisi kaybolur ve kullaniciya genel mesaj duser.
+                return Result.failure(e)
+            }
+            Result.failure(
+                SignInFailedException(
+                    SignInErrorKind.UNKNOWN,
+                    e.message ?: "Google sign-in failed: ${e.javaClass.simpleName}",
+                    e
+                )
+            )
         }
     }
 

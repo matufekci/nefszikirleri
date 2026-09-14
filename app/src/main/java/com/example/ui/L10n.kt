@@ -220,6 +220,53 @@ object UiText {
         "Sicherungsdatei konnte nicht erstellt oder geteilt werden.",
         "Le fichier de sauvegarde n'a pas pu être créé ou partagé."
     )
+    // --------------------------------------------- Google ile giris hatalari
+    // Neden var: AuthManager 13 ayri yerde sabit Turkce metin uretiyordu;
+    // Arapca/Almanca/Fransizca kullanici Turkce mesaj goruyordu ve SHA-1 /
+    // project id gibi teknik ayrintilar ekrana dusuyordu. AuthManager artik
+    // SignInErrorKind donduruyor, metni buradan CloudErrorMapper seciyor.
+    val signInConfigBroken = L10n(
+        "Bu sürümde Google ile giriş yapılandırılmamış. Lütfen uygulamanın güncel sürümünü kur.",
+        "لم تُهيّأ ميزة الدخول عبر Google في هذا الإصدار. يُرجى تثبيت أحدث إصدار من التطبيق.",
+        "Google sign-in is not configured in this build. Please install the latest version of the app.",
+        "Google-Anmeldung ist in dieser Version nicht eingerichtet. Bitte installiere die neueste Version der App.",
+        "La connexion Google n'est pas configurée dans cette version. Installe la dernière version de l'application."
+    )
+    val signInNoAccount = L10n(
+        "Bu uygulama için uygun bir Google hesabı bulunamadı. Cihaz ayarlarından bir Google hesabı ekleyip tekrar dene.",
+        "لم يُعثر على حساب Google مناسب لهذا التطبيق. أضف حساب Google من إعدادات الجهاز ثم أعد المحاولة.",
+        "No suitable Google account was found for this app. Add a Google account in device settings and try again.",
+        "Für diese App wurde kein passendes Google-Konto gefunden. Füge in den Geräteeinstellungen ein Google-Konto hinzu und versuche es erneut.",
+        "Aucun compte Google compatible n'a été trouvé pour cette application. Ajoute un compte Google dans les paramètres de l'appareil puis réessaie."
+    )
+    val signInSetupError = L10n(
+        "Google ile giriş doğrulanamadı; bu sürümün imzası veya yapılandırması Firebase'de kayıtlı olmayabilir. Güncel sürümü kurmayı dene.",
+        "تعذّر التحقق من الدخول عبر Google؛ قد لا يكون توقيع هذا الإصدار أو إعداده مسجّلًا في Firebase. جرّب تثبيت أحدث إصدار.",
+        "Google sign-in could not be verified; this build's signature or configuration may not be registered in Firebase. Try installing the latest version.",
+        "Google-Anmeldung konnte nicht verifiziert werden; Signatur oder Konfiguration dieser Version ist möglicherweise nicht in Firebase registriert. Installiere die neueste Version.",
+        "La connexion Google n'a pas pu être vérifiée ; la signature ou la configuration de cette version n'est peut-être pas enregistrée dans Firebase. Essaie d'installer la dernière version."
+    )
+    val signInRetry = L10n(
+        "Giriş tamamlanamadı. Lütfen tekrar dene.",
+        "تعذّر إكمال تسجيل الدخول. يُرجى المحاولة مرة أخرى.",
+        "Sign-in could not be completed. Please try again.",
+        "Anmeldung konnte nicht abgeschlossen werden. Bitte versuche es erneut.",
+        "La connexion n'a pas pu aboutir. Réessaie."
+    )
+    val signInAccountCollision = L10n(
+        "Bu e-posta adresi başka bir giriş yöntemiyle zaten kayıtlı.",
+        "هذا البريد الإلكتروني مسجّل بالفعل بطريقة دخول أخرى.",
+        "This email address is already registered with another sign-in method.",
+        "Diese E-Mail-Adresse ist bereits mit einer anderen Anmeldemethode registriert.",
+        "Cette adresse e-mail est déjà enregistrée avec une autre méthode de connexion."
+    )
+    val signInUserDisabled = L10n(
+        "Bu Google hesabı devre dışı bırakılmış veya silinmiş.",
+        "حساب Google هذا معطّل أو محذوف.",
+        "This Google account has been disabled or deleted.",
+        "Dieses Google-Konto wurde deaktiviert oder gelöscht.",
+        "Ce compte Google a été désactivé ou supprimé."
+    )
     val passwordRequired = L10n(
         "Bu yedek parola ile korunuyor; parolayı gir.",
         "هذه النسخة الاحتياطية محمية بكلمة مرور؛ أدخل كلمة المرور.",
