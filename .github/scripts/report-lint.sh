@@ -70,6 +70,30 @@ top_ids() {
     | awk '{ printf "%s(%s) ", $2, $1 }'
 }
 
+# Bagimlilik guncelleme onerileri: "A newer version of X than Y is available: Z"
+# mesaji lint'in kendi hesapladigi KESIN listedir (Google Maven/Plugin Portal
+# indeksinden). Disaridan surum tahmin etmek guvenilmez: ornegin Maven Central
+# "en yeni" diye alpha surumleri donduruyor. Bu yuzden listeyi lint'ten okuyoruz.
+dep_updates() {
+  awk '
+    /<issue/ { inissue = 1; buf = "" }
+    inissue {
+      buf = buf " " $0
+      if (index($0, ">") > 0) {
+        id = ""; msg = ""
+        if (match(buf, /id="[^"]*"/))      id  = substr(buf, RSTART + 4,  RLENGTH - 5)
+        if (match(buf, /message="[^"]*"/)) msg = substr(buf, RSTART + 9,  RLENGTH - 10)
+        if (id ~ /^(GradleDependency|NewerVersionAvailable|AndroidGradlePluginVersion|GradlePluginVersion|KotlinGradlePluginVersion)$/)
+          print id "\t" msg
+        inissue = 0
+      }
+    }
+  ' "$XML" 2>/dev/null \
+    | sed -E 's/^[A-Za-z]+\tA newer version of ([^ ]+) than ([^ ]+) is available: (.*)$/\1 \2 -> \3/' \
+    | sed -E 's/^[A-Za-z]+\t(.*)$/[diger] \1/' \
+    | sort -u
+}
+
 top_fatal="$(top_ids Fatal)"
 top_error="$(top_ids Error)"
 top_warn="$(top_ids Warning)"
@@ -84,6 +108,18 @@ if [ -n "${top_fatal}" ]; then detail="${detail} | fatal: ${top_fatal}"; fi
 if [ -n "${top_error}" ]; then detail="${detail} | error: ${top_error}"; fi
 if [ -n "${top_warn}" ]; then detail="${detail} | warning: ${top_warn}"; fi
 echo "::notice title=Lint sonucu::${detail}"
+
+# Guncelleme onerilerini ayrica yayinla: 40 uyarinin buyuk cogunlugu bu ve
+# "hangi kutuphane hangi surume" bilgisi olmadan aksiyon alinamiyor.
+deps="$(dep_updates)"
+if [ -n "$deps" ]; then
+  ndeps="$(printf '%s\n' "$deps" | wc -l | tr -d ' ')"
+  echo "  guncelleme onerisi: ${ndeps}"
+  printf '%s\n' "$deps" | sed 's/^/    /'
+  flat="$(printf '%s' "$deps" | tr '\n' '|' | sed 's/|/ | /g')"
+  echo "::notice title=Bagimlilik guncellemeleri (${ndeps})::${flat}"
+fi
+
 
 if [ "${fatal:-0}" -gt 0 ]; then
   echo "::error title=Lint fatal::${fatal} fatal lint sorunu var"
