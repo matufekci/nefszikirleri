@@ -160,7 +160,7 @@ UI (Compose + Material3)
 - Dosyalar: `gradle/libs.versions.toml`, `app/build.gradle.kts`, `app/src/main/java/com/example/NefsApplication.kt`
 
 ### Hamle 13: Performance - History Pagination ✅ (e3b1c71)
-- `HistoryDao`: observeHistoryPaged (Flow), getHistoryByDatePagedDirect, getHistoryCountByDateDirect, getHistoryCountForZikirDirect eklendi, memory-hardened 10k+ entries için
+- `HistoryDao`: memory-hardened sayfalama `getHistoryPagedDirect` + `getHistoryCountDirect` ile yapılıyor (10k+ entries). Aynı hamlede eklenen `observeHistoryPaged` (Flow), `getHistoryByDatePagedDirect`, `getHistoryCountByDateDirect`, `getHistoryCountForZikirDirect` hiç bağlanmadı ve 2026-09-14’te silindi
 - Mevcut: getAllHistoryInChunksDirect 2000 chunk, getHistoryPagedDirect, MAX 50MB decompress zaten var
 - Dosya: `app/src/main/java/com/example/data/local/ZikirHistoryDao.kt`
 

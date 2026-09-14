@@ -8,33 +8,6 @@ import java.util.Locale
 object DhikrDataValidator {
     private const val TAG = "DhikrDataValidator"
 
-    fun validateZikir(zikir: Zikir): Zikir {
-        val count = zikir.count.coerceAtLeast(0L)
-        val target = zikir.target.coerceIn(100L, 5000000L)
-        
-        var startedAt = zikir.startedAt
-        if (startedAt != null && startedAt <= 0L) startedAt = null
-        if (startedAt == null && count > 0) startedAt = System.currentTimeMillis()
-
-        var completedAt = zikir.completedAt
-        if (completedAt != null && completedAt <= 0L) completedAt = null
-        if (completedAt == null && count >= target) completedAt = System.currentTimeMillis()
-
-        if (zikir.count != count || zikir.target != target) {
-            if (com.example.BuildConfig.DEBUG) {
-                Log.d(TAG, "Zikir (ID=${zikir.id}) fields clamped: count=$count, target=$target")
-            }
-        }
-
-        return Zikir(
-            id = zikir.id.coerceIn(1, 15),
-            target = target,
-            count = count,
-            startedAt = startedAt,
-            completedAt = completedAt
-        )
-    }
-
     fun validateSettings(settings: AppSettings): AppSettings {
         val dailyTarget = settings.dailyTarget.coerceAtLeast(1L)
         val completedRounds = settings.completedRounds.coerceAtLeast(0)
