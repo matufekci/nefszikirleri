@@ -17,7 +17,9 @@ concurrency:
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
-    continue-on-error: true
+    # NOT: job seviyesinde `continue-on-error` YOK. Testler patladiginda run
+    # KIRMIZI olmali; yoksa sahte yesil olusuyor (2026-09-14'te yasandi:
+    # OnboardingA11yLabelTest patladi ama run "success" dondu).
     steps:
       - uses: actions/checkout@v4
 
@@ -59,8 +61,11 @@ jobs:
 
       - name: Report unit test results
         if: always()
+        # Bu adimda `continue-on-error` BILERE YOK: script failure/error
+        # gordugunde exit 1 veriyor ve job'u kirmiziya ceviriyor. Test adimi
+        # (ustteki) continue-on-error ile calisiyor ki bu adim her durumda
+        # calisip annotations uretebilsin; enforcement ise burada.
         run: ./.github/scripts/report-unit-tests.sh app/build/test-results/testDebugUnitTest
-        continue-on-error: true
 
       - name: Run Android lint
         run: ./gradlew lintDebug --stacktrace 2>&1 | tee lint.log

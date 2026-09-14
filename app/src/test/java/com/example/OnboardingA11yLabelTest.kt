@@ -67,11 +67,16 @@ class OnboardingA11yLabelTest {
         composeTestRule.onNodeWithContentDescription("متابعة", useUnmergedTree = true).assertExists()
     }
 
+    // NOT: her test yalnizca BIR kez setContent cagirabilir (Compose test
+    // kurali). Bu yuzden adimlar ayri testlerde dogrulaniyor.
     @Test
-    fun `adim degisince ileri etiketi de degisiyor`() {
+    fun `ilk adimda ileri etiketi Get Started`() {
         composeBar("en", step = 0)
         composeTestRule.onNodeWithContentDescription("Get Started", useUnmergedTree = true).assertExists()
+    }
 
+    @Test
+    fun `son adimda ileri etiketi Start Dhikr`() {
         composeBar("en", step = 2) // totalSteps - 1 -> son adim
         composeTestRule.onNodeWithContentDescription("Start Dhikr", useUnmergedTree = true).assertExists()
     }
