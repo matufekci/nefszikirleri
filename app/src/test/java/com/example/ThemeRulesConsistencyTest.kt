@@ -4,6 +4,7 @@ import com.example.ui.theme.AppPalettes
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 
 /**
@@ -65,9 +66,16 @@ class ThemeRulesConsistencyTest {
     fun `firestore rules tema beyaz listesi kanonik temalari atlamamali`() {
         val rulesFile = findFirestoreRules()
         if (rulesFile == null) {
-            // Depo disindan calistiriliyorsa dosya bulunamaz; Color.kt
-            // dogrulamalari yukaridaki testlerde zaten yapildi.
-            println("firestore.rules bulunamadi (user.dir=${System.getProperty("user.dir")}); rules kontrolu atlandi")
+            // Eskiden burada sessizce `return` ediliyordu: dosya bulunamazsa
+            // kontrol hic calismadan test "yesil" gorunuyordu (sahte guvence).
+            // Depo kokune erisilebildigi artik kanitli -- ayni kok-yuruyusunu
+            // kullanan NotificationDeepLinkConsistencyTest CI'da gecti. Bu
+            // yuzden bulunamama durumu artik bir ATLAMA degil, HATA.
+            fail(
+                "firestore.rules bulunamadi (user.dir=${System.getProperty("user.dir")}). " +
+                    "Bu test depo kokunden calistirilmayi bekliyor; sessiz atlama " +
+                    "tema beyaz listesi kontrolunu uyutuyordu."
+            )
             return
         }
         val content = rulesFile.readText()
