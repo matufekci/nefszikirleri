@@ -16,7 +16,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         // Bildirim tap UX'i: hatirlatma bildirimine dokunan kullanici
-        // dogrudan zikirc (sayac) sekmesine iner.
+        // dogrudan zikir (sayac) sekmesine iner. Uc bildirim kaynagi da
+        // "open_tab" extra'sini gonderiyor (NotificationDeepLinkConsistencyTest
+        // bu sozlesmeyi kilitliyor). MainActivity'nin launchMode'u "standard"
+        // ve bildirimler FLAG_ACTIVITY_CLEAR_TASK ile geliyor, dolayisiyla
+        // dokunusta yeni instance olusur ve bu satir her zaman calisir.
         intent.getStringExtra("open_tab")?.let { viewModel.setTab(it) }
         enableEdgeToEdge()
 
