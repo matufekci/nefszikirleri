@@ -96,9 +96,22 @@ object AdaptiveReminderManager {
      * Yılbaşı geçişlerinde haftanın ait olduğu yılla senkron çalışır.
      */
     fun getWeekYearKey(calendar: Calendar = Calendar.getInstance()): String {
-        val year = calendar.get(Calendar.YEAR)
-        val weekOfYear = calendar.get(Calendar.WEEK_OF_YEAR)
-        val month = calendar.get(Calendar.MONTH)
+        // Hafta numarasi CIHAZIN YEREL AYARLARINDAN geliyordu: Calendar,
+        // firstDayOfWeek ve minimalDaysInFirstWeek degerlerini locale'den alir.
+        // Ornek (13 Eylul 2026, Pazar): ISO'ya gore 2026-W37, ABD duzenine
+        // (hafta Pazar baslar, minimalDays=1) gore 2026-W38. Sonuc: ayni gun
+        // iki cihazda farkli hafta anahtari cikiyor, kullanici telefon dilini
+        // degistirdiginde de haftalik bildirim sayaci sifirlanip o hafta
+        // fazladan bildirim gonderilebiliyordu.
+        // ISO-8601'e sabitliyoruz: hafta Pazartesi baslar, yilin ilk haftasi
+        // en az 4 gun iceren haftadir. Boylece anahtar yalnizca tarihe bagli.
+        val cal = calendar.clone() as Calendar
+        cal.firstDayOfWeek = Calendar.MONDAY
+        cal.minimalDaysInFirstWeek = 4
+
+        val year = cal.get(Calendar.YEAR)
+        val weekOfYear = cal.get(Calendar.WEEK_OF_YEAR)
+        val month = cal.get(Calendar.MONTH)
 
         val adjustedYear = if (weekOfYear == 1 && month == Calendar.DECEMBER) {
             year + 1
