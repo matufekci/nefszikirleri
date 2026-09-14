@@ -31,7 +31,7 @@ class SyncManager {
         deviceId: String
     ): Result<Long> {
         if (userId.isBlank()) {
-            return Result.failure(IllegalArgumentException("Kullanıcı kimliği (UID) geçersiz veya boş."))
+            return Result.failure(IllegalArgumentException("User id (UID) is invalid or blank."))
         }
 
         return try {
@@ -244,7 +244,7 @@ class SyncManager {
 
     suspend fun restoreFromCloud(userId: String): Result<CloudBackupData> {
         if (userId.isBlank()) {
-            return Result.failure(IllegalArgumentException("Kullanıcı kimliği (UID) geçersiz veya boş."))
+            return Result.failure(IllegalArgumentException("User id (UID) is invalid or blank."))
         }
 
         return try {

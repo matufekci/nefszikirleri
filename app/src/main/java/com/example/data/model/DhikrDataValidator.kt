@@ -22,7 +22,7 @@ object DhikrDataValidator {
 
         if (zikir.count != count || zikir.target != target) {
             if (com.example.BuildConfig.DEBUG) {
-                Log.d(TAG, "Zikir (ID=${zikir.id}) alanları clamp edildi: count=$count, target=$target")
+                Log.d(TAG, "Zikir (ID=${zikir.id}) fields clamped: count=$count, target=$target")
             }
         }
 
@@ -43,7 +43,7 @@ object DhikrDataValidator {
 
         if (settings.dailyTarget != dailyTarget || settings.completedRounds != completedRounds || settings.fontScale != fontScale || settings.selectedZikirId != selectedZikirId) {
             if (com.example.BuildConfig.DEBUG) {
-                Log.d(TAG, "Settings alanları clamp edildi.")
+                Log.d(TAG, "Settings fields clamped.")
             }
         }
 
@@ -61,7 +61,7 @@ object DhikrDataValidator {
         
         if (slot.hour != hour || slot.minute != minute) {
             if (com.example.BuildConfig.DEBUG) {
-                Log.d(TAG, "ReminderSlot alanları clamp edildi: hour=$hour, minute=$minute")
+                Log.d(TAG, "ReminderSlot fields clamped: hour=$hour, minute=$minute")
             }
         }
 
@@ -83,7 +83,7 @@ object DhikrDataValidator {
 
         if (history.zikirId != zikirId || history.amount != amount || history.type != type || history.timestamp != timestamp) {
             if (com.example.BuildConfig.DEBUG) {
-                Log.d(TAG, "ZikirHistory alanları clamp edildi.")
+                Log.d(TAG, "ZikirHistory fields clamped.")
             }
         }
 
