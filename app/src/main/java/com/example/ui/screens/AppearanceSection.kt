@@ -25,7 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import java.util.Locale
 import androidx.compose.ui.text.font.FontWeight
@@ -253,8 +253,10 @@ fun AppearanceSection(
                 }
             }
 
-            val context = LocalContext.current
-            val systemFontScale = context.resources.configuration.fontScale
+            // Lint hatasi LocalContextConfigurationRead: configuration'i
+            // LocalContext'ten okumak yerine Compose'un kendi kaynagi
+            // kullaniliyor (davranis ayni: sistem yazi olcegi).
+            val systemFontScale = LocalConfiguration.current.fontScale
             val appFontScale = settings.fontScale
             val effectiveScale = (appFontScale * systemFontScale).coerceAtMost(2.0f)
 

@@ -145,7 +145,7 @@ class ZikirViewModel(
             repository.updateSettings(updated)
             try {
                 val prefs = getApplication<Application>().getSharedPreferences("nefs_app_prefs", Context.MODE_PRIVATE)
-                prefs.edit().putString("lang", updated.lang).apply()
+                prefs.edit { putString("lang", updated.lang) }
             } catch (_: Exception) {}
         }
     }
@@ -1223,7 +1223,7 @@ class ZikirViewModel(
         var id = syncPrefs.getString("device_id", null)
         if (id == null) {
             id = java.util.UUID.randomUUID().toString()
-            syncPrefs.edit().putString("device_id", id).apply()
+            syncPrefs.edit { putString("device_id", id) }
         }
         return id
     }
@@ -1231,7 +1231,7 @@ class ZikirViewModel(
     private fun getLocalRevision(): Long = syncPrefs.getLong("sync_revision", 0L)
     
     private fun setLocalRevision(revision: Long) {
-        syncPrefs.edit().putLong("sync_revision", revision).apply()
+        syncPrefs.edit { putLong("sync_revision", revision) }
     }
 
     private val _syncConflictState = kotlinx.coroutines.flow.MutableStateFlow<com.example.data.cloud.CloudBackupData?>(null)

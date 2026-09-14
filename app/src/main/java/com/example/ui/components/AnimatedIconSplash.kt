@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -114,7 +115,7 @@ internal fun AnimatedIconSplash(
     val context = LocalContext.current
     val iconPainter = remember {
         runCatching {
-            (context.getDrawable(R.drawable.img_nefs_app_icon_1787782143783) as? BitmapDrawable)
+            (ContextCompat.getDrawable(context, R.drawable.img_nefs_app_icon_1787782143783) as? BitmapDrawable)
                 ?.bitmap
                 ?.asImageBitmap()
                 ?.let { BitmapPainter(it) }
