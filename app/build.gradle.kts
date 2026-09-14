@@ -118,6 +118,16 @@ android {
     compose = true
     buildConfig = true
   }
+  lint {
+    // CI'daki "Report lint results" adimi XML raporu okuyup sayilari
+    // annotation'a ceviriyor; rapor uretilmezse job kirmizi oluyor. Boylece
+    // lint'in hic calismamasi sessizce yesil gorunmuyor.
+    xmlReport = true
+    htmlReport = true
+    // Lint bulgulari icin politika CI'da (report-lint.sh yalnizca FATAL'de
+    // kirmiziya cevirir); derleme burada kesilmiyor.
+    abortOnError = false
+  }
   
   sourceSets {
     getByName("androidTest").assets.srcDirs("$projectDir/schemas")

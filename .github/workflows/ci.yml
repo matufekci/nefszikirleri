@@ -71,6 +71,13 @@ jobs:
         run: ./gradlew lintDebug --stacktrace 2>&1 | tee lint.log
         continue-on-error: true
 
+      - name: Report lint results
+        if: always()
+        # continue-on-error BILERE YOK: lint hic calismazsa (rapor uretilmezse)
+        # job kirmizi olmali. Aksi halde lint'in patlamasi sahte yesil olur --
+        # unit testlerde yasanan deligin aynisi.
+        run: ./.github/scripts/report-lint.sh app/build/reports/lint-results-debug.xml
+
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
