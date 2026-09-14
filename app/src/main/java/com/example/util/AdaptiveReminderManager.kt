@@ -129,7 +129,7 @@ object AdaptiveReminderManager {
     /**
      * Rastgele manevi ayeti kullanıcının seçtiği dilde döndürür.
      */
-    fun getRandomSpiritualVerse(lang: String): SpiritualVerse {
+    private fun getRandomSpiritualVerse(lang: String): SpiritualVerse {
         val verses = AppStrings.get(lang).spiritualVerses
         if (verses.isEmpty()) {
             val fallback = AppStrings.get("tr").spiritualVerses

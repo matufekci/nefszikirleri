@@ -58,7 +58,6 @@ data class DayChartItem(
 )
 
 data class MonthChartItem(
-    val monthIndex: Int,
     val label: String,
     val amount: Long,
     val ratio: Float
@@ -364,7 +363,7 @@ class ZikirViewModel(
                     val label = NumberFormatter.getMonthLabel(mCal.time, settings.lang)
                     val prefix = String.format(Locale.US, "%04d-%02d", targetYear, targetMonth + 1)
                     val amt = dailyStats.filter { it.dateKey.startsWith(prefix) }.sumOf { it.total }.coerceAtLeast(0L)
-                    sixMonthsList.add(MonthChartItem(targetMonth, label, amt, 0f))
+                    sixMonthsList.add(MonthChartItem(label, amt, 0f))
                 }
                 val max6 = sixMonthsList.maxOfOrNull { it.amount }?.coerceAtLeast(1L) ?: 1L
                 val sixMonthsWithRatio = sixMonthsList.map { it.copy(ratio = (it.amount.toFloat() / max6.toFloat()).coerceIn(0.04f, 1f)) }
