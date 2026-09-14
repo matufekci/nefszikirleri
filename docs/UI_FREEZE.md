@@ -30,4 +30,7 @@ doğruluğu" kapsamında yapıldı. Bir satırın görsel etkisi olduğunu düş
 | 2026-09-14 | `AboutSection` sürüm etiketi `BuildConfig.VERSION_NAME`'e bağlandı | Sabit `"v2.0"` yazıyordu, `versionName = "2.1"` — uygulama kendi sürümünü yanlış gösteriyordu (bug fix) |
 | 2026-09-14 | `BackupPasswordDialog` parola etiketi 5 dile alındı | Sabit `"Parola"` metni Arapça/Almanca/Fransızca kullanıcıya Türkçe görünüyordu |
 | 2026-09-14 | `OverallStatsSection` / `SyncConflictDialog` / `CloudSection`: satır başına üretilen `SimpleDateFormat` → `remember` | Performans; desen ve locale aynı, görünen metin aynı |
+| 2026-09-14 | `AppThemeColors`'tan 5 ölü alan (`name`, `success`, `glowColor`, `themeStyle`, `specularIntensity`) + ölü `ThemeStyle` enum'u silindi | Hiçbiri okunmuyordu; tema adları zaten `UiText.theme*` üzerinden 5 dilde geliyor. Renk değerleri değişmedi |
+| 2026-09-14 | Karşılama alt barında `contentDescription` sabit `"Geri"`/`"İleri"` → görünen 5 dilli etiketle birleştirildi | **Erişilebilirlik bug fix:** TalkBack kullanıcısı dili ne olursa olsun Türkçe duyuyordu. Görünen metin birebir aynı |
+| 2026-09-14 | Ölü `UndoSnapshot` data class'ı silindi | Geri-al katmanı kaldırıldığından beri hiçbir yerde kullanılmıyordu |
 | 2026-09-14 | En uzun seri (best streak) hesabı `StreakCalculator`'a taşındı | **Bug fix:** milisaniye bölmesi DST bahar geçişinde (Europe/Berlin: 31.03→01.04 = 23 saat) seriyi yanlışlıkla koparıyordu; tek günlük geçmişte 0 veriyordu. Doğru değerler ekranda artık farklı görünebilir — bu bir düzeltmedir, stil değişikliği değil |

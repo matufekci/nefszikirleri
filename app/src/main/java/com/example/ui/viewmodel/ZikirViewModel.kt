@@ -70,14 +70,6 @@ data class CelebrationData(
     val nextZikirId: Int?
 )
 
-data class UndoSnapshot(
-    val zikirId: Int,
-    val previousCount: Long,
-    val previousStartedAt: Long?,
-    val previousCompletedAt: Long?,
-    val historyId: Long?
-)
-
 data class SequenceWarningData(
     val attemptedZikirId: Int,
     val requiredZikirId: Int

@@ -173,24 +173,27 @@ fun OnboardingBottomBar(
                     )
                     .testTag("intro_back_button")
             ) {
+                // TalkBack'in okudugu contentDescription sabit "Geri" idi;
+                // gorunur etiketle ayni 5 dilli metin kullaniliyor.
+                val backLabel = when (currentLang) {
+                    "ar" -> "رجوع"
+                    "de" -> "Zurück"
+                    "fr" -> "Retour"
+                    "en" -> "Back"
+                    else -> "Geri"
+                }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = "Geri",
+                        contentDescription = backLabel,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = when (currentLang) {
-                            "ar" -> "رجوع"
-                            "de" -> "Zurück"
-                            "fr" -> "Retour"
-                            "en" -> "Back"
-                            else -> "Geri"
-                        },
+                        text = backLabel,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -199,6 +202,31 @@ fun OnboardingBottomBar(
             }
         }
 
+        // Ileri/Zikre Basla etiketi de hem gorunur metin hem erisilebilirlik
+        // etiketi olarak kullaniliyor (eskiden contentDescription sabit "Ileri" idi).
+        val nextLabel = when (currentStep) {
+            0 -> when (currentLang) {
+                "ar" -> "ابدأ التخصيص"
+                "de" -> "Starten"
+                "fr" -> "Commencer"
+                "en" -> "Get Started"
+                else -> "Başla"
+            }
+            totalSteps - 1 -> when (currentLang) {
+                "ar" -> "ابدأ الذكر (بسم الله)"
+                "de" -> "Dhikr beginnen"
+                "fr" -> "Commencer le Dhikr"
+                "en" -> "Start Dhikr"
+                else -> "Zikre Başla (Bismillah)"
+            }
+            else -> when (currentLang) {
+                "ar" -> "متابعة"
+                "de" -> "Weiter"
+                "fr" -> "Continuer"
+                "en" -> "Continue"
+                else -> "Devam Et"
+            }
+        }
         Button(
             onClick = onNext,
             shape = RoundedCornerShape(16.dp),
@@ -224,29 +252,7 @@ fun OnboardingBottomBar(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = when (currentStep) {
-                        0 -> when (currentLang) {
-                            "ar" -> "ابدأ التخصيص"
-                            "de" -> "Starten"
-                            "fr" -> "Commencer"
-                            "en" -> "Get Started"
-                            else -> "Başla"
-                        }
-                        totalSteps - 1 -> when (currentLang) {
-                            "ar" -> "ابدأ الذكر (بسم الله)"
-                            "de" -> "Dhikr beginnen"
-                            "fr" -> "Commencer le Dhikr"
-                            "en" -> "Start Dhikr"
-                            else -> "Zikre Başla (Bismillah)"
-                        }
-                        else -> when (currentLang) {
-                            "ar" -> "متابعة"
-                            "de" -> "Weiter"
-                            "fr" -> "Continuer"
-                            "en" -> "Continue"
-                            else -> "Devam Et"
-                        }
-                    },
+                    text = nextLabel,
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         fontSize = if (currentStep == totalSteps - 1) 14.5.sp else 15.sp
@@ -257,7 +263,7 @@ fun OnboardingBottomBar(
                 Spacer(modifier = Modifier.width(6.dp))
                 Icon(
                     imageVector = if (currentStep == totalSteps - 1) Icons.Rounded.Check else Icons.AutoMirrored.Rounded.ArrowForward,
-                    contentDescription = "İleri",
+                    contentDescription = nextLabel,
                     modifier = Modifier.size(18.dp)
                 )
             }

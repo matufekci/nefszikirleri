@@ -16,12 +16,6 @@ import androidx.compose.ui.unit.Dp
 
 
 
-enum class ThemeStyle {
-    NEON_CYBER,
-    GLASS_LIGHT,
-    OBSIDIAN_GLASS
-}
-
 data class ActionShadowSpec(
     val elevation: Dp = 4.dp,
     val spotAlpha: Float = 0.35f,
@@ -32,7 +26,6 @@ data class ActionShadowSpec(
 
 data class AppThemeColors(
     val id: String,
-    val name: String,
     val bg: Color,
     val surface: Color,
     val card: Color,
@@ -44,13 +37,9 @@ data class AppThemeColors(
     val text: Color,
     val textMuted: Color,
     val border: Color,
-    val success: Color,
     val error: Color,
     val isDark: Boolean,
-    val glowColor: Color = primary.copy(alpha = 0.25f),
-    val themeStyle: ThemeStyle = ThemeStyle.NEON_CYBER,
     val isMetallic: Boolean = false,
-    val specularIntensity: Float = 0.65f,
     val glowIntensity: Float = 0.40f,
     val reflectionColor: Color = Color.White,
     val actionShadow: ActionShadowSpec = ActionShadowSpec()
@@ -85,7 +74,6 @@ object AppPalettes {
     // 1. BEYAZ (Eski: Gündüz • Hadrâ & Beyaz / Sage-Cream)
     val HadraGunduz = AppThemeColors(
         id = "hadra_gunduz",
-        name = "Beyaz",
         bg = Color(0xFFE8EFEA), // Gözü yormayan yumuşak mat adaçayı / bej zemin
         surface = Color(0xFFF3F7F4),
         card = Color(0xFFFFFFFF),
@@ -97,13 +85,9 @@ object AppPalettes {
         text = Color(0xFF13221A),
         textMuted = Color(0xFF455A4F),
         border = Color(0xFFCADBD0),
-        success = Color(0xFF047857),
         error = Color(0xFFDC2626),
         isDark = false,
-        glowColor = Color(0xFF047857).copy(alpha = 0.18f),
-        themeStyle = ThemeStyle.GLASS_LIGHT,
         isMetallic = false,
-        specularIntensity = 0.70f,
         glowIntensity = 0.22f,
         reflectionColor = Color(0xFFFFFFFF),
         actionShadow = ActionShadowSpec(
@@ -118,7 +102,6 @@ object AppPalettes {
     // 2. YEŞİL (Yeşil Zemin & Altın Sarısı Vurgu ve Yazılar)
     val HadraGece = AppThemeColors(
         id = "hadra_gece",
-        name = "Yeşil",
         bg = Color(0xFF071F14),
         surface = Color(0xFF0C291B),
         card = Color(0xFF113523),
@@ -130,13 +113,9 @@ object AppPalettes {
         text = Color(0xFFF0FDF4),
         textMuted = Color(0xFF86A79C),
         border = Color(0xFFFBBF24).copy(alpha = 0.35f),
-        success = Color(0xFF10B981),
         error = Color(0xFFEF4444),
         isDark = true,
-        glowColor = Color(0xFFFBBF24).copy(alpha = 0.48f),
-        themeStyle = ThemeStyle.NEON_CYBER,
         isMetallic = false,
-        specularIntensity = 0.82f,
         glowIntensity = 0.50f,
         reflectionColor = Color(0xFFFFFBEB),
         actionShadow = ActionShadowSpec(
@@ -151,7 +130,6 @@ object AppPalettes {
     // 3. SİYAH (Eski: Gece • Oniks & Siyah / Obsidian Black)
     val Siyah = AppThemeColors(
         id = "siyah",
-        name = "Siyah",
         bg = Color(0xFF050507),
         surface = Color(0xFF0C0D10),
         card = Color(0xFF14161B),
@@ -163,13 +141,9 @@ object AppPalettes {
         text = Color(0xFFF8FAFC),
         textMuted = Color(0xFF94A3B8),
         border = Color(0xFF94A3B8).copy(alpha = 0.35f),
-        success = Color(0xFF10B981),
         error = Color(0xFFEF4444),
         isDark = true,
-        glowColor = Color(0xFF64748B).copy(alpha = 0.35f),
-        themeStyle = ThemeStyle.OBSIDIAN_GLASS,
         isMetallic = false,
-        specularIntensity = 0.60f,
         glowIntensity = 0.35f,
         reflectionColor = Color(0xFFF1F5F9),
         actionShadow = ActionShadowSpec(
@@ -185,7 +159,6 @@ object AppPalettes {
     //    ışıltılı "cicili bicili" ama ferah, gündüz kullanıma uygun)
     val PembeLux = AppThemeColors(
         id = "pembe_lux",
-        name = "Pembe Lüks",
         bg = Color(0xFFFFF1F6), // pudra pembe zemin
         surface = Color(0xFFFEE4EE),
         card = Color(0xFFFBD3E3),
@@ -197,13 +170,9 @@ object AppPalettes {
         text = Color(0xFF471D33), // koyu erik metin
         textMuted = Color(0xFF8C5A72),
         border = Color(0xFFD6367F).copy(alpha = 0.35f),
-        success = Color(0xFF10B981),
         error = Color(0xFFEF4444),
         isDark = false,
-        glowColor = Color(0xFFE56FA8).copy(alpha = 0.25f),
-        themeStyle = ThemeStyle.GLASS_LIGHT,
         isMetallic = false,
-        specularIntensity = 0.55f,
         glowIntensity = 0.25f,
         reflectionColor = Color(0xFFFFFFFF),
         actionShadow = ActionShadowSpec(
