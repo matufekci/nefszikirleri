@@ -267,6 +267,15 @@ object UiText {
         "Dieses Google-Konto wurde deaktiviert oder gelöscht.",
         "Ce compte Google a été désactivé ou supprimé."
     )
+    // Parola alaninin etiketi: BackupPasswordDialog'da sabit "Parola" yaziyordu,
+    // Arapca/Almanca/Fransizca kullanici Turkce etiket goruyordu.
+    val passwordFieldLabel = L10n(
+        "Parola",
+        "كلمة المرور",
+        "Password",
+        "Passwort",
+        "Mot de passe"
+    )
     val passwordRequired = L10n(
         "Bu yedek parola ile korunuyor; parolayı gir.",
         "هذه النسخة الاحتياطية محمية بكلمة مرور؛ أدخل كلمة المرور.",

@@ -184,6 +184,7 @@ fun SettingsScreen(
         BackupPasswordDialog(
             title = UiText.backupEncryptionTitle.get(state.settings.lang),
             message = UiText.backupEncryptionMessage.get(state.settings.lang),
+            labelText = UiText.passwordFieldLabel.get(state.settings.lang),
             actionText = UiText.encryptAndShare.get(state.settings.lang),
             cancelText = UiText.cancel.get(state.settings.lang),
             onDismissRequest = { viewModel.dismissExportPasswordDialog() },
@@ -199,6 +200,7 @@ fun SettingsScreen(
         BackupPasswordDialog(
             title = UiText.backupPasswordTitle.get(state.settings.lang),
             message = UiText.backupPasswordMessage.get(state.settings.lang),
+            labelText = UiText.passwordFieldLabel.get(state.settings.lang),
             actionText = UiText.openBackup.get(state.settings.lang),
             cancelText = UiText.cancel.get(state.settings.lang),
             onDismissRequest = { viewModel.dismissImportPasswordDialog() },
