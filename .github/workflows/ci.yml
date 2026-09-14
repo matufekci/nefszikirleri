@@ -78,6 +78,13 @@ jobs:
         # unit testlerde yasanan deligin aynisi.
         run: ./.github/scripts/report-lint.sh app/build/reports/lint-results-debug.xml
 
+      - name: Report Gradle failures from logs
+        if: always()
+        # Teshis adimi: KSP/derleme hatalari `--continue` yuzunden job'u
+        # kirmiziya cevirmiyor ve loglar disaridan indirilemedigi icin
+        # gorunmuyordu. Hangi gorevin patladigini annotation'a yaziyoruz.
+        run: ./.github/scripts/report-gradle-failures.sh unit-test.log lint.log
+
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v7
