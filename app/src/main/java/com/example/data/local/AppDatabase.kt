@@ -174,7 +174,11 @@ abstract class AppDatabase : RoomDatabase() {
                 // Add eventId column with default empty string
                 db.execSQL("ALTER TABLE `zikir_history` ADD COLUMN `eventId` TEXT NOT NULL DEFAULT ''")
 
-                // Populate existing records with non-empty deterministic eventId values based on id/timestamp
+                // Eski satirlara bos olmayan, BENZERSIZ eventId degerleri yaz.
+                // Benzersizlik satir PK'si (`id`) ile garanti; sondaki 8 karakterlik
+                // rasgele parca yedekler arasi cakismayi da engeller. (Deger
+                // deterministik DEGILDIR: ayni satir icin her calistirmada farkli
+                // uretilir; migration zaten yalnizca bir kez kosar.)
                 val cursor = db.query("SELECT `id`, `zikirId`, `timestamp` FROM `zikir_history`")
                 val updates = mutableListOf<Pair<Long, String>>()
                 while (cursor.moveToNext()) {

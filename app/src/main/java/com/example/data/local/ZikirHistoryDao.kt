@@ -111,14 +111,6 @@ interface ZikirHistoryDao {
     """)
     fun observeDistinctActiveDates(): Flow<List<String>>
 
-    @Query("""
-        SELECT DISTINCT dateKey 
-        FROM zikir_history 
-        WHERE type = 'add' 
-        ORDER BY dateKey DESC
-    """)
-    suspend fun getDistinctActiveDatesDirect(): List<String>
-
     // d) Toplam zikir sayısı (tüm zamanlar, RAM'e tüm kayıtları çekmeden)
     @Query("""
         SELECT COALESCE(SUM(CASE WHEN type = 'add' THEN amount ELSE -amount END), 0) 

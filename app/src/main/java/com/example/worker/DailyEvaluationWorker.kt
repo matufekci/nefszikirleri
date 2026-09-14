@@ -20,7 +20,6 @@ import com.example.data.local.AppDatabase
 import com.example.data.model.AppStrings
 import com.example.data.model.UiTranslations
 import com.example.util.AdaptiveReminderManager
-import com.example.util.NumberFormatter
 import kotlinx.coroutines.CancellationException
 import java.io.IOException
 import java.text.SimpleDateFormat
@@ -86,10 +85,7 @@ class DailyEvaluationWorker(
                 sendPaceNotification(context, lang, strings, band)
             }
 
-            // 2. Streak kontrolü yap (Optional logging or validation)
-            checkStreakStatus(context, db)
-
-            // 3. Process any unapplied pending operations (in case app was killed before batch)
+            // 2. Process any unapplied pending operations (in case app was killed before batch)
             try {
                 val repo = com.example.data.repository.ZikirRepository(db)
                 repo.processUnappliedOperations()
@@ -249,27 +245,6 @@ class DailyEvaluationWorker(
         } catch (e: Exception) {
             AdaptiveReminderManager.rollbackQuotaReservation(context, reservation)
             throw e
-        }
-    }
-
-    private suspend fun checkStreakStatus(context: Context, db: AppDatabase) {
-        try {
-            val activeDates = db.historyDao().getDistinctActiveDatesDirect()
-            val activeDays = activeDates.toSet()
-            var streakCount = 0
-            val cal = Calendar.getInstance()
-            while (activeDays.contains(NumberFormatter.getDateKey(cal.time))) {
-                streakCount++
-                cal.add(Calendar.DAY_OF_YEAR, -1)
-            }
-            Log.d(TAG, "Current streak verification in background: $streakCount days")
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Throwable) {
-            Log.e(TAG, "Failed to verify streak status during background evaluation", e)
-            if (isTransientFailure(e)) {
-                throw e
-            }
         }
     }
 }
