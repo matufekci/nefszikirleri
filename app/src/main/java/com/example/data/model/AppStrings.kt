@@ -125,7 +125,6 @@ interface IUiTranslationsPart3 {
     val importStatsBackupError: String
     val importStatsConfirmTitle: String
     val importStatsConfirmMsg: String
-    val confirmAction: String
     val cancelAction: String
     val fastJumpTitle: String
     val fastJumpConfirmMsg: String
@@ -144,10 +143,7 @@ interface IUiTranslationsPart3 {
     val cloudSyncTitle: String
     val collapse: String
     val expand: String
-    val deleteBtn: String
     val appLogo: String
-    val backBtn: String
-    val nextBtn: String
     val selected: String
     val adaptiveReminderNotifTitle: String
     val spiritualVerses: List<SpiritualVerse>
@@ -286,7 +282,6 @@ data class UiTranslationsPart3(
     override val importStatsBackupError: String,
     override val importStatsConfirmTitle: String,
     override val importStatsConfirmMsg: String,
-    override val confirmAction: String,
     override val cancelAction: String,
     override val fastJumpTitle: String,
     override val fastJumpConfirmMsg: String,
@@ -303,10 +298,7 @@ data class UiTranslationsPart3(
     override val cloudSyncTitle: String,
     override val collapse: String,
     override val expand: String,
-    override val deleteBtn: String,
     override val appLogo: String,
-    override val backBtn: String,
-    override val nextBtn: String,
     override val selected: String,
     override val adaptiveReminderNotifTitle: String,
     override val spiritualVerses: List<SpiritualVerse>
@@ -444,7 +436,6 @@ object AppStrings {
             importStatsBackupError = "Yedek dosyası okunamadı veya format geçersiz!",
             importStatsConfirmTitle = "Yedeği Geri Yükle",
             importStatsConfirmMsg = "Yedek dosyasındaki veriler mevcut verilerin üzerine yazılacaktır. Devam edilsin mi?",
-            confirmAction = "Geri Yükle",
             cancelAction = "İptal",
             fastJumpTitle = "Hızlı İntikal (Sıçrama)",
             fastJumpConfirmMsg = "Bu zikirden ({0}) mi devam etmek istiyorsunuz? Onaylarsanız, önceki tüm zikirler ({1}) otomatik olarak tamamlanmış sayılacak ve {0} zikrinin kilidi açılacaktır.",
@@ -463,10 +454,7 @@ object AppStrings {
             cloudSyncTitle = "Bulut Eşitleme",
             collapse = "Daralt",
             expand = "Genişlet",
-            deleteBtn = "Sil",
             appLogo = "Nefs Zikirleri Amblemi",
-            backBtn = "Geri",
-            nextBtn = "İleri",
             selected = "Seçili",
             adaptiveReminderNotifTitle = "Son zamanlarda zikrini azalttın",
             spiritualVerses = listOf(
@@ -648,7 +636,6 @@ object AppStrings {
             importStatsBackupError = "فشل في قراءة ملف النسخة الاحتياطية أو التنسيق غير صالح!",
             importStatsConfirmTitle = "استعادة النسخة الاحتياطية",
             importStatsConfirmMsg = "سيتم استبدال البيانات الحالية ببيانات النسخة. هل تريد المتابعة؟",
-            confirmAction = "استعادة",
             cancelAction = "إلغاء",
             fastJumpTitle = "الانتقال السريع (التقدم المباشر)",
             fastJumpConfirmMsg = "هل ترغب في المتابعة من هذه المرتبة ({0})؟ عند التأكيد، سيتم اعتبار جميع الأذكار السابقة ({1}) مكتملة وسيتم فتح {0} مباشرة.",
@@ -667,10 +654,7 @@ object AppStrings {
             cloudSyncTitle = "المزامنة السحابية",
             collapse = "طي",
             expand = "توسيع",
-            deleteBtn = "حذف",
             appLogo = "شعار أذكار النفس",
-            backBtn = "رجوع",
-            nextBtn = "التالي",
             selected = "محدد",
             adaptiveReminderNotifTitle = "لقد قللت من أذكارك مؤخراً",
             spiritualVerses = listOf(
@@ -852,7 +836,6 @@ object AppStrings {
             importStatsBackupError = "Failed to read backup file or invalid format!",
             importStatsConfirmTitle = "Restore Backup",
             importStatsConfirmMsg = "Backup data will overwrite current progress. Continue?",
-            confirmAction = "Restore",
             cancelAction = "Cancel",
             fastJumpTitle = "Fast Forward (Direct Jump)",
             fastJumpConfirmMsg = "Do you want to continue from this dhikr ({0})? If confirmed, all previous dhikrs ({1}) will be marked as completed and {0} will be unlocked.",
@@ -871,10 +854,7 @@ object AppStrings {
             cloudSyncTitle = "Cloud Sync",
             collapse = "Collapse",
             expand = "Expand",
-            deleteBtn = "Delete",
             appLogo = "Nefs Dhikr Logo",
-            backBtn = "Back",
-            nextBtn = "Next",
             selected = "Selected",
             adaptiveReminderNotifTitle = "You've decreased your dhikr lately",
             spiritualVerses = listOf(
@@ -1056,7 +1036,6 @@ object AppStrings {
             importStatsBackupError = "Sicherungsdatei konnte nicht gelesen werden oder Format ungültig!",
             importStatsConfirmTitle = "Sicherung wiederherstellen",
             importStatsConfirmMsg = "Sicherungsdaten überschreiben den aktuellen Stand. Fortfahren?",
-            confirmAction = "Wiederherstellen",
             cancelAction = "Abbrechen",
             fastJumpTitle = "Schneller Übergang (Sprung)",
             fastJumpConfirmMsg = "Möchten Sie mit dieser Stufe ({0}) fortfahren? Bei Bestätigung werden alle vorherigen Dhikr ({1}) als abgeschlossen markiert und {0} wird freigeschaltet.",
@@ -1075,10 +1054,7 @@ object AppStrings {
             cloudSyncTitle = "Cloud-Synchronisierung",
             collapse = "Einklappen",
             expand = "Ausklappen",
-            deleteBtn = "Löschen",
             appLogo = "Nefs Dhikr Logo",
-            backBtn = "Zurück",
-            nextBtn = "Weiter",
             selected = "Ausgewählt",
             adaptiveReminderNotifTitle = "Sie haben Ihren Zikr in letzter Zeit reduziert",
             spiritualVerses = listOf(
@@ -1260,7 +1236,6 @@ object AppStrings {
             importStatsBackupError = "Échec de lecture du fichier de sauvegarde ou format non valide !",
             importStatsConfirmTitle = "Restaurer la sauvegarde",
             importStatsConfirmMsg = "Les données de sauvegarde écraseront la progression actuelle. Continuer ?",
-            confirmAction = "Restaurer",
             cancelAction = "Annuler",
             fastJumpTitle = "Saut Rapide (Passage Direct)",
             fastJumpConfirmMsg = "Souhaitez-vous continuer à partir de ce niveau ({0}) ? Si vous confirmez, tous les dhikrs précédents ({1}) seront considérés comme terminés et {0} sera débloqué.",
@@ -1279,10 +1254,7 @@ object AppStrings {
             cloudSyncTitle = "Synchronisation Cloud",
             collapse = "Réduire",
             expand = "Développer",
-            deleteBtn = "Supprimer",
             appLogo = "Logo Nefs Dhikr",
-            backBtn = "Retour",
-            nextBtn = "Suivant",
             selected = "Sélectionné",
             adaptiveReminderNotifTitle = "Vous avez réduit votre dhikr ces derniers temps",
             spiritualVerses = listOf(
