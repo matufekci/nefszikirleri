@@ -27,6 +27,7 @@ import com.example.data.model.ZikirHistory
 import com.example.data.repository.ZikirRepository
 import com.example.util.ChildLockPrefs
 import com.example.util.CloudErrorMapper
+import com.example.util.StreakCalculator
 import com.example.util.HapticHelper
 import com.example.util.NotificationScheduler
 import com.example.util.MonotonicTime
@@ -45,7 +46,6 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
-import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -129,6 +129,21 @@ class ZikirViewModel(
 
     /** Çocuk kilidi: kilit açıkken sayaç eylemleri VM düzeyinde yok sayılır. */
     fun isChildLocked(): Boolean = ChildLockPrefs.isEnabled(getApplication())
+
+    /**
+     * En uzun seri onbellegi: Room her dokunusta AYNI icerikte yeni bir liste
+     * gonderiyor; icerik degismediyse ~2N parse yerine hazir sonuc kullanilir.
+     */
+    @Volatile
+    private var bestStreakCache: Pair<List<String>, Int>? = null
+
+    private fun bestStreakFor(dateKeys: List<String>): Int {
+        val cached = bestStreakCache
+        if (cached != null && cached.first == dateKeys) return cached.second
+        val value = StreakCalculator.longestRunDays(dateKeys)
+        bestStreakCache = dateKeys to value
+        return value
+    }
 
     private val settingsMutex = Mutex()
 
@@ -294,30 +309,13 @@ class ZikirViewModel(
                     cal.add(Calendar.DAY_OF_YEAR, -1)
                 }
 
-                // Best streak calculation from distinct active dates
-                var bestStreak = streakCount
-                if (distinctActiveDates.isNotEmpty()) {
-                    val sortedDates = distinctActiveDates.sorted()
-                    var currentRun = 1
-                    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-                    for (i in 1 until sortedDates.size) {
-                        try {
-                            val d1 = sdf.parse(sortedDates[i - 1])
-                            val d2 = sdf.parse(sortedDates[i])
-                            if (d1 != null && d2 != null) {
-                                val diffDays = ((d2.time - d1.time) / (1000 * 60 * 60 * 24L))
-                                if (diffDays == 1L) {
-                                    currentRun++
-                                    if (currentRun > bestStreak) bestStreak = currentRun
-                                } else {
-                                    currentRun = 1
-                                }
-                            }
-                        } catch (e: Exception) {
-                            currentRun = 1
-                        }
-                    }
-                }
+                // En uzun seri: takvim gunu sayisi uzerinden (DST'den bagimsiz).
+                // Eski surum "yyyy-MM-dd"yi yerel gece yarisina parse edip farki
+                // 86.400.000'e boluyordu; yaz saati uygulayan bolgelerde bahar
+                // gecisinde iki gun arasi 23 saat oldugu icin bolum 0 cikiyor ve
+                // seri YANLISLIKLA kopuyordu. Ayrica komsu her cift icin iki parse
+                // yapiliyordu (her dokunusta). Bkz. StreakCalculator.
+                val bestStreak = maxOf(streakCount, bestStreakFor(distinctActiveDates))
 
                 // 7 Days Chart (SQL günlük toplam haritasından)
                 val sevenDaysList = mutableListOf<DayChartItem>()
