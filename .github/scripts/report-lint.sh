@@ -39,8 +39,30 @@ fatal="$(count Fatal)"
 err="$(count Error)"
 warn="$(count Warning)"
 
+# En sik tekrar eden sorun kimlikleri: sayiyi gormek yetmiyor, HANGI kuralin
+# tekrarladigini da gormek gerekiyor (log dosyalari bu ortamdan indirilemiyor).
+top_ids() {
+  grep -o '<issue[^>]*>' "$XML" 2>/dev/null \
+    | sed -n 's/.*id="\([^"]*\)".*severity="\([^"]*\)".*/\2 \1/p' \
+    | awk -v s="$1" '$1 == s { print $2 }' \
+    | sort | uniq -c | sort -rn | head -5 \
+    | awk '{ printf "%s(%s) ", $2, $1 }'
+}
+
+top_fatal="$(top_ids Fatal)"
+top_error="$(top_ids Error)"
+top_warn="$(top_ids Warning)"
+
 echo "lint: ${fatal} fatal, ${err} error, ${warn} warning (${XML})"
-echo "::notice title=Lint sonucu::${fatal} fatal, ${err} error, ${warn} warning"
+echo "  en sik fatal : ${top_fatal:--}"
+echo "  en sik error : ${top_error:--}"
+echo "  en sik warning: ${top_warn:--}"
+
+detail="${fatal} fatal, ${err} error, ${warn} warning"
+if [ -n "${top_fatal}" ]; then detail="${detail} | fatal: ${top_fatal}"; fi
+if [ -n "${top_error}" ]; then detail="${detail} | error: ${top_error}"; fi
+if [ -n "${top_warn}" ]; then detail="${detail} | warning: ${top_warn}"; fi
+echo "::notice title=Lint sonucu::${detail}"
 
 if [ "${fatal:-0}" -gt 0 ]; then
   echo "::error title=Lint fatal::${fatal} fatal lint sorunu var"

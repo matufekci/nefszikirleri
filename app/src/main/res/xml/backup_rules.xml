@@ -4,4 +4,8 @@
     <include domain="sharedpref" path="nefs_app_prefs.xml" />
     <include domain="sharedpref" path="spiritual_virtues_prefs.xml" />
     <include domain="sharedpref" path="adaptive_spiritual_reminder_prefs.xml" />
+    <!-- badge_progress_prefs: toplu sicrama (fast jump) ofsetleri burada
+         birikir ve veritabanindan YENIDEN HESAPLANAMAZ. Yedeklenmezse
+         kullanici cihaz degistirdiginde rozet ilerlemesi sessizce duser. -->
+    <include domain="sharedpref" path="badge_progress_prefs.xml" />
 </full-backup-content>
