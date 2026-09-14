@@ -146,7 +146,7 @@ class BackupManager(private val context: Context) {
         reminderSlots: List<ReminderSlot>,
         settings: AppSettings,
         password: String
-    ): Result<String> = withContext(Dispatchers.IO) {
+    ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val payload = BackupPayload(
                 appName = APP_SIGNATURE,
@@ -232,7 +232,19 @@ class BackupManager(private val context: Context) {
             val originalSize = jsonBytes.size
             val compressedSize = compressedBytes.size
             val encryptedSize = ciphertext.size
-            Result.success("Yedekleme başarıyla oluşturuldu ve şifrelendi (${payload.zikirs.size} zikir, ${payload.history.size} geçmiş kaydı). Orijinal: ${originalSize / 1024}KB, Sıkıştırılmış: ${compressedSize / 1024}KB, Şifreli: ${encryptedSize / 1024}KB")
+            // Boyut tanilamasi yalnizca log icin. Eskiden Result.success(String)
+            // olarak sabit Turkce bir metin donuyordu; HICBIR cagri tarafi o
+            // metni okumuyordu (ViewModel yalnizca isSuccess'e bakiyor, testler
+            // de oyle). Olu payload kaldirildi, teshis log'a tasindi.
+            if (com.example.BuildConfig.DEBUG) {
+                android.util.Log.d(
+                    "BackupManager",
+                    "Backup created: ${payload.zikirs.size} dhikr, ${payload.history.size} history rows; " +
+                        "original=${originalSize / 1024}KB compressed=${compressedSize / 1024}KB " +
+                        "encrypted=${encryptedSize / 1024}KB"
+                )
+            }
+            Result.success(Unit)
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
             Result.failure(Exception("Backup creation failed: ${e.localizedMessage}", e))
