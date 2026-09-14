@@ -98,15 +98,15 @@ dep_updates() {
 # "2 error" gorup hangi satir oldugunu bilemeyince duzeltme turu kayboluyor
 # (2026-09-15'te yasandi). Konum, <issue> blogunun icindeki <location>
 # ogesinde ve blogun SONUNDA oldugu icin tampon </issue>'e kadar birikir.
-issue_locations() {
-  awk '
+issue_locations() {  # $1 = severity duzenli ifadesi ("Error|Fatal" / "Warning")
+  awk -v want="$1" '
     function flush(   id, sev, f, l) {
       id = ""; sev = ""; f = ""; l = ""
       if (match(buf, /id="[^"]*"/))       id  = substr(buf, RSTART + 4, RLENGTH - 5)
       if (match(buf, /severity="[^"]*"/)) sev = substr(buf, RSTART + 10, RLENGTH - 11)
       if (match(buf, / file="[^"]*"/))    f   = substr(buf, RSTART + 7, RLENGTH - 8)
       if (match(buf, / line="[^"]*"/))    l   = substr(buf, RSTART + 7, RLENGTH - 8)
-      if (sev == "Error" || sev == "Fatal") print sev, id, f ":" l
+      if (sev ~ want) print sev, id, f ":" l
       buf = ""
     }
     /<issue/    { if (inissue) flush(); inissue = 1; buf = "" }
@@ -116,7 +116,10 @@ issue_locations() {
   ' "$XML" 2>/dev/null
 }
 
-error_locs="$(issue_locations | head -10 | awk '{ printf "%s %s %s | ", $1, $2, $3 }')"
+error_locs="$(issue_locations "Error|Fatal" | head -10 | awk '{ printf "%s %s %s | ", $1, $2, $3 }')"
+# Uyarilarin konumu da gerekli: 12 uyari icin "hangi dosya hangi satir"
+# bilinmeden duzeltme yapilamiyor (EmptySuperCall grep'le bile bulunamadi).
+warn_locs="$(issue_locations "Warning" | head -14 | awk '{ printf "%s %s | ", $2, $3 }' | sed 's#app/src/main/java/com/example/##g; s#app/src/main/##g; s#app/src/test/java/com/example/##g')"
 
 top_fatal="$(top_ids Fatal)"
 top_error="$(top_ids Error)"
@@ -130,7 +133,8 @@ echo "  en sik warning: ${top_warn:--}"
 detail="${fatal} fatal, ${err} error, ${warn} warning"
 if [ -n "${top_fatal}" ]; then detail="${detail} | fatal: ${top_fatal}"; fi
 if [ -n "${top_error}" ]; then detail="${detail} | error: ${top_error}"; fi
-if [ -n "${error_locs}" ]; then detail="${detail} | KONUM: ${error_locs}"; fi
+if [ -n "${error_locs}" ]; then detail="${detail} | HATA KONUM: ${error_locs}"; fi
+if [ -n "${warn_locs}" ]; then detail="${detail} | UYARI KONUM: ${warn_locs}"; fi
 if [ -n "${top_warn}" ]; then detail="${detail} | warning: ${top_warn}"; fi
 echo "::notice title=Lint sonucu::${detail}"
 
