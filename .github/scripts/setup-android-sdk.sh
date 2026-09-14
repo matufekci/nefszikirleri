@@ -39,9 +39,11 @@ if [ -z "$SDKM" ] || [ ! -x "$SDKM" ]; then
 fi
 echo "sdkmanager: ${SDKM}"
 
-# Projenin gereksinimleri (dizin adiyla dogrulanir; surum katalogundaki
-# compileSdk 36.1 ve AGP'nin varsayilan build-tools surumuyle eslesir).
-need_dirs="platform-tools platforms/android-36.1 build-tools/36.0.0"
+# Projenin gereksinimleri (dizin adiyla dogrulanir; app/build.gradle.kts
+# icindeki compileSdk 37 ve AGP'nin varsayilan build-tools surumu).
+# Platform icin glob kullaniliyor: android-37 / android-37.0 / android-37.2
+# adlandirmasi imaja gore degisebiliyor.
+need_dirs="platform-tools build-tools/36.0.0"
 missing=""
 for p in $need_dirs; do
   if [ -d "$SDK/$p" ]; then
@@ -51,6 +53,13 @@ for p in $need_dirs; do
     missing="$missing $p"
   fi
 done
+
+# Platform: android-37.* yeterli (androidx.core 1.19.0 bunu sart kosuyor)
+if compgen -G "$SDK/platforms/android-37*" > /dev/null 2>&1; then
+  echo "  kurulu: $(cd "$SDK/platforms" && ls -d android-37* | tr '\n' ' ')"
+else
+  echo "  ::warning::platforms/android-37* kurulu degil; AGP eksik paketi kendisi indirmeyi deneyecek"
+fi
 
 # Lisans onayi (imajda genelde zaten onayli; tekrar etmek zararsiz)
 if [ -x "$SDKM" ]; then

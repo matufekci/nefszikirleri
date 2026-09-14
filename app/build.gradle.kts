@@ -9,7 +9,12 @@ plugins {
 
 android {
   namespace = "com.example"
-  compileSdk { version = release(36) { minorApiLevel = 1 } }
+  // compileSdk 37: androidx.core 1.19.0 / core-ktx 1.19.0 AAR metadata'si
+  // "compile against version 37 or later" ve "AGP 9.1.0 or higher" istiyor
+  // (AGP'miz 9.1.1). targetSdk BILEREK 36'da: targetSdk uygulamayi yeni
+  // calisma zamani davranislarina sokar, compileSdk yalnizca derleme
+  // yuzeyini genisletir. minSdk 24 de degismedi.
+  compileSdk { version = release(37) }
 
   defaultConfig {
     applicationId = "com.aistudio.nefszikir.kdhrmq"

@@ -32,11 +32,11 @@ for log in "$@"; do
   fi
 
   # 2) KSP / derleyici ic hatalari: ilk eslesmenin 4 satirlik baglami
-  ctx="$(grep -n -i -m 3 -A 4 'ksp\.\|internal error\|What went wrong' "$log" 2>/dev/null | head -40)"
+  ctx="$(grep -n -i -m 3 -A 25 'ksp\.\|internal error\|What went wrong' "$log" 2>/dev/null | head -120)"
   if [ -n "$ctx" ]; then
     found=1
     # Annotation icin tek satira indir (uzun satirlar kirpilir)
-    flat="$(printf '%s' "$ctx" | tr '\n' '|' | cut -c1-900)"
+    flat="$(printf '%s' "$ctx" | tr '\n' '|' | cut -c1-3000)"
     echo "::warning title=Gradle log özeti (${log})::${flat}"
   fi
 done
