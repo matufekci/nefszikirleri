@@ -20,7 +20,6 @@ import com.example.data.local.AppDatabase
 import com.example.data.model.AppStrings
 import com.example.data.model.UiTranslations
 import com.example.util.AdaptiveReminderManager
-import com.example.util.NumberFormatter
 import kotlinx.coroutines.CancellationException
 import java.io.IOException
 import java.text.SimpleDateFormat
@@ -35,6 +34,7 @@ class DailyEvaluationWorker(
     companion object {
         private const val TAG = "DailyEvaluationWorker"
         const val MAX_RETRIES = 3
+        const val NOTIFICATION_ID_PACE = 7777
 
         fun isTransientFailure(e: Throwable): Boolean {
             var current: Throwable? = e
@@ -78,16 +78,14 @@ class DailyEvaluationWorker(
                 Log.w(TAG, "Failed to cleanup temp backups", e)
             }
 
-            // 1. Günlük zikir istatistiklerini ve adaptif hatırlatıcı zamanlarını değerlendir
-            val shouldSend = evaluateAdaptiveReminder(context, db)
-            if (shouldSend) {
-                sendAdaptiveNotification(context, lang, strings)
+            // 1. Tempo matematiği: 1.140.000 zikir / 6 ay hedefi.
+            //    Bant her gün çekilen zikirlere göre yeniden hesaplanır; ayar gerektirmez.
+            val band = evaluatePaceBand(context, db)
+            if (band != null) {
+                sendPaceNotification(context, lang, strings, band)
             }
 
-            // 2. Streak kontrolü yap (Optional logging or validation)
-            checkStreakStatus(context, db)
-
-            // 3. Process any unapplied pending operations (in case app was killed before batch)
+            // 2. Process any unapplied pending operations (in case app was killed before batch)
             try {
                 val repo = com.example.data.repository.ZikirRepository(db)
                 repo.processUnappliedOperations()
@@ -106,7 +104,7 @@ class DailyEvaluationWorker(
                     Log.w(TAG, "Transient failure encountered in DailyEvaluationWorker (attempt: $runAttemptCount). Retrying...", e)
                     return Result.retry()
                 } else {
-                    Log.e(TAG, "DailyEvaluationWorker exceeded max retry limit ($MAX_RETRIES). Failing.", e)
+                    Log.e(TAG, "DailyEvaluationWorker exceeded max retry limit ($MAX_RETRIES). Failing.")
                     return Result.failure()
                 }
             } else {
@@ -116,55 +114,67 @@ class DailyEvaluationWorker(
         }
     }
 
-    private suspend fun evaluateAdaptiveReminder(context: Context, db: AppDatabase): Boolean {
+    /**
+     * Tempo bandı değerlendirmesi.
+     *
+     * - Kalan zikir = Σ max(0, target − count) (tur ilerledikçe azalır)
+     * - Tur başlangıcı = zikirlerdeki en erken startedAt; ilk [GRACE_DAYS] gün bildirim yok
+     * - needDaily = kalan / (182 − geçen gün), [3.124, 5.000] bandına kıstırılır
+     * - avg7 = son 7 TAM günün ortalaması (boş günler 0 sayılır — katı hesap)
+     * - ON_TRACK iken haftada en fazla 1 teşvik gönderilir; aktif kullanıcıyı boğmaz
+     *
+     * @return gönderim yapılacak bant; null ise bugün bildirim gönderilmez
+     */
+    private suspend fun evaluatePaceBand(context: Context, db: AppDatabase): AdaptiveReminderManager.PaceBand? {
         if (!AdaptiveReminderManager.canSendNotificationToday(context)) {
-            return false
+            return null
         }
 
-        val calFrom = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -8) }
-        val manualHistory = db.historyDao().getRecentManualHistoryDirect(calFrom.timeInMillis, 10000L)
-        if (manualHistory.isEmpty()) {
-            return false
-        }
+        val zikirs = db.zikirDao().getAllZikirsDirect()
+        if (zikirs.isEmpty()) return null
+
+        val remaining = zikirs.sumOf { (it.target - it.count).coerceAtLeast(0L) }
+        if (remaining <= 0L) return null // tur bitmiş; yeni tur sıfırlanınca tekrar başlar
+
+        val roundStart = zikirs.mapNotNull { it.startedAt }.filter { it > 0L }.minOrNull()
+            ?: return null // kullanıcı henüz hiç başlamadı
+        val elapsedDays = ((System.currentTimeMillis() - roundStart) / (24L * 60 * 60 * 1000L)).toInt()
+        if (elapsedDays < AdaptiveReminderManager.GRACE_DAYS) return null
+
+        val needDaily = AdaptiveReminderManager.computeNeedDaily(remaining, elapsedDays)
 
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val cal = Calendar.getInstance()
-        val todayKey = sdf.format(cal.time)
+        val calFrom = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -8) }
+        // Toplu/otomatik sıçrama kayıtları (>10.000) bilinçli tempoya dahil edilmez
+        val manualHistory = db.historyDao().getRecentManualHistoryDirect(calFrom.timeInMillis, 10000L)
 
-        val todayAmount = manualHistory
-            .filter { it.dateKey == todayKey }
-            .sumOf { it.amount }
-
-        val previousDaysKeys = mutableListOf<String>()
+        var weekSum = 0L
         for (i in 1..7) {
-            val tempCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -i) }
-            previousDaysKeys.add(sdf.format(tempCal.time))
+            val dayCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -i) }
+            val dayKey = sdf.format(dayCal.time)
+            weekSum += manualHistory.filter { it.dateKey == dayKey }.sumOf { it.amount }
+        }
+        val avg7 = weekSum / 7.0
+
+        val band = AdaptiveReminderManager.paceBand(avg7, needDaily)
+
+        // Tempo yerindeyken kullanıcı çok az bildirim alır: haftada en fazla 1 teşvik.
+        if (band == AdaptiveReminderManager.PaceBand.ON_TRACK &&
+            AdaptiveReminderManager.getWeeklySentCount(context) >= 1
+        ) {
+            return null
         }
 
-        val pastDaysWithActivity = mutableMapOf<String, Long>()
-        for (dayKey in previousDaysKeys) {
-            val daySum = manualHistory
-                .filter { it.dateKey == dayKey }
-                .sumOf { it.amount }
-            if (daySum > 0) {
-                pastDaysWithActivity[dayKey] = daySum
-            }
-        }
-
-        if (pastDaysWithActivity.size < 2) {
-            return false
-        }
-
-        val pastAverage = pastDaysWithActivity.values.average()
-        if (pastAverage < 50) {
-            return false
-        }
-
-        val isSignificantlyReduced = todayAmount < (pastAverage * 0.5)
-        return isSignificantlyReduced
+        Log.d(TAG, "Pace eval: remaining=$remaining elapsed=$elapsedDays need=$needDaily avg7=$avg7 band=$band")
+        return band
     }
 
-    private fun sendAdaptiveNotification(context: Context, lang: String, strings: UiTranslations) {
+    private fun sendPaceNotification(
+        context: Context,
+        lang: String,
+        strings: UiTranslations,
+        band: AdaptiveReminderManager.PaceBand
+    ) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
             ?: return
 
@@ -191,19 +201,31 @@ class DailyEvaluationWorker(
             notificationManager.createNotificationChannel(channel)
         }
 
-        val reservation = AdaptiveReminderManager.tryReserveQuota(context) ?: return
+        val reservation = AdaptiveReminderManager.tryReserveQuota(
+            context,
+            AdaptiveReminderManager.weeklyQuotaFor(band)
+        ) ?: return
 
-        val verse = AdaptiveReminderManager.getRandomSpiritualVerse(lang)
+        // Tempo yerindeyse müjde; gerideyse uyarı ağırlıklı ayet gider.
+        val verse = when (band) {
+            AdaptiveReminderManager.PaceBand.ON_TRACK,
+            AdaptiveReminderManager.PaceBand.MILD -> AdaptiveReminderManager.getRandomGladTidings(context)
+            AdaptiveReminderManager.PaceBand.BEHIND -> AdaptiveReminderManager.getRandomWarning(context)
+            AdaptiveReminderManager.PaceBand.CRITICAL -> AdaptiveReminderManager.getInactivityVerse(context)
+        }
         val title = strings.adaptiveReminderNotifTitle
         val content = "${verse.surah}\n\"${verse.verseText}\""
-        val notificationId = 7777
 
         val launchIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            // Bildirim tap UX'i: kullanici dogrudan zikir (sayac) sekmesine iner.
+            // Diger iki bildirim kaynagi bunu zaten yapiyordu; burasi eksikti ve
+            // uygulama son acik sekmede aciliyordu.
+            putExtra("open_tab", "zikir")
         }
         val pendingIntent = PendingIntent.getActivity(
             context,
-            notificationId,
+            NOTIFICATION_ID_PACE,
             launchIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -219,31 +241,10 @@ class DailyEvaluationWorker(
             .build()
 
         try {
-            notificationManager.notify(notificationId, notification)
+            notificationManager.notify(NOTIFICATION_ID_PACE, notification)
         } catch (e: Exception) {
             AdaptiveReminderManager.rollbackQuotaReservation(context, reservation)
             throw e
-        }
-    }
-
-    private suspend fun checkStreakStatus(context: Context, db: AppDatabase) {
-        try {
-            val activeDates = db.historyDao().getDistinctActiveDatesDirect()
-            val activeDays = activeDates.toSet()
-            var streakCount = 0
-            val cal = Calendar.getInstance()
-            while (activeDays.contains(NumberFormatter.getDateKey(cal.time))) {
-                streakCount++
-                cal.add(Calendar.DAY_OF_YEAR, -1)
-            }
-            Log.d(TAG, "Current streak verification in background: $streakCount days")
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Throwable) {
-            Log.e(TAG, "Failed to verify streak status during background evaluation", e)
-            if (isTransientFailure(e)) {
-                throw e
-            }
         }
     }
 }

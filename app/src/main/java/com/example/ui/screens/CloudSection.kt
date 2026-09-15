@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import com.example.ui.UiText
+
 import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -12,6 +14,7 @@ import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -47,15 +50,20 @@ fun CloudSection(
     onRestoreFromCloud: () -> Unit,
     onRequestExportBackup: () -> Unit,
     onLaunchImportFile: () -> Unit,
+    onOpenPrivacyPolicy: () -> Unit,
+    onDeleteAccount: () -> Unit,
+    isAccountDeletionInProgress: Boolean,
     context: Context,
     modifier: Modifier = Modifier
 ) {
     val colors = LocalAppColors.current
     val strings = AppStrings.get(lang)
     var accountExpanded by rememberSaveable { mutableStateOf(false) }
+    // Hesap silme onay ekrani (mevcut AlertDialog kalibiyla ayni stil).
+    var showDeleteAccountConfirm by rememberSaveable { mutableStateOf(false) }
 
     val headerTitle = if (currentUser != null) {
-        currentUser.displayName ?: "Google Hesabı"
+        currentUser.displayName ?: UiText.googleAccount.get(lang)
     } else {
         when (lang.lowercase()) {
             "ar" -> "النسخ الاحتياطي والمزامنة"
@@ -65,10 +73,11 @@ fun CloudSection(
             else -> "Yedekleme ve Senkronizasyon"
         }
     }
+    // Ayarlar başlıklarında alt başlık gösterilmiyor; sadece bağlı hesap bilgisi kalır.
     val headerSubtitle = if (currentUser != null) {
-        currentUser.email ?: "Bağlandı"
+        currentUser.email ?: UiText.connected.get(lang)
     } else {
-        getSettingsSummary("backup_and_sync", lang)
+        ""
     }
 
     Surface(
@@ -129,13 +138,15 @@ fun CloudSection(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Text(
-                            text = headerSubtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.textMuted,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        if (headerSubtitle.isNotBlank()) {
+                            Text(
+                                text = headerSubtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.textMuted,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
 
@@ -224,16 +235,20 @@ fun CloudSection(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Google ile Giriş Yap",
+                            text = UiText.signInWithGoogle.get(lang),
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
                         )
                     }
                 } else {
-                    val lastSyncText = if (lastSyncTimestamp != null && lastSyncTimestamp > 0L) {
-                        val sdf = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
-                        "Son Eşitleme: ${sdf.format(Date(lastSyncTimestamp))}"
-                    } else {
-                        "Otomatik Eşitleme Aktif"
+                    // Formatlayici + metin her recomposition'da yeniden
+                    // uretiliyordu; deger ayni, hesap zaman damgasina gore saklaniyor.
+                    val lastSyncText = remember(lastSyncTimestamp, lang) {
+                        if (lastSyncTimestamp != null && lastSyncTimestamp > 0L) {
+                            val sdf = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+                            UiText.lastSyncAt.format(lang, sdf.format(Date(lastSyncTimestamp)))
+                        } else {
+                            UiText.autoSyncActive.get(lang)
+                        }
                     }
 
                     Row(
@@ -299,7 +314,7 @@ fun CloudSection(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Buluta Yedekle",
+                                text = UiText.backupToCloud.get(lang),
                                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
                             )
                         }
@@ -325,10 +340,45 @@ fun CloudSection(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Geri Yükle",
+                                text = UiText.restore.get(lang),
                                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
                             )
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // PLAY UYUMLULUGU: hesap + iliskili bulut verisi silme.
+                    // Mevcut cikis butonuyla ayni tip (TextButton + hata rengi);
+                    // yeni gorsel dil eklenmedi.
+                    TextButton(
+                        onClick = { showDeleteAccountConfirm = true },
+                        enabled = !isCloudSyncing && !isAccountDeletionInProgress,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("btn_delete_account")
+                    ) {
+                        if (isAccountDeletionInProgress) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = colors.error
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                        } else {
+                            Icon(
+                                imageVector = Icons.Rounded.DeleteForever,
+                                contentDescription = null,
+                                tint = colors.error,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+                        Text(
+                            text = UiText.deleteAccount.get(lang),
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = colors.error
+                        )
                     }
                 }
 
@@ -343,6 +393,95 @@ fun CloudSection(
                     onLaunchImportFile = onLaunchImportFile
                 )
             }
+
+            // 3. KISIM: GİZLİLİK POLİTİKASI (kart kapalıyken de erişilebilir)
+            // Play politikasi yalnizca store listing'de degil, uygulama icinde
+            // de erisilebilir olmali. Katlanabilir blogun DISINA kondu ki
+            // kullanici karti genisletmeden ulasabilsin.
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider(color = colors.border.copy(alpha = 0.4f))
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable { onOpenPrivacyPolicy() }
+                    .padding(vertical = 6.dp)
+                    .testTag("btn_privacy_policy"),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.PrivacyTip,
+                    contentDescription = null,
+                    tint = colors.primary,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = UiText.privacyPolicy.get(lang),
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = colors.text
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Icon(
+                    imageVector = Icons.Rounded.OpenInNew,
+                    contentDescription = null,
+                    tint = colors.textMuted,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
         }
+    }
+
+    // Hesap silme onayi: mevcut AlertDialog kalibiyle ayni stil
+    // (baslik Black + govde textMuted + birincil onay butonu).
+    if (showDeleteAccountConfirm) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!isAccountDeletionInProgress) showDeleteAccountConfirm = false
+            },
+            title = {
+                Text(
+                    text = UiText.deleteAccountConfirmTitle.get(lang),
+                    fontWeight = FontWeight.Black,
+                    color = colors.text
+                )
+            },
+            text = {
+                Text(
+                    text = UiText.deleteAccountConfirmMsg.get(lang),
+                    color = colors.textMuted,
+                    lineHeight = 20.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteAccountConfirm = false
+                        onDeleteAccount()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.error),
+                    enabled = !isAccountDeletionInProgress
+                ) {
+                    Text(
+                        text = UiText.deleteAccountConfirmBtn.get(lang),
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteAccountConfirm = false },
+                    enabled = !isAccountDeletionInProgress
+                ) {
+                    Text(
+                        text = strings.cancel,
+                        color = colors.textMuted,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        )
     }
 }

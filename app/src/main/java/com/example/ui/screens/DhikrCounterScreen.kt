@@ -7,8 +7,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -21,17 +22,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.List
-import androidx.compose.material.icons.rounded.FullscreenExit
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,15 +37,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -58,8 +49,6 @@ import com.example.data.model.AppStrings
 import com.example.data.model.Zikir
 import com.example.data.model.ZikirContent
 import com.example.ui.components.DhikrCircle
-import com.example.ui.components.SpiritualBeadsIcon
-import com.example.ui.components.SpiritualCheckIcon
 import com.example.ui.components.SpiritualFlameIcon
 import com.example.ui.theme.LocalAppColors
 import com.example.ui.viewmodel.DhikrUiState
@@ -86,8 +75,12 @@ fun DhikrCounterScreen(
     var showResetDialog by rememberSaveable { mutableStateOf(false) }
     var showTargetDialog by rememberSaveable { mutableStateOf(false) }
 
-    // Zen / Odaklanma Modu Durumu
-    var isZenMode by rememberSaveable { mutableStateOf(false) }
+    // Zen / Odaklanma Modu Durumu.
+    // TEK dogruluk kaynagi ViewModel: MainApp alt sekmeleri state.isZenMode'a
+    // gore gizliyor. Durum burada lokal tutuldugu icin tam ekrana gecince
+    // sekmeler hic gizlenmiyordu.
+    val isZenMode = state.isZenMode
+
 
     // Zen Modunda Sistem Barlarını Gizleme
     val activity = context as? Activity
@@ -152,146 +145,142 @@ fun DhikrCounterScreen(
             else -> 350.dp
         }
 
+        // ================================================================
+        // ZEN MOD — YUMUŞAK SIRALI GEÇİŞ (tek ağaç)
+        // Eskiden zen'e geçişte tüm ağaç AnimatedContent ile değiştiriliyordu;
+        // artık üst bar ve halka yerinde kalır, alttaki günlük hedef kartı
+        // (0 ms) ve eylem butonları (120 ms) sırayla aşağı sıyrılarak kaybolur.
+        // Dönüşte aynı parçalar ters sırayla geri gelir.
+        // Zen'de ekranın HER YERİNE dokunmak zikir sayar (butonlar kendi
+        // dokunuşlarını tükettiği için üst bar etkilenmez).
+        // ================================================================
         Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            if (isZenMode) {
-                // Tam ekran modunda SADECE çember gösterilir, diğer her şey kaldırılır
-                val progress = if (currentZikir.target > 0) (currentZikir.count.toFloat() / currentZikir.target.toFloat()).coerceIn(0f, 1f) else 0f
-                val remaining = (currentZikir.target - currentZikir.count).coerceAtLeast(0L)
-                val transliteration = ZikirContent.getZikirTransliteration(currentZikir.id, state.settings.lang)
-                val remainingLabel = strings.remainingInThis.replace("{0}", NumberFormatter.format(remaining, state.settings.lang))
-
-                DhikrCircle(
-                    ringSize = calculatedRingSize,
-                    progress = progress,
-                    displayCount = currentZikir.count,
-                    targetCount = currentZikir.target,
-                    isCountdownMode = state.settings.countdownMode,
-                    remainingLabel = remainingLabel,
-                    arabicText = arabicText,
-                    transliteration = transliteration,
-                    lang = state.settings.lang,
-                    isZenMode = true,
-                    onTap = { viewModel.incrementCount(1) },
-                    modifier = Modifier.testTag("dhikr_circle_tap_area")
-                )
-
-                // Çok şık, yarı saydam, köşede yüzen bir çıkış butonu
-                IconButton(
-                    onClick = { isZenMode = false },
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(16.dp)
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(colors.inputBg.copy(alpha = 0.5f))
-                        .border(1.dp, colors.border.copy(alpha = 0.4f), CircleShape)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.FullscreenExit,
-                        contentDescription = strings.exitZenMode,
-                        tint = colors.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(isZenMode) {
+                    if (isZenMode) {
+                        detectTapGestures(onTap = { viewModel.incrementCount(1) })
+                    }
                 }
-            } else {
-                // Normal Mod
+        ) {
+            // Not: scroll yok — agirlıklı çember kutusu her iki modda da dikey
+            // olarak merkezlenir; zen'de alt bölüm sirilınca çember yumusakça
+            // ekranın tam ortasına süzülür.
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 14.dp, vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // ==========================================
+                // 1. ÜST BÖLÜM: KONTROLLER (her iki modda birebir aynı)
+                // ==========================================
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 14.dp, vertical = 4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceBetween
+                        .fillMaxWidth()
+                        .widthIn(max = 640.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // ==========================================
-                    // 1. ÜST BÖLÜM: KONTROLLER
-                    // ==========================================
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .widthIn(max = 640.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        // Üst Bar (Titreşim & Zen Modu)
-                        CounterTopBar(
-                            settings = state.settings,
-                            onCycleHapticMode = { viewModel.cycleHapticMode() },
-                            onToggleZenMode = { isZenMode = it }
-                        )
+                    CounterTopBar(
+                        settings = state.settings,
+                        onCycleHapticMode = { viewModel.cycleHapticMode() },
+                        onToggleZenMode = { viewModel.toggleZenMode(it) },
+                        isZenMode = isZenMode
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
 
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
+                // ==========================================
+                // 2. ORTA BÖLÜM: DOKUNMATİK ZİKİR HALKASI
+                // ==========================================
+                val progress = if (currentZikir.target > 0) (currentZikir.count.toFloat() / currentZikir.target.toFloat()).coerceIn(0f, 1f) else 0f
+                val transliteration = ZikirContent.getZikirTransliteration(currentZikir.id, state.settings.lang)
 
-                    // ==========================================
-                    // 2. ORTA BÖLÜM: DOKUNMATİK ZİKİR HALKASI
-                    // ==========================================
-                    Spacer(modifier = Modifier.height(4.dp))
-                    val progress = if (currentZikir.target > 0) (currentZikir.count.toFloat() / currentZikir.target.toFloat()).coerceIn(0f, 1f) else 0f
-                    val remaining = (currentZikir.target - currentZikir.count).coerceAtLeast(0L)
-                    val transliteration = ZikirContent.getZikirTransliteration(currentZikir.id, state.settings.lang)
-                    val remainingLabel = strings.remainingInThis.replace("{0}", NumberFormatter.format(remaining, state.settings.lang))
-
+                // Çember her iki modda AYNI boyutta kalır; alt bölüm zen'de
+                // sıyrıldıkça bu ağırlıklı kutu çemberi yumuşakça ekranın tam
+                // ortasına taşır (boyut sıçraması yok).
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
                     DhikrCircle(
                         ringSize = calculatedRingSize,
                         progress = progress,
                         displayCount = currentZikir.count,
                         targetCount = currentZikir.target,
                         isCountdownMode = state.settings.countdownMode,
-                        remainingLabel = remainingLabel,
                         arabicText = arabicText,
                         transliteration = transliteration,
                         lang = state.settings.lang,
-                        isZenMode = false,
+                        isZenMode = isZenMode,
                         onTap = { viewModel.incrementCount(1) },
                         modifier = Modifier.testTag("dhikr_circle_tap_area")
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+                }
+                Spacer(modifier = Modifier.height(4.dp))
 
-                    // ==========================================
-                    // 3. ALT BÖLÜM: GÜNLÜK VİRD & EYLEM BUTONLARI
-                    // ==========================================
+                // ==========================================
+                // 3. ALT BÖLÜM: zen'e geçişte sırayla sıyrılır
+                // ==========================================
+                val dailyTarget = state.settings.dailyTarget.coerceAtLeast(1L)
+                val dailyProgress = if (dailyTarget > 0) state.todayRecited.toFloat() / dailyTarget.toFloat() else 0f
+                val dailyPercent = (dailyProgress * 100).toInt()
+
+                // Günlük Vird İlerleme Barı (Hedef Düzenleme Tıklanabilir)
+                AnimatedVisibility(
+                    visible = !isZenMode,
+                    enter = fadeIn(tween(300, delayMillis = 140)) +
+                        slideInVertically(tween(380, delayMillis = 140)) { it / 4 },
+                    exit = fadeOut(tween(280)) + slideOutVertically(tween(340)) { it / 3 },
+                    label = "dailyCardZen"
+                ) {
+                    Card(
+                        onClick = { showTargetDialog = true },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = colors.inputBg),
+                        border = androidx.compose.foundation.BorderStroke(0.8.dp, colors.border.copy(alpha = 0.5f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .widthIn(max = 640.dp)
+                            .padding(bottom = 6.dp)
+                            .testTag("btn_daily_target_edit")
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                SpiritualFlameIcon(tint = colors.gold, size = 14.dp)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "${strings.dailyTargetTitle}: ${NumberFormatter.format(state.todayRecited, state.settings.lang)} / ${NumberFormatter.format(dailyTarget, state.settings.lang)} (%$dailyPercent)",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = colors.text
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Eylem butonları (hedef kartından 120 ms sonra sıyrılır)
+                AnimatedVisibility(
+                    visible = !isZenMode,
+                    enter = fadeIn(tween(300, delayMillis = 40)) +
+                        slideInVertically(tween(380, delayMillis = 40)) { it / 4 },
+                    exit = fadeOut(tween(280, delayMillis = 120)) +
+                        slideOutVertically(tween(340, delayMillis = 120)) { it / 3 },
+                    label = "actionsZen"
+                ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .widthIn(max = 640.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Günlük Vird İlerleme Barı (Hedef Düzenleme Tıklanabilir)
-                        val dailyTarget = state.settings.dailyTarget.coerceAtLeast(1L)
-                        val dailyProgress = if (dailyTarget > 0) state.todayRecited.toFloat() / dailyTarget.toFloat() else 0f
-                        val dailyPercent = (dailyProgress * 100).toInt()
-
-                        Card(
-                            onClick = { showTargetDialog = true },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(containerColor = colors.inputBg),
-                            border = androidx.compose.foundation.BorderStroke(0.8.dp, colors.border.copy(alpha = 0.5f)),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 6.dp)
-                                .testTag("btn_daily_target_edit")
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    SpiritualFlameIcon(tint = colors.gold, size = 14.dp)
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "${strings.dailyTargetTitle}: ${NumberFormatter.format(state.todayRecited, state.settings.lang)} / ${NumberFormatter.format(dailyTarget, state.settings.lang)} (%$dailyPercent)",
-                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                        color = colors.text
-                                    )
-                                }
-                            }
-                        }
-
                         // Hızlı Ekleme ve Sonraki Zikir / Hatim Bannerı
                         QuickActionsSection(
                             settings = state.settings,
@@ -319,6 +308,7 @@ fun DhikrCounterScreen(
                     }
                 }
             }
+
         }
     }
 

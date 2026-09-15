@@ -5,8 +5,6 @@ import androidx.room.Room
 import androidx.room.withTransaction
 import androidx.test.core.app.ApplicationProvider
 import com.example.data.local.AppDatabase
-import com.example.data.model.AppSettings
-import com.example.data.model.Zikir
 import com.example.data.model.ZikirHistory
 import com.example.data.repository.ZikirRepository
 import kotlinx.coroutines.runBlocking

@@ -1,10 +1,8 @@
 package com.example.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,17 +12,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.NightsStay
-import androidx.compose.material.icons.rounded.WbSunny
-import androidx.compose.material.icons.rounded.WbTwilight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -35,8 +28,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -56,10 +47,10 @@ import com.example.ui.theme.LocalAppColors
 @Composable
 fun StatCollapsibleCard(
     title: String,
+    modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     isExpanded: Boolean,
     onToggle: () -> Unit,
-    modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
     val colors = LocalAppColors.current
@@ -128,41 +119,6 @@ fun StatCollapsibleCard(
 /**
  * Vakit Yoğunluğu İkonu
  */
-@Composable
-fun TimeSlotCustomIcon(idx: Int, tint: Color, modifier: Modifier = Modifier) {
-    val vectorIcon = when (idx) {
-        0 -> Icons.Rounded.WbTwilight
-        1 -> Icons.Rounded.WbSunny
-        2 -> Icons.Rounded.NightsStay
-        3 -> Icons.Rounded.DarkMode
-        else -> Icons.Rounded.WbSunny
-    }
-
-    Box(
-        modifier = modifier
-            .size(26.dp)
-            .shadow(
-                elevation = 4.dp,
-                shape = CircleShape,
-                spotColor = tint.copy(alpha = 0.5f),
-                ambientColor = tint.copy(alpha = 0.2f)
-            )
-            .clip(CircleShape)
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(tint.copy(alpha = 0.22f), tint.copy(alpha = 0.05f), Color.Transparent)
-                )
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = vectorIcon,
-            contentDescription = null,
-            tint = tint,
-            modifier = Modifier.size(15.dp)
-        )
-    }
-}
 
 /**
  * Rozet Öğesi Kartı

@@ -3,15 +3,31 @@ name: CI - Build & Test & Room Schema
 on:
   push:
     branches: [ main, arena/** ]
-  pull_request:
-    branches: [ main ]
+  # Gun sonu tam regresyon: 20:00 UTC = 23:00 Istanbul.
+  schedule:
+    - cron: '0 20 * * *'
+  # Istek uzerine tam regresyon (Actions -> Run workflow).
+  workflow_dispatch:
+
+# Aynı dal için push + pull_request çift tetikleme çakışmasın:
+# iki event da aynı concurrency grubuna düşer (pull_request'te head_ref,
+# push'ta ref_name = dal adı), ikincisi birinciyi iptal eder ve dal başına
+# tek aktif run kalır. Yeni push, eski in-progress run'ı da iptal eder.
+concurrency:
+  group: ci-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
-    continue-on-error: true
+    # Tam test+lint yalnız gün sonu / manuel / main push'ında koşar;
+    # dal push'larında hızlı kapı (build-apk-only) yeterlidir.
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full]') }}
+    # NOT: job seviyesinde `continue-on-error` YOK. Testler patladiginda run
+    # KIRMIZI olmali; yoksa sahte yesil olusuyor (2026-09-14'te yasandi:
+    # OnboardingA11yLabelTest patladi ama run "success" dondu).
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -20,29 +36,26 @@ jobs:
           java-version: 17
           cache: gradle
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Setup Android SDK (imajdaki kurulu SDK)
+        # android-actions/setup-android@v4 Google'in kaldirdigi bir
+        # cmdline-tools zip'ini indirmeye calisip 404 ile dusuyordu
+        # (setup-android#536). Imajdaki kurulu SDK kullaniliyor.
+        run: bash .github/scripts/setup-android-sdk.sh
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Create dummy google-services.json for CI
-        run: |
-          if [ -f app/ci-dummy-google-services.json ]; then
-            cp app/ci-dummy-google-services.json app/google-services.json
-            echo "Using ci-dummy-google-services.json"
-          elif [ ! -f app/google-services.json ]; then
-            cp app/google-services.json.example app/google-services.json || echo '{"project_info":{}}' > app/google-services.json
-          fi
-          cat app/google-services.json
+      - name: Prepare google-services.json (gercek Firebase yapilandirmasi)
+        run: bash .github/scripts/prepare-google-services.sh
 
       - name: Create .env from example for CI
         run: |
           if [ ! -f .env ] && [ -f .env.example ]; then cp .env.example .env; fi
           if [ ! -f app/.env ] && [ -f app/.env.example ]; then cp app/.env.example app/.env; fi
           if [ ! -f .env ] && [ -f app/.env.example ]; then cp app/.env.example .env; fi
+          # Guvenlik: .env icerigi LOGA BASILMAZ (secret sizintisi onleme).
+          # Yalnizca dosyanin varligi dogrulanir.
           ls -la .env 2>&1 || true
-          cat .env
 
       - name: Check Room schema exists
         run: |
@@ -56,13 +69,35 @@ jobs:
         run: ./gradlew testDebugUnitTest --stacktrace --continue 2>&1 | tee unit-test.log
         continue-on-error: true
 
+      - name: Report unit test results
+        if: always()
+        # Bu adimda `continue-on-error` BILERE YOK: script failure/error
+        # gordugunde exit 1 veriyor ve job'u kirmiziya ceviriyor. Test adimi
+        # (ustteki) continue-on-error ile calisiyor ki bu adim her durumda
+        # calisip annotations uretebilsin; enforcement ise burada.
+        run: ./.github/scripts/report-unit-tests.sh app/build/test-results/testDebugUnitTest
+
       - name: Run Android lint
         run: ./gradlew lintDebug --stacktrace 2>&1 | tee lint.log
         continue-on-error: true
 
+      - name: Report lint results
+        if: always()
+        # continue-on-error BILERE YOK: lint hic calismazsa (rapor uretilmezse)
+        # job kirmizi olmali. Aksi halde lint'in patlamasi sahte yesil olur --
+        # unit testlerde yasanan deligin aynisi.
+        run: ./.github/scripts/report-lint.sh app/build/reports/lint-results-debug.xml
+
+      - name: Report Gradle failures from logs
+        if: always()
+        # Teshis adimi: KSP/derleme hatalari `--continue` yuzunden job'u
+        # kirmiziya cevirmiyor ve loglar disaridan indirilemedigi icin
+        # gorunmuyordu. Hangi gorevin patladigini annotation'a yaziyoruz.
+        run: ./.github/scripts/report-gradle-failures.sh unit-test.log lint.log
+
       - name: Upload test reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-reports
           path: |
@@ -73,10 +108,9 @@ jobs:
 
   build-debug:
     runs-on: ubuntu-latest
-    if: always()
-    needs: unit-tests
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full]') }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -85,21 +119,17 @@ jobs:
           java-version: 17
           cache: gradle
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Setup Android SDK (imajdaki kurulu SDK)
+        # android-actions/setup-android@v4 Google'in kaldirdigi bir
+        # cmdline-tools zip'ini indirmeye calisip 404 ile dusuyordu
+        # (setup-android#536). Imajdaki kurulu SDK kullaniliyor.
+        run: bash .github/scripts/setup-android-sdk.sh
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Create dummy google-services.json for CI
-        run: |
-          if [ -f app/ci-dummy-google-services.json ]; then
-            cp app/ci-dummy-google-services.json app/google-services.json
-            echo "Using ci-dummy-google-services.json for APK build"
-          elif [ ! -f app/google-services.json ]; then
-            cp app/google-services.json.example app/google-services.json || echo '{"project_info":{}}' > app/google-services.json
-          fi
-          cat app/google-services.json
+      - name: Prepare google-services.json (gercek Firebase yapilandirmasi)
+        run: bash .github/scripts/prepare-google-services.sh
 
       - name: Create .env from example for CI
         run: |
@@ -111,21 +141,36 @@ jobs:
         run: ./gradlew assembleDebug --stacktrace 2>&1 | tee build-debug.log
         continue-on-error: true
 
+      - name: Compose BOM surumunu oku (APK adina islenir)
+        if: always()
+        id: bom
+        run: echo "v=$(sed -n -E 's/^composeBom = "([^"]+)".*/\1/p' gradle/libs.versions.toml)" >> "$GITHUB_OUTPUT"
+
       - name: Upload debug APK
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: debug-apk
+          name: debug-apk-compose-${{ steps.bom.outputs.v }}
           path: |
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/debug/output-metadata.json
             build-debug.log
 
+      - name: Fail loudly if no APK was produced
+        if: always()
+        run: ./.github/scripts/assert-apk.sh app/build/outputs/apk/debug build-debug.log debug-apk
+
+      - name: Report APK signing certificate (Firebase SHA-1 kaniti)
+        if: always()
+        run: bash .github/scripts/report-apk-signer.sh
+
   build-apk-only:
     runs-on: ubuntu-latest
-    if: always()
+    # Hızlı derleme kapısı: her push'ta koşar (~8-10 dk), derleme kırılmasını
+    # ve kurulabilir debug APK'yı anında verir.
+    if: ${{ github.event_name == 'push' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -134,32 +179,153 @@ jobs:
           java-version: 17
           cache: gradle
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Setup Android SDK (imajdaki kurulu SDK)
+        # android-actions/setup-android@v4 Google'in kaldirdigi bir
+        # cmdline-tools zip'ini indirmeye calisip 404 ile dusuyordu
+        # (setup-android#536). Imajdaki kurulu SDK kullaniliyor.
+        run: bash .github/scripts/setup-android-sdk.sh
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Create dummy google-services.json for CI (valid structure)
-        run: |
-          cp app/ci-dummy-google-services.json app/google-services.json
-          echo "Using valid dummy google-services.json"
-          cat app/google-services.json
+      - name: Prepare google-services.json (gercek Firebase yapilandirmasi)
+        run: bash .github/scripts/prepare-google-services.sh
 
       - name: Create .env from example
         run: |
           cp .env.example .env
-          cat .env
+          # Guvenlik: .env icerigi loga basilmaz; yalnizca varlik dogrulanir.
+          ls -la .env 2>&1 || true
 
       - name: Build debug APK (no tests)
         run: ./gradlew assembleDebug -x test --stacktrace 2>&1 | tee build-apk-only.log
         continue-on-error: true
 
+      # Log/artifact depolari erisilemez oldugunda derleyici hatalari
+      # annotation olarak da gorunur (check-runs API'sinden okunabilir).
+      - name: Derleyici hatalarini annotation olarak bildir
+        if: always()
+        run: |
+          if [ -f build-apk-only.log ]; then
+            grep -E "^e: " build-apk-only.log | head -30 | while IFS= read -r line; do
+              echo "::error::${line}"
+            done
+          fi
+
+      - name: Compose BOM surumunu oku (APK adina islenir)
+        if: always()
+        id: bom
+        run: echo "v=$(sed -n -E 's/^composeBom = "([^"]+)".*/\1/p' gradle/libs.versions.toml)" >> "$GITHUB_OUTPUT"
+
       - name: Upload debug APK
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: debug-apk-no-tests
+          name: debug-apk-no-tests-compose-${{ steps.bom.outputs.v }}
           path: |
             app/build/outputs/apk/debug/*.apk
             build-apk-only.log
+
+      - name: Fail loudly if no APK was produced
+        if: always()
+        run: ./.github/scripts/assert-apk.sh app/build/outputs/apk/debug build-apk-only.log debug-apk-no-tests
+
+      - name: Report APK signing certificate (Firebase SHA-1 kaniti)
+        if: always()
+        run: bash .github/scripts/report-apk-signer.sh
+
+  release-build:
+    # Release yolu (R8 minify + shrinkResources) CI'da HIC denenmemisti.
+    # Obfuscation/kaynak daraltma hatalari yalnizca release derlemesinde ortaya
+    # cikar; yani debug yesilken release cokuyor olabilirdi. Bu job bunu kapatir.
+    # Imza icin repodaki sabit debug.keystore kullanilir: boylece cikan APK
+    # kurulabilir ve Google girisi ayni SHA-1 ile calisir. Play'e cikacak
+    # surumde gercek release anahtari ortam degiskenleriyle verilmelidir.
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full]') }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Setup Android SDK (imajdaki kurulu SDK)
+        # android-actions/setup-android@v4 Google'in kaldirdigi bir
+        # cmdline-tools zip'ini indirmeye calisip 404 ile dusuyordu
+        # (setup-android#536). Imajdaki kurulu SDK kullaniliyor.
+        run: bash .github/scripts/setup-android-sdk.sh
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Prepare google-services.json (gercek Firebase yapilandirmasi)
+        run: bash .github/scripts/prepare-google-services.sh
+
+      - name: Create .env from example
+        run: |
+          cp .env.example .env
+
+      - name: Decode gercek release/upload keystore (secret varsa)
+        id: keys
+        env:
+          KS_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release-upload.keystore"
+            echo "path=$RUNNER_TEMP/release-upload.keystore" >> "$GITHUB_OUTPUT"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+            echo "Gercek release/upload keystore secret'tan cozuldu."
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "RELEASE KEYSTORE SECRET YOK -> release UNSIGNED uretilecek (Play icin secret ekleyin)."
+          fi
+
+      - name: Build release APK + AAB (R8 + kaynak daraltma)
+        env:
+          # Gercek keystore secret'tan gelir; yoksa bos -> unsigned build.
+          # debug.keystore ARTIK release imzasi olarak beslenemez (build.gradle fail-fast).
+          RELEASE_KEYSTORE_PATH: ${{ steps.keys.outputs.path }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease bundleRelease --stacktrace 2>&1 | tee build-release.log
+        continue-on-error: true
+
+      - name: Compose BOM surumunu oku (APK adina islenir)
+        if: always()
+        id: bom
+        run: echo "v=$(sed -n -E 's/^composeBom = "([^"]+)".*/\1/p' gradle/libs.versions.toml)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload release APK
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-apk-compose-${{ steps.bom.outputs.v }}
+          path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/bundle/release/*.aab
+            build-release.log
+
+      - name: Fail loudly if no release APK was produced
+        if: always()
+        run: ./.github/scripts/assert-apk.sh app/build/outputs/apk/release build-release.log release-apk
+
+      - name: Fail loudly if no AAB was produced
+        if: always()
+        run: |
+          aab=$(find app/build/outputs/bundle/release -maxdepth 1 -name '*.aab' -type f 2>/dev/null | head -n 1 || true)
+          if [ -n "$aab" ]; then
+            echo "::notice title=AAB OK::$aab ($(stat -c %s "$aab" 2>/dev/null || echo '?') bytes)"
+          else
+            echo "::error title=AAB uretilmedi::app/build/outputs/bundle/release icinde .aab yok"
+            exit 1
+          fi
+
+      - name: Report release APK signing certificate (Firebase SHA-1 kaniti)
+        # Yalnizca gercek keystore ile imzalandiginda anlamli; unsigned build'de atla.
+        if: ${{ always() && steps.keys.outputs.signed == 'true' }}
+        run: bash .github/scripts/report-apk-signer.sh app/build/outputs/apk/release/app-release.apk

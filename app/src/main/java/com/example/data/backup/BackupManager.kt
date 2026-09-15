@@ -83,8 +83,8 @@ data class ValidatedBackupData(
     val settings: AppSettings
 )
 
-class PasswordRequiredException : Exception("Şifreli yedek için parola gereklidir.")
-class WrongPasswordException : Exception("Parola hatalı veya yedek dosyası bozuk.")
+class PasswordRequiredException : Exception("Password required for an encrypted backup.")
+class WrongPasswordException : Exception("Wrong password or corrupted backup file.")
 
 class BackupManager(private val context: Context) {
     companion object {
@@ -146,7 +146,7 @@ class BackupManager(private val context: Context) {
         reminderSlots: List<ReminderSlot>,
         settings: AppSettings,
         password: String
-    ): Result<String> = withContext(Dispatchers.IO) {
+    ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val payload = BackupPayload(
                 appName = APP_SIGNATURE,
@@ -232,10 +232,22 @@ class BackupManager(private val context: Context) {
             val originalSize = jsonBytes.size
             val compressedSize = compressedBytes.size
             val encryptedSize = ciphertext.size
-            Result.success("Yedekleme başarıyla oluşturuldu ve şifrelendi (${payload.zikirs.size} zikir, ${payload.history.size} geçmiş kaydı). Orijinal: ${originalSize / 1024}KB, Sıkıştırılmış: ${compressedSize / 1024}KB, Şifreli: ${encryptedSize / 1024}KB")
+            // Boyut tanilamasi yalnizca log icin. Eskiden Result.success(String)
+            // olarak sabit Turkce bir metin donuyordu; HICBIR cagri tarafi o
+            // metni okumuyordu (ViewModel yalnizca isSuccess'e bakiyor, testler
+            // de oyle). Olu payload kaldirildi, teshis log'a tasindi.
+            if (com.example.BuildConfig.DEBUG) {
+                android.util.Log.d(
+                    "BackupManager",
+                    "Backup created: ${payload.zikirs.size} dhikr, ${payload.history.size} history rows; " +
+                        "original=${originalSize / 1024}KB compressed=${compressedSize / 1024}KB " +
+                        "encrypted=${encryptedSize / 1024}KB"
+                )
+            }
+            Result.success(Unit)
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
-            Result.failure(Exception("Yedek oluşturulurken hata meydana geldi: ${e.localizedMessage}", e))
+            Result.failure(Exception("Backup creation failed: ${e.localizedMessage}", e))
         }
     }
 
@@ -253,14 +265,14 @@ class BackupManager(private val context: Context) {
                     if (count == -1) break
                     totalBytes += count
                     if (totalBytes > MAX_BACKUP_SIZE_BYTES) {
-                        return@withContext Result.failure(IllegalArgumentException("Yedek dosyası izin verilen boyutu aşıyor (Maksimum 25 MB)."))
+                        return@withContext Result.failure(IllegalArgumentException("Backup file exceeds the allowed size (maximum 25 MB)."))
                     }
                     buffer.write(temp, 0, count)
                 }
             }
             val bytes = buffer.toByteArray()
             if (bytes.isEmpty()) {
-                return@withContext Result.failure(IllegalArgumentException("Yedek dosyası boş."))
+                return@withContext Result.failure(IllegalArgumentException("Backup file is empty."))
             }
 
             val jsonContent: String
@@ -275,7 +287,7 @@ class BackupManager(private val context: Context) {
                 }
                 
                 if (bytes.size < 1 + SALT_LENGTH + IV_LENGTH) {
-                    return@withContext Result.failure(IllegalArgumentException("Yedek dosyası bozuk veya eksik."))
+                    return@withContext Result.failure(IllegalArgumentException("Backup file is corrupted or truncated."))
                 }
                 
                 val salt = bytes.copyOfRange(1, 1 + SALT_LENGTH)
@@ -300,7 +312,7 @@ class BackupManager(private val context: Context) {
                 } catch (e: IllegalArgumentException) {
                     return@withContext Result.failure(e)
                 } catch (e: Exception) {
-                    return@withContext Result.failure(Exception("Şifre çözme hatası: ${e.localizedMessage}", e))
+                    return@withContext Result.failure(Exception("Decryption failed: ${e.localizedMessage}", e))
                 }
             } else {
                 // Geçersiz veya eski metin tabanlı format
@@ -314,31 +326,31 @@ class BackupManager(private val context: Context) {
                     if (start in 0..end) {
                         jsonContent = text.substring(start, end).trim()
                     } else {
-                        return@withContext Result.failure(IllegalArgumentException("Yedekleme dosyasındaki veri blokları geçerli değil."))
+                        return@withContext Result.failure(IllegalArgumentException("Data blocks in the backup file are invalid."))
                     }
                 } else {
-                    return@withContext Result.failure(IllegalArgumentException("Bilinmeyen veya desteklenmeyen yedek formatı."))
+                    return@withContext Result.failure(IllegalArgumentException("Unknown or unsupported backup format."))
                 }
             }
 
             if (jsonContent.isBlank()) {
-                return@withContext Result.failure(IllegalArgumentException("Dosyadan veri okunamadı."))
+                return@withContext Result.failure(IllegalArgumentException("Could not read data from the file."))
             }
 
             val payload = jsonAdapter.fromJson(jsonContent)
-                ?: return@withContext Result.failure(IllegalArgumentException("Geçersiz JSON formatı."))
+                ?: return@withContext Result.failure(IllegalArgumentException("Invalid JSON format."))
 
             if (payload.appName != APP_SIGNATURE) {
-                return@withContext Result.failure(IllegalArgumentException("Bu dosya Nefs Zikir uygulamasına ait geçerli bir yedek formatı içermiyor."))
+                return@withContext Result.failure(IllegalArgumentException("This file does not contain a valid Nefs Zikir backup format."))
             }
             if (payload.schemaVersion < 1) {
-                return@withContext Result.failure(IllegalArgumentException("Geçersiz yedekleme şeması sürümü."))
+                return@withContext Result.failure(IllegalArgumentException("Invalid backup schema version."))
             }
             if (payload.schemaVersion > CURRENT_SCHEMA_VERSION) {
-                return@withContext Result.failure(IllegalArgumentException("Bu yedekleme dosyası daha yeni bir uygulama sürümünde oluşturulmuş. Lütfen uygulamanızı güncelleyin."))
+                return@withContext Result.failure(IllegalArgumentException("This backup was created by a newer app version. Please update the app."))
             }
             if (payload.zikirs.isEmpty()) {
-                return@withContext Result.failure(IllegalArgumentException("Yedekleme dosyası içerisinde zikir verisi bulunamadı."))
+                return@withContext Result.failure(IllegalArgumentException("No dhikr data found in the backup file."))
             }
 
             val parsedZikirs = payload.zikirs.map {
@@ -418,7 +430,7 @@ class BackupManager(private val context: Context) {
             )
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
-            Result.failure(Exception("Yedek dosyası okunamadı veya geçersiz format: ${e.localizedMessage}", e))
+            Result.failure(Exception("Backup file could not be read or has an invalid format: ${e.localizedMessage}", e))
         }
     }
 

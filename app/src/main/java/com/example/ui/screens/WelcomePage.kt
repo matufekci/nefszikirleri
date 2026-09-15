@@ -99,5 +99,6 @@ fun WelcomePage(
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
+
     }
 }

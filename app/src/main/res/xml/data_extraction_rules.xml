@@ -5,6 +5,7 @@
         <include domain="sharedpref" path="nefs_app_prefs.xml" />
         <include domain="sharedpref" path="spiritual_virtues_prefs.xml" />
         <include domain="sharedpref" path="adaptive_spiritual_reminder_prefs.xml" />
+        <include domain="sharedpref" path="badge_progress_prefs.xml" />
     </cloud-backup>
 
     <device-transfer>
@@ -12,5 +13,6 @@
         <include domain="sharedpref" path="nefs_app_prefs.xml" />
         <include domain="sharedpref" path="spiritual_virtues_prefs.xml" />
         <include domain="sharedpref" path="adaptive_spiritual_reminder_prefs.xml" />
+        <include domain="sharedpref" path="badge_progress_prefs.xml" />
     </device-transfer>
 </data-extraction-rules>

@@ -167,6 +167,12 @@ fun OverallStatsSection(
                     Spacer(modifier = Modifier.height(10.dp))
                     val groupedHistory = remember(state.history) { groupHistory(state.history).take(15) }
                     var expandedGroups by remember { mutableStateOf(setOf<Long>()) }
+                    // SimpleDateFormat satir basina yeniden uretiliyordu: 15 grup
+                    // satiri + acilan her grubun her alt kaydi icin birer ornek.
+                    // Desen ve locale AYNI, ekrandaki metin degismiyor; yalnizca
+                    // her recomposition'da tekrar tekrar nesne uretilmiyor.
+                    val groupTimeFormat = remember { SimpleDateFormat("dd.MM HH:mm:ss", Locale.getDefault()) }
+                    val itemTimeFormat = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
                     if (groupedHistory.isEmpty()) {
                         Text(
                             text = strings.noActivityYet,
@@ -177,8 +183,7 @@ fun OverallStatsSection(
                         groupedHistory.forEachIndexed { idx, group ->
                             val zName = ZikirContent.getZikirName(group.zikirId, state.settings.lang)
                             val timeStr = try {
-                                val sdf = SimpleDateFormat("dd.MM HH:mm:ss", Locale.getDefault())
-                                sdf.format(Date(group.lastTimestamp))
+                                groupTimeFormat.format(Date(group.lastTimestamp))
                             } catch (e: Exception) { "" }
                             val isExpanded = expandedGroups.contains(group.id)
                             Column {
@@ -250,8 +255,7 @@ fun OverallStatsSection(
                                     Column(modifier = Modifier.padding(start = 34.dp, bottom = 4.dp)) {
                                         group.items.forEach { subItem ->
                                             val subTimeStr = try {
-                                                val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-                                                sdf.format(Date(subItem.timestamp))
+                                                itemTimeFormat.format(Date(subItem.timestamp))
                                             } catch (e: Exception) { "" }
                                             Row(
                                                 modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),

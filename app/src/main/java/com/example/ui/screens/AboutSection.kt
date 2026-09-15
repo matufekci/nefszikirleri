@@ -74,7 +74,10 @@ fun AboutSection(
             modifier = Modifier.padding(top = 4.dp)
         ) {
             Text(
-                text = "v2.0 • Ultra Edition",
+                // Sabit "v2.0" yaziyordu; build.gradle versionName 2.1'e
+                // cikmisti ve uygulama kendi surumunu YANLIS gosteriyordu.
+                // Artik derleme bilgisinden okunuyor (bir daha eskimez).
+                text = "v${com.example.BuildConfig.VERSION_NAME} • Ultra Edition",
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontWeight = FontWeight.Bold,
                     color = colors.gold

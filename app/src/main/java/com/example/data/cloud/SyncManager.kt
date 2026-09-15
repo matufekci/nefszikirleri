@@ -21,6 +21,17 @@ data class CloudBackupData(
 class SyncManager {
     private val firestore: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
 
+    /**
+     * Hesap silmede tek okumada cekilecek belge sayisi.
+     * Bilerek sinirli: `get()` ile koleksiyonun TAMAMINI tek istekte cekmek
+     * buyuk hesapta bellek/istek patlamasi yapardi. Firestore batch yazma
+     * siniri 500 oldugu icin 200 guvenli bir sayfa buyuklugu.
+     */
+    private val DELETE_PAGE_SIZE = 200
+
+    /** Sonsuz donguye karsi ust sinir (200 x 500 = 100.000 belge). */
+    private val DELETE_MAX_PAGES = 500
+
     suspend fun backupToCloud(
         userId: String,
         zikirs: List<Zikir>,
@@ -31,7 +42,7 @@ class SyncManager {
         deviceId: String
     ): Result<Long> {
         if (userId.isBlank()) {
-            return Result.failure(IllegalArgumentException("Kullanıcı kimliği (UID) geçersiz veya boş."))
+            return Result.failure(IllegalArgumentException("User id (UID) is invalid or blank."))
         }
 
         return try {
@@ -214,28 +225,136 @@ class SyncManager {
                     for (c in oldHistoryChunks.documents) {
                         try {
                             c.reference.delete().await()
-                        } catch (_: Exception) {}
+                        } catch (e: Exception) {
+                            if (e is kotlinx.coroutines.CancellationException) throw e
+                            // GC best-effort; ama sessiz yutma teshisi imkansiz
+                            // kiliyordu. Davranis degismedi, sadece loglandi.
+                            if (com.example.BuildConfig.DEBUG) {
+                                Log.d("SyncManager", "cleanupOldSnapshots: history chunk silinemedi (${c.id})", e)
+                            }
+                        }
                     }
                     try {
                         snap.reference.delete().await()
-                    } catch (_: Exception) {}
+                    } catch (e: Exception) {
+                        if (e is kotlinx.coroutines.CancellationException) throw e
+                        if (com.example.BuildConfig.DEBUG) {
+                            Log.d("SyncManager", "cleanupOldSnapshots: eski snapshot silinemedi (${snap.id})", e)
+                        }
+                    }
                 }
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             // Garbage collection best-effort, snapshot isolation is preserved
+            if (com.example.BuildConfig.DEBUG) {
+                Log.d("SyncManager", "cleanupOldSnapshots: eski snapshot listesi okunamadi", e)
+            }
+        }
+    }
+
+    /**
+     * KULLANICI ISTEGIYLE hesap silme: bu kullaniciya ait TUM Firestore
+     * verisini siler.
+     *
+     * Neden var: Google Play, hesap olusturan uygulamalarda hesapla birlikte
+     * iliskili verinin de silinmesini sart kosuyor; yalnizca oturum kapatma
+     * yeterli degil. Veri modeli `backupToCloud`/`restoreFromCloud`'dan
+     * cikarildi (tahmin edilmedi):
+     *   users/<uid>                                  -> kok belge (pointer + zikirs/slots/settings + syncMetadata)
+     *   users/<uid>/snapshots/<snapshotId>           -> snapshot belgeleri
+     *   users/{uid}/snapshots/{snapshotId}/history/{meta,chunk_N} -> gecmis
+     *   users/{uid}/history/{meta,chunk_N}                        -> eski/legacy gecmis koleksiyonu
+     *
+     * NOT: Bu yollarda bilerek "yildiz" karakteri kullanilmiyor. Kotlin'de blok
+     * yorumlari IC ICE gecebildigi icin yorum icindeki bir slash+yildiz dizisi
+     * yeni bir yorum acar ve dosyanin kalanini yoruma cevirebilir (bu dosyada
+     * gercekten yasandi: "Unclosed comment" + zincirleme unresolved reference).
+     *
+     * Davranis kurallari:
+     *  - Sayfali okuma + batch delete; sinirsiz okuma/dongu yok.
+     *  - Hata SESSIZ YUTULMAZ: herhangi bir adim patlarsa exception yukari
+     *    cikar ve Result.failure doner. Boylece cagri tarafi Firestore silme
+     *    TAMAMLANMADAN Firebase Auth kullanicisini silmez (yarim silme
+     *    "hesabiniz silindi" diye gosterilmez).
+     *  - Log yalnizca exception SINIF ADINI yazar; belge yolu/UID/e-posta
+     *    gibi PII log'a dusmez.
+     */
+    suspend fun deleteAllUserData(userId: String): Result<Unit> {
+        if (userId.isBlank()) {
+            return Result.failure(IllegalArgumentException("User id (UID) is invalid or blank."))
+        }
+        return try {
+            val userDoc = firestore.collection("users").document(userId)
+
+            // 1. snapshots/<snapId>/history/* ve snapshots/<snapId>
+            val snapshotsRef = userDoc.collection("snapshots")
+            var snapPage = snapshotsRef.limit(DELETE_PAGE_SIZE.toLong()).get().await()
+            var snapGuard = 0
+            while (snapPage.documents.isNotEmpty() && snapGuard < DELETE_MAX_PAGES) {
+                snapGuard++
+                for (snap in snapPage.documents) {
+                    deleteCollectionCompletely(snap.reference.collection("history"))
+                    snap.reference.delete().await()
+                }
+                if (snapPage.documents.size < DELETE_PAGE_SIZE) break
+                snapPage = snapshotsRef.limit(DELETE_PAGE_SIZE.toLong()).get().await()
+            }
+            if (snapGuard >= DELETE_MAX_PAGES) {
+                throw IllegalStateException("Snapshot deletion exceeded page limit; aborting to avoid partial delete.")
+            }
+
+            // 2. legacy users/<uid>/history/*
+            deleteCollectionCompletely(userDoc.collection("history"))
+
+            // 3. kullanicinin kok belgesi
+            userDoc.delete().await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            if (com.example.BuildConfig.DEBUG) {
+                Log.e("SyncManager", "deleteAllUserData failed: ${e.javaClass.simpleName}")
+            }
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Bir koleksiyonu sayfa sayfa, batch write ile tamamen bosaltir.
+     * Hata firlatir (sessiz yutmaz); cagri tarafi bunu basarisizlik sayar.
+     */
+    private suspend fun deleteCollectionCompletely(
+        collection: com.google.firebase.firestore.CollectionReference
+    ) {
+        var page = collection.limit(DELETE_PAGE_SIZE.toLong()).get().await()
+        var guard = 0
+        while (page.documents.isNotEmpty() && guard < DELETE_MAX_PAGES) {
+            guard++
+            val batch = firestore.batch()
+            page.documents.forEach { batch.delete(it.reference) }
+            batch.commit().await()
+            if (page.documents.size < DELETE_PAGE_SIZE) break
+            page = collection.limit(DELETE_PAGE_SIZE.toLong()).get().await()
+        }
+        if (guard >= DELETE_MAX_PAGES) {
+            throw IllegalStateException("Collection deletion exceeded page limit; aborting to avoid partial delete.")
         }
     }
 
     suspend fun restoreFromCloud(userId: String): Result<CloudBackupData> {
         if (userId.isBlank()) {
-            return Result.failure(IllegalArgumentException("Kullanıcı kimliği (UID) geçersiz veya boş."))
+            return Result.failure(IllegalArgumentException("User id (UID) is invalid or blank."))
         }
 
         return try {
             val userDocRef = firestore.collection("users").document(userId)
             val userDoc = userDocRef.get().await()
             if (!userDoc.exists()) {
-                return Result.failure(Exception("Bulutta henüz kayıtlı bir zikir yedeği bulunamadı."))
+                // Duz Exception yerine ayirt edilebilir tip: bu bir ariza degil,
+                // "ilk giris" durumudur. CloudErrorMapper bunu tanir ve
+                // kullaniciya teknik mesaj yerine 5 dilde "bulutta yedek yok" der.
+                return Result.failure(NoCloudBackupException())
             }
 
             // Versioned snapshot pointer kontrolü
@@ -256,8 +375,22 @@ class SyncManager {
                 val id = parseIntStrict(m["id"], "zikirId")
                 val target = parseLongStrict(m["target"], "target")
                 val count = parseLongStrict(m["count"], "count")
-                val startedAt = if (m["startedAt"] != null && m["startedAt"] != "null") parseLongStrict(m["startedAt"], "startedAt") else null
-                val completedAt = if (m["completedAt"] != null && m["completedAt"] != "null") parseLongStrict(m["completedAt"], "completedAt") else null
+                val rawStarted = if (m["startedAt"] != null && m["startedAt"] != "null") parseLongStrict(m["startedAt"], "startedAt") else null
+                val rawCompleted = if (m["completedAt"] != null && m["completedAt"] != "null") parseLongStrict(m["completedAt"], "completedAt") else null
+                // BULUT YAZICISI `null` DEGERINI 0 OLARAK KAYDEDIYOR
+                // (backupToCloud: startedAt/completedAt ?: 0L). Bu yuzden 0 ya da
+                // negatif bir deger "bozuk" degil, "yok" demektir. Normallemeden
+                // once strict dogrulamaya sokarsak uygulama KENDI yazdigi yedegi
+                // "Invalid completedAt (0)" diyerek reddediyor ve geri yukleme
+                // hic calismiyordu.
+                // NOT: yalnizca 0 normalize edilir; NEGATIF degerler bilerek
+                // strict dogrulamaya duser ve orada reddedilir (bozuk veri).
+                var startedAt = if (rawStarted == 0L) null else rawStarted
+                var completedAt = if (rawCompleted == 0L) null else rawCompleted
+                // Eski yedeklerde 0 saklandigi icin eksik kalan capraz alanlari
+                // (esnek dogrulayiciyla ayni sekilde) geri kazan:
+                if (startedAt == null && count > 0L) startedAt = System.currentTimeMillis()
+                if (completedAt == null && count >= target) completedAt = startedAt ?: System.currentTimeMillis()
                 try {
                     com.example.data.model.DhikrDataValidator.validateZikirStrict(
                         Zikir(id = id, target = target, count = count, startedAt = startedAt, completedAt = completedAt)

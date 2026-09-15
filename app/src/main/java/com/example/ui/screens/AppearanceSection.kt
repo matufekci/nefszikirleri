@@ -1,10 +1,11 @@
 package com.example.ui.screens
 
+import com.example.ui.UiText
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.FormatSize
@@ -12,6 +13,8 @@ import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -21,7 +24,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import java.util.Locale
 import androidx.compose.ui.text.font.FontWeight
@@ -58,78 +62,84 @@ fun AppearanceSection(
     ) {
         // 1. TEMA SEÇİMİ
         SettingsCollapsibleCard(
-            title = strings.themeTitle.toTitleCase(),
-            summary = getSettingsSummary("theme", settings.lang),
+            title = strings.themeTitle,
             icon = Icons.Rounded.Palette,
             isExpanded = themeExpanded,
             onToggle = { themeExpanded = !themeExpanded },
             strings = strings
         ) {
             val normalizedCurrent = AppPalettes.normalizeId(settings.themeName)
-            val chunks = AppPalettes.ALL.chunked(2)
-            chunks.forEachIndexed { rowIndex, rowList ->
-                if (rowIndex > 0) Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    rowList.forEach { palette ->
-                        val isSelected = normalizedCurrent == palette.id
+            // Alt alta İNCE kartlar: her satırda mini önizleme + switch,
+            // yükseklik switch'e göre kompakt tutulur.
+            AppPalettes.ALL.forEachIndexed { index, palette ->
+                if (index > 0) Spacer(modifier = Modifier.height(6.dp))
+                val isSelected = normalizedCurrent == palette.id
 
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(
-                                    if (isSelected) palette.primary.copy(alpha = 0.18f) else colors.inputBg
-                                )
-                                .border(
-                                    width = if (isSelected) 2.dp else 1.dp,
-                                    color = if (isSelected) palette.primary else colors.border,
-                                    shape = RoundedCornerShape(16.dp)
-                                )
-                                .clickable {
-                                    onIncrementUsage("theme")
-                                    onSetTheme(palette.id)
-                                    themeExpanded = false
-                                }
-                                .padding(vertical = 12.dp, horizontal = 10.dp)
-                                .testTag("theme_picker_${palette.id}")
-                        ) {
-                            // Theme Color Dual Swatch (Primary + Background)
-                            Box(
-                                modifier = Modifier
-                                    .size(28.dp)
-                                    .clip(CircleShape)
-                                    .background(palette.bg)
-                                    .border(1.5.dp, palette.primary, CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(14.dp)
-                                        .clip(CircleShape)
-                                        .background(palette.primary)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = palette.name,
-                                    style = MaterialTheme.typography.labelMedium.copy(
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
-                                    ),
-                                    color = if (isSelected) palette.primary else colors.text,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (isSelected) palette.primary.copy(alpha = 0.14f) else colors.inputBg
+                        )
+                        .border(
+                            width = if (isSelected) 1.6.dp else 1.dp,
+                            color = if (isSelected) palette.primary else colors.border,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .clickable {
+                            onIncrementUsage("theme")
+                            onSetTheme(palette.id)
                         }
+                        .padding(vertical = 6.dp, horizontal = 10.dp)
+                        .testTag("theme_picker_${palette.id}"),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Mini tema önizlemesi: ufak dikdörtgen kart, arka plan ve
+                    // yazı rengi TEMANIN KENDİ renkleri — seçmeden önce sezersin.
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(palette.bg)
+                            .border(
+                                1.dp,
+                                palette.primary.copy(alpha = 0.6f),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(vertical = 5.dp, horizontal = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = UiText.themeName(palette.id, settings.lang),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = palette.primary,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
-                    if (rowList.size == 1) {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    // Tema başına switch: aktif temanın switch'i açıktır;
+                    // tek seçimli olduğu için kapatılamaz (bir tema her zaman aktif).
+                    Switch(
+                        checked = isSelected,
+                        onCheckedChange = { on ->
+                            if (on) {
+                                onIncrementUsage("theme")
+                                onSetTheme(palette.id)
+                            }
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedTrackColor = palette.primary,
+                            checkedThumbColor = colors.card,
+                            uncheckedTrackColor = colors.border,
+                            uncheckedThumbColor = colors.textMuted
+                        ),
+                        modifier = Modifier.scale(0.8f)
+                    )
                 }
             }
         }
@@ -139,7 +149,6 @@ fun AppearanceSection(
         // 2. DİL SEÇİMİ
         SettingsCollapsibleCard(
             title = strings.language.toTitleCase(),
-            summary = getSettingsSummary("lang", settings.lang),
             icon = Icons.Rounded.Language,
             isExpanded = languageExpanded,
             onToggle = { languageExpanded = !languageExpanded },
@@ -196,7 +205,6 @@ fun AppearanceSection(
         // 3. YAZI BOYUTU (FONT SCALE)
         SettingsCollapsibleCard(
             title = strings.fontScaleTitle.toTitleCase(),
-            summary = getSettingsSummary("font", settings.lang),
             icon = Icons.Rounded.FormatSize,
             isExpanded = fontScaleExpanded,
             onToggle = { fontScaleExpanded = !fontScaleExpanded },
@@ -245,8 +253,10 @@ fun AppearanceSection(
                 }
             }
 
-            val context = LocalContext.current
-            val systemFontScale = context.resources.configuration.fontScale
+            // Lint hatasi LocalContextConfigurationRead: configuration'i
+            // LocalContext'ten okumak yerine Compose'un kendi kaynagi
+            // kullaniliyor (davranis ayni: sistem yazi olcegi).
+            val systemFontScale = LocalConfiguration.current.fontScale
             val appFontScale = settings.fontScale
             val effectiveScale = (appFontScale * systemFontScale).coerceAtMost(2.0f)
 

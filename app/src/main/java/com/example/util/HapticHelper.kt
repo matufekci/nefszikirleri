@@ -56,44 +56,6 @@ class HapticHelper(context: Context) {
     /**
      * Quick-add +33 button vibration (A crisp, distinct double micro-pulse scaled to intensity)
      */
-    fun quickAdd33(intensity: String = "medium") {
-        val vib = vibrator ?: return
-        val scale = getIntensityScale(intensity)
-        val amp1 = scaleAmplitude(160, scale)
-        val amp2 = scaleAmplitude(200, scale)
-        val d1 = scaleDuration(20L, scale)
-        val d2 = scaleDuration(25L, scale)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val timings = longArrayOf(0, d1, 35, d2)
-            val amplitudes = intArrayOf(0, amp1, 0, amp2)
-            vib.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
-        } else {
-            @Suppress("DEPRECATION")
-            vib.vibrate(longArrayOf(0, d1, 35, d2), -1)
-        }
-    }
-
-    /**
-     * Quick-add +100 button vibration (A solid, firm single pulse scaled to intensity)
-     */
-    fun quickAdd100(intensity: String = "medium") {
-        val vib = vibrator ?: return
-        val scale = getIntensityScale(intensity)
-        val duration = scaleDuration(42L, scale)
-        val amplitude = scaleAmplitude(205, scale)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vib.vibrate(VibrationEffect.createOneShot(duration, amplitude))
-        } else {
-            @Suppress("DEPRECATION")
-            vib.vibrate(duration)
-        }
-    }
-
-    /**
-     * Quick-add +1000 button vibration (A deep double pulse scaled to intensity)
-     */
     fun quickAdd1000(intensity: String = "medium") {
         val vib = vibrator ?: return
         val scale = getIntensityScale(intensity)
@@ -162,36 +124,6 @@ class HapticHelper(context: Context) {
 
     /**
      * Milestone reached during single tap increments (% 33)
-     */
-    fun milestone33(intensity: String = "medium") {
-        quickAdd33(intensity)
-    }
-
-    /**
-     * Milestone reached during single tap increments (% 100)
-     */
-    fun milestone100(intensity: String = "medium") {
-        val vib = vibrator ?: return
-        val scale = getIntensityScale(intensity)
-        val amp1 = scaleAmplitude(165, scale)
-        val amp2 = scaleAmplitude(195, scale)
-        val amp3 = scaleAmplitude(230, scale)
-        val d1 = scaleDuration(20L, scale)
-        val d2 = scaleDuration(28L, scale)
-        val d3 = scaleDuration(38L, scale)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val timings = longArrayOf(0, d1, 30, d2, 30, d3)
-            val amplitudes = intArrayOf(0, amp1, 0, amp2, 0, amp3)
-            vib.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
-        } else {
-            @Suppress("DEPRECATION")
-            vib.vibrate(longArrayOf(0, d1, 30, d2, 30, d3), -1)
-        }
-    }
-
-    /**
-     * Celebratory vibration sequence on target completion (Refined and subtle)
      */
     fun celebration() {
         val vib = vibrator ?: return

@@ -30,17 +30,17 @@ class AdaptiveReminderQuotaTest {
     fun testTryReserveQuota_ConcurrentFirstReservationSucceeds_SecondFailsSameDay() {
         assertTrue(AdaptiveReminderManager.canSendNotificationToday(context))
 
-        val firstReservation = AdaptiveReminderManager.tryReserveQuota(context)
+        val firstReservation = AdaptiveReminderManager.tryReserveQuota(context, 4)
         assertNotNull(firstReservation)
 
         // Second reservation on the same day must be rejected (null)
-        val secondReservation = AdaptiveReminderManager.tryReserveQuota(context)
+        val secondReservation = AdaptiveReminderManager.tryReserveQuota(context, 4)
         assertNull(secondReservation)
     }
 
     @Test
     fun testRollbackQuotaReservation_RestoresQuotaOnFailure() {
-        val reservation = AdaptiveReminderManager.tryReserveQuota(context)
+        val reservation = AdaptiveReminderManager.tryReserveQuota(context, 4)
         assertNotNull(reservation)
 
         // Simulating notification dispatch failure -> Rollback reservation
@@ -48,24 +48,26 @@ class AdaptiveReminderQuotaTest {
 
         // Quota should be available again
         assertTrue(AdaptiveReminderManager.canSendNotificationToday(context))
-        val retryReservation = AdaptiveReminderManager.tryReserveQuota(context)
+        val retryReservation = AdaptiveReminderManager.tryReserveQuota(context, 4)
         assertNotNull(retryReservation)
     }
 
     @Test
     fun testGetWeekYearKey_DeterministicFormatAndCrossYearIsolation() {
+        // Hafta numarasi artik ISO-8601'e sabit (hafta Pazartesi baslar, ilk
+        // hafta en az 4 gun icerir) ve cihaz dilinden etkilenmez. Bu yuzden
+        // WEEK_OF_YEAR'i elle set etmek yerine GERCEK tarihler veriliyor;
+        // beklenen degerler ISO hafta takviminden.
         val cal2026W1 = java.util.Calendar.getInstance().apply {
-            set(java.util.Calendar.YEAR, 2026)
-            set(java.util.Calendar.WEEK_OF_YEAR, 1)
-            set(java.util.Calendar.MONTH, java.util.Calendar.JANUARY)
+            clear()
+            set(2026, java.util.Calendar.JANUARY, 1, 12, 0, 0)
         }
         val key2026W1 = AdaptiveReminderManager.getWeekYearKey(cal2026W1)
         assertEquals("2026-W01", key2026W1)
 
         val cal2027W1 = java.util.Calendar.getInstance().apply {
-            set(java.util.Calendar.YEAR, 2027)
-            set(java.util.Calendar.WEEK_OF_YEAR, 1)
-            set(java.util.Calendar.MONTH, java.util.Calendar.JANUARY)
+            clear()
+            set(2027, java.util.Calendar.JANUARY, 4, 12, 0, 0)
         }
         val key2027W1 = AdaptiveReminderManager.getWeekYearKey(cal2027W1)
         assertEquals("2027-W01", key2027W1)
