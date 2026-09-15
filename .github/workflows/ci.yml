@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     # Tam test+lint yalnız gün sonu / manuel / main push'ında koşar;
     # dal push'larında hızlı kapı (build-apk-only) yeterlidir.
-    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full]') }}
     # NOT: job seviyesinde `continue-on-error` YOK. Testler patladiginda run
     # KIRMIZI olmali; yoksa sahte yesil olusuyor (2026-09-14'te yasandi:
     # OnboardingA11yLabelTest patladi ama run "success" dondu).
@@ -107,7 +107,7 @@ jobs:
 
   build-debug:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full]') }}
     steps:
       - uses: actions/checkout@v7
 
@@ -240,7 +240,7 @@ jobs:
     # kurulabilir ve Google girisi ayni SHA-1 ile calisir. Play'e cikacak
     # surumde gercek release anahtari ortam degiskenleriyle verilmelidir.
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full]') }}
     steps:
       - uses: actions/checkout@v7
 
@@ -267,14 +267,30 @@ jobs:
         run: |
           cp .env.example .env
 
-      - name: Build release APK (R8 + kaynak daraltma)
+      - name: Decode gercek release/upload keystore (secret varsa)
+        id: keys
         env:
-          # Mutlak yol sart: file(...) app modulune gore cozumlenir.
-          RELEASE_KEYSTORE_PATH: ${{ github.workspace }}/debug.keystore
-          RELEASE_STORE_PASSWORD: android
-          RELEASE_KEY_ALIAS: androiddebugkey
-          RELEASE_KEY_PASSWORD: android
-        run: ./gradlew assembleRelease --stacktrace 2>&1 | tee build-release.log
+          KS_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release-upload.keystore"
+            echo "path=$RUNNER_TEMP/release-upload.keystore" >> "$GITHUB_OUTPUT"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+            echo "Gercek release/upload keystore secret'tan cozuldu."
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "RELEASE KEYSTORE SECRET YOK -> release UNSIGNED uretilecek (Play icin secret ekleyin)."
+          fi
+
+      - name: Build release APK + AAB (R8 + kaynak daraltma)
+        env:
+          # Gercek keystore secret'tan gelir; yoksa bos -> unsigned build.
+          # debug.keystore ARTIK release imzasi olarak beslenemez (build.gradle fail-fast).
+          RELEASE_KEYSTORE_PATH: ${{ steps.keys.outputs.path }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease bundleRelease --stacktrace 2>&1 | tee build-release.log
         continue-on-error: true
 
       - name: Compose BOM surumunu oku (APK adina islenir)
@@ -289,12 +305,25 @@ jobs:
           name: release-apk-compose-${{ steps.bom.outputs.v }}
           path: |
             app/build/outputs/apk/release/*.apk
+            app/build/outputs/bundle/release/*.aab
             build-release.log
 
       - name: Fail loudly if no release APK was produced
         if: always()
         run: ./.github/scripts/assert-apk.sh app/build/outputs/apk/release build-release.log release-apk
 
-      - name: Report release APK signing certificate (Firebase SHA-1 kaniti)
+      - name: Fail loudly if no AAB was produced
         if: always()
+        run: |
+          aab=$(find app/build/outputs/bundle/release -maxdepth 1 -name '*.aab' -type f 2>/dev/null | head -n 1 || true)
+          if [ -n "$aab" ]; then
+            echo "::notice title=AAB OK::$aab ($(stat -c %s "$aab" 2>/dev/null || echo '?') bytes)"
+          else
+            echo "::error title=AAB uretilmedi::app/build/outputs/bundle/release icinde .aab yok"
+            exit 1
+          fi
+
+      - name: Report release APK signing certificate (Firebase SHA-1 kaniti)
+        # Yalnizca gercek keystore ile imzalandiginda anlamli; unsigned build'de atla.
+        if: ${{ always() && steps.keys.outputs.signed == 'true' }}
         run: bash .github/scripts/report-apk-signer.sh app/build/outputs/apk/release/app-release.apk

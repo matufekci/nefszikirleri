@@ -84,20 +84,25 @@ android {
       isShrinkResources = true
 
       val releaseSigning = signingConfigs.findByName("release")
-      val isReleaseBuild = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) } || 
-                           gradle.startParameter.taskRequests.toString().contains("Release", ignoreCase = true)
-                           
-      if (isReleaseBuild && releaseSigning == null) {
-          val msg = """
-              |CONFIGURATION FAILED: Release signing configuration is missing.
-              |Expected env vars: RELEASE_KEYSTORE_PATH, RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD
-              |Or: KEYSTORE_PATH, STORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
-              |For CI: ensure debug build works, release requires real keystore.
-              |To bypass in CI for non-release tasks, don't run :assembleRelease.
-          """.trimMargin()
-          throw GradleException(msg)
+
+      // FAIL-FAST: release build ASLA debug keystore ile imzalanamaz.
+      // Gecmiste CI, debug.keystore'i RELEASE_KEYSTORE_PATH olarak besleyip
+      // release'i debug anahtariyla imzaliyordu. Bunu tamamen engelliyoruz:
+      // gercek upload keystore CI secret'indan gelmelidir.
+      val debugKeystorePath = file("${rootDir}/debug.keystore").absolutePath
+      val releaseStorePath = releaseSigning?.storeFile?.absolutePath
+      if (releaseSigning != null &&
+          (releaseStorePath == debugKeystorePath || releaseSigning.keyAlias == "androiddebugkey")) {
+          throw GradleException(
+              "RELEASE IMZA REDDEDILDI: debug keystore release imzasi olarak KULLANILAMAZ. " +
+              "Gercek upload keystore'unu CI secret olarak saglayin " +
+              "(RELEASE_KEYSTORE_BASE64 + RELEASE_STORE_PASSWORD + RELEASE_KEY_ALIAS + RELEASE_KEY_PASSWORD). " +
+              "Play App Signing key Google'da, upload key CI'da yonetilir."
+          )
       }
 
+      // Gercek keystore yoksa release UNSIGNED uretilir: assembleRelease/bundleRelease
+      // yine calisir ve artifact uretir; imza yalnizca gercek keystore saglaninca uygulanir.
       signingConfig = releaseSigning
 
       proguardFiles(
