@@ -230,3 +230,26 @@ Uygulama **mimari olarak sağlam**, offline-first, güvenlik ve veri bütünlü�
 - `backup_rules.xml` & `data_extraction_rules.xml`: include-only prefs, DB hariç
 - `build.gradle.kts`: debug fallback + release signing check + secrets .env
 
+
+---
+
+## EK — Güncel Oturum Son Durumu (arena/01a08b35, 2026-09-15)
+
+Bu bölüm, ilk rapordan (01a08a9b) sonra tamamlanan temizlik ve onarımların
+nihai özetidir; yukarıdaki eski sayılarla çelişirse BU bölüm geçerlidir.
+
+- **Lint:** 54 → 50 → 18 → 14 → 12 → 10 → 5 → **2**. Kalan 2 uyarı bilinçlidir:
+  `OldTargetApi` (targetSdk 36, davranış değişimi nedeniyle dondurma gereği sabit)
+  ve `NewerVersionAvailable` (compose-plugin 2.4.20 reddedildi; AGP 9.4.0'ın gömülü
+  Kotlin 2.2.10'uyla kırılır).
+- **Test:** 182/182 geçer, 0 atlanan, 0 `@Ignore`.
+- **Bozuk ikili onarımı:** 10 launcher `.webp`'in git'te UTF-8-mangle ile bozuk
+  commit'lendiği tespit edildi; sağlam 1024×1024 JPG'den 5 yoğunlukta (48/72/96/144/192)
+  yeniden üretildi. Splash JPG `drawable-nodpi/`'ye taşındı. Bozuk `greeting.png` silindi.
+  Repo'da decode edilemeyen ikili kalmadı.
+- **İmza/SHA-1:** release, repodaki SABİT `debug.keystore` ile imzalanır; SHA-1
+  `b8639947…` koşular arası değişmez → Firebase'e bir kez eklenmesi yeterlidir.
+- **Güvenlik:** gömülü anahtar/secret yok; tüm IconButton'lar etiketli; release'de
+  Log.d/v/i R8 ile silinir.
+- **Kullanıcıda kalan:** Firebase → Firestore Rules Publish (tek sefer) ve release
+  SHA-1 ekleme (tek sefer, yukarıda). İkisi de yapıldıysa başka adım yok.
