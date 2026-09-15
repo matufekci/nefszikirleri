@@ -8,12 +8,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.data.model.AppSettings
 import com.example.data.model.ReminderSlot
 import com.example.data.model.Zikir
-import com.example.data.model.ZikirContent
 import com.example.data.model.ZikirHistory
 import com.example.data.model.PendingOperation
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 
 import androidx.room.migration.Migration

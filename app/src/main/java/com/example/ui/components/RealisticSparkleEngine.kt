@@ -47,10 +47,10 @@ object RealisticSparkleEngine {
             // 2. Birincil 4-Kollu Optik Kırınım Yıldızı (Primary Tapered Optical Star)
             val primaryStarPath = Path().apply {
                 moveTo(center.x, center.y - rayLength)
-                quadraticBezierTo(center.x, center.y, center.x + rayLength * 1.15f, center.y)
-                quadraticBezierTo(center.x, center.y, center.x, center.y + rayLength)
-                quadraticBezierTo(center.x, center.y, center.x - rayLength * 1.15f, center.y)
-                quadraticBezierTo(center.x, center.y, center.x, center.y - rayLength)
+                quadraticTo(center.x, center.y, center.x + rayLength * 1.15f, center.y)
+                quadraticTo(center.x, center.y, center.x, center.y + rayLength)
+                quadraticTo(center.x, center.y, center.x - rayLength * 1.15f, center.y)
+                quadraticTo(center.x, center.y, center.x, center.y - rayLength)
                 close()
             }
             drawScope.drawPath(
@@ -71,10 +71,10 @@ object RealisticSparkleEngine {
             drawScope.rotate(45f, pivot = center) {
                 val diagStarPath = Path().apply {
                     moveTo(center.x, center.y - diagRayLength)
-                    quadraticBezierTo(center.x, center.y, center.x + diagRayLength, center.y)
-                    quadraticBezierTo(center.x, center.y, center.x, center.y + diagRayLength)
-                    quadraticBezierTo(center.x, center.y, center.x - diagRayLength, center.y)
-                    quadraticBezierTo(center.x, center.y, center.x, center.y - diagRayLength)
+                    quadraticTo(center.x, center.y, center.x + diagRayLength, center.y)
+                    quadraticTo(center.x, center.y, center.x, center.y + diagRayLength)
+                    quadraticTo(center.x, center.y, center.x - diagRayLength, center.y)
+                    quadraticTo(center.x, center.y, center.x, center.y - diagRayLength)
                     close()
                 }
                 drawScope.drawPath(
@@ -126,10 +126,10 @@ object RealisticSparkleEngine {
         drawScope.rotate(rotationDeg, pivot = center) {
             val starPath = Path().apply {
                 moveTo(center.x, center.y - rayLength)
-                quadraticBezierTo(center.x, center.y, center.x + rayLength, center.y)
-                quadraticBezierTo(center.x, center.y, center.x, center.y + rayLength)
-                quadraticBezierTo(center.x, center.y, center.x - rayLength, center.y)
-                quadraticBezierTo(center.x, center.y, center.x, center.y - rayLength)
+                quadraticTo(center.x, center.y, center.x + rayLength, center.y)
+                quadraticTo(center.x, center.y, center.x, center.y + rayLength)
+                quadraticTo(center.x, center.y, center.x - rayLength, center.y)
+                quadraticTo(center.x, center.y, center.x, center.y - rayLength)
                 close()
             }
             drawScope.drawPath(
@@ -150,10 +150,10 @@ object RealisticSparkleEngine {
             drawScope.rotate(45f, pivot = center) {
                 val diagPath = Path().apply {
                     moveTo(center.x, center.y - diagLen)
-                    quadraticBezierTo(center.x, center.y, center.x + diagLen, center.y)
-                    quadraticBezierTo(center.x, center.y, center.x, center.y + diagLen)
-                    quadraticBezierTo(center.x, center.y, center.x - diagLen, center.y)
-                    quadraticBezierTo(center.x, center.y, center.x, center.y - diagLen)
+                    quadraticTo(center.x, center.y, center.x + diagLen, center.y)
+                    quadraticTo(center.x, center.y, center.x, center.y + diagLen)
+                    quadraticTo(center.x, center.y, center.x - diagLen, center.y)
+                    quadraticTo(center.x, center.y, center.x, center.y - diagLen)
                     close()
                 }
                 drawScope.drawPath(

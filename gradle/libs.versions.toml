@@ -8,8 +8,18 @@ lifecycleRuntimeKtx = "2.11.0"
 lifecycleViewmodelCompose = "2.11.0"
 lifecycleRuntimeCompose = "2.11.0"
 activityCompose = "1.13.0"
+# kotlin 2.2.10 SABITLENDI (lint 2.4.20 oneriyor ama YANLIS).
+# Kanit: AGP 9.4.0'in kendi POM'u (maven.google.com/com/android/tools/build/
+# gradle/9.4.0/gradle-9.4.0.pom) su bagimliliklari tasiyor:
+#   org.jetbrains.kotlin:kotlin-stdlib        2.2.10
+#   org.jetbrains.kotlin:kotlin-gradle-plugin 2.2.10
+#   com.google.devtools.ksp:symbol-processing-gradle-plugin 2.2.10-2.0.2
+# Compose derleyici eklentisinin surumu, derlemede kullanilan Kotlin
+# surumuyle eslesmek zorunda. 2.4.20'ye cikmak AGP'nin gomulu Kotlin'iyle
+# (2.2.10) uyusmaz ve derlemeyi kirardi. Bu yuzden lint'in
+# NewerVersionAvailable uyarisi BILEREK karsilanmiyor.
 kotlin = "2.2.10"
-composeBom = "2024.09.00"
+composeBom = "2026.09.00"
 googleDevtoolsKsp = "2.3.5"
 roomRuntime = "2.8.5"
 roomKtx = "2.8.5"

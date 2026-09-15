@@ -135,11 +135,16 @@ jobs:
         run: ./gradlew assembleDebug --stacktrace 2>&1 | tee build-debug.log
         continue-on-error: true
 
+      - name: Compose BOM surumunu oku (APK adina islenir)
+        if: always()
+        id: bom
+        run: echo "v=$(sed -n -E 's/^composeBom = "([^"]+)".*/\1/p' gradle/libs.versions.toml)" >> "$GITHUB_OUTPUT"
+
       - name: Upload debug APK
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: debug-apk
+          name: debug-apk-compose-${{ steps.bom.outputs.v }}
           path: |
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/debug/output-metadata.json
@@ -198,11 +203,16 @@ jobs:
             done
           fi
 
+      - name: Compose BOM surumunu oku (APK adina islenir)
+        if: always()
+        id: bom
+        run: echo "v=$(sed -n -E 's/^composeBom = "([^"]+)".*/\1/p' gradle/libs.versions.toml)" >> "$GITHUB_OUTPUT"
+
       - name: Upload debug APK
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: debug-apk-no-tests
+          name: debug-apk-no-tests-compose-${{ steps.bom.outputs.v }}
           path: |
             app/build/outputs/apk/debug/*.apk
             build-apk-only.log
@@ -260,11 +270,16 @@ jobs:
         run: ./gradlew assembleRelease --stacktrace 2>&1 | tee build-release.log
         continue-on-error: true
 
+      - name: Compose BOM surumunu oku (APK adina islenir)
+        if: always()
+        id: bom
+        run: echo "v=$(sed -n -E 's/^composeBom = "([^"]+)".*/\1/p' gradle/libs.versions.toml)" >> "$GITHUB_OUTPUT"
+
       - name: Upload release APK
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: release-apk
+          name: release-apk-compose-${{ steps.bom.outputs.v }}
           path: |
             app/build/outputs/apk/release/*.apk
             build-release.log

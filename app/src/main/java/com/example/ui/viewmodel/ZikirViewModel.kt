@@ -5,7 +5,6 @@ import com.example.ui.UiText
 import android.app.Application
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.core.content.FileProvider
 import androidx.core.content.edit
@@ -20,7 +19,6 @@ import com.example.data.model.AppSettings
 import com.example.data.model.AppStrings
 import com.example.data.model.Badge
 import com.example.data.model.BadgeManager
-import com.example.data.model.DailyAggregate
 import com.example.data.model.Zikir
 import com.example.data.model.ZikirContent
 import com.example.data.model.ZikirHistory
@@ -43,11 +41,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
 import org.json.JSONObject
-import java.io.File
 import java.util.Calendar
-import java.util.Date
 import java.util.Locale
 
 data class DayChartItem(
@@ -1534,7 +1529,9 @@ class ZikirViewModel(
     }
 
     override fun onCleared() {
-        super.onCleared()
+        // super.onCleared() BILEREK yok: androidx.lifecycle.ViewModel
+        // icindeki varsayilan govde bos, yani cagri hicbir sey yapmiyordu
+        // (lint: EmptySuperCall). authManager.cleanup() asil temizlik.
         authManager.cleanup()
     }
 }

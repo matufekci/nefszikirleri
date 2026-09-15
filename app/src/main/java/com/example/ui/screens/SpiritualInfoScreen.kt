@@ -26,7 +26,6 @@ import com.example.data.model.*
 import com.example.ui.theme.*
 import com.example.util.*
 import android.content.*
-import android.widget.Toast
 
 /**
  * Metnin basindaki siralama numarasini siler.

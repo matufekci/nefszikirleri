@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -56,7 +54,6 @@ import com.example.ui.theme.LocalAppColors
 import com.example.ui.viewmodel.CelebrationData
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlin.random.Random
 import androidx.compose.material.icons.rounded.CheckCircle
 import com.example.util.rememberShouldReduceMotion
 
