@@ -33,8 +33,8 @@ import com.example.ui.theme.LocalAppColors
 fun BadgeHeroIcon(
     badgeId: String,
     tint: Color,
-    size: Dp = 48.dp,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    size: Dp = 48.dp
 ) {
     val colors = LocalAppColors.current
     val isLocked = tint == colors.textMuted || tint.alpha < 0.7f

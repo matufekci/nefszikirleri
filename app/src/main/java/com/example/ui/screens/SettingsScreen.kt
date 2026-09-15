@@ -30,8 +30,8 @@ import com.example.ui.viewmodel.ZikirViewModel
 fun SettingsScreen(
     state: DhikrUiState,
     viewModel: ZikirViewModel,
-    onShowIntro: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onShowIntro: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val colors = LocalAppColors.current

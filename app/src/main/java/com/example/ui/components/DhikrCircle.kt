@@ -51,10 +51,10 @@ fun DhikrCircle(
     isCountdownMode: Boolean,
     arabicText: String,
     transliteration: String,
+    modifier: Modifier = Modifier,
     lang: String = "tr",
     isZenMode: Boolean = false,
-    onTap: () -> Unit,
-    modifier: Modifier = Modifier
+    onTap: () -> Unit
 ) {
     val theme = LocalAppColors.current
     val palette = remember(theme.id) { LuxuryCirclePalettes.get(theme) }

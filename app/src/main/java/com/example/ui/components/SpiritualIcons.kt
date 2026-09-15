@@ -37,8 +37,8 @@ import kotlin.math.sin
 fun RealisticSymbolBadge(
     symbol: ImageVector,
     tint: Color,
-    size: Dp = 32.dp,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    size: Dp = 32.dp
 ) {
     Box(
         modifier = modifier

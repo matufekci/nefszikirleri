@@ -47,10 +47,10 @@ import com.example.ui.theme.LocalAppColors
 @Composable
 fun StatCollapsibleCard(
     title: String,
+    modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     isExpanded: Boolean,
     onToggle: () -> Unit,
-    modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
     val colors = LocalAppColors.current
