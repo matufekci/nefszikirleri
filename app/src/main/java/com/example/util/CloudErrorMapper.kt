@@ -119,6 +119,7 @@ object CloudErrorMapper {
         SignInErrorKind.SIGNIN_RETRY -> UiText.signInRetry
         SignInErrorKind.ACCOUNT_COLLISION -> UiText.signInAccountCollision
         SignInErrorKind.USER_DISABLED -> UiText.signInUserDisabled
+        SignInErrorKind.REAUTH_REQUIRED -> UiText.accountDeletionReauthRequired
         SignInErrorKind.NETWORK -> UiText.cloudErrorNetwork
         SignInErrorKind.UNKNOWN -> null
     }

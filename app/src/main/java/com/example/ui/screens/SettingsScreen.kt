@@ -42,6 +42,7 @@ fun SettingsScreen(
     val isCloudSyncing by viewModel.isCloudSyncing.collectAsStateWithLifecycle()
     val cloudSyncMessage by viewModel.cloudSyncMessage.collectAsStateWithLifecycle()
     val lastSyncTimestamp by viewModel.lastCloudSyncTimestamp.collectAsStateWithLifecycle()
+    val isAccountDeletionInProgress by viewModel.isAccountDeletionInProgress.collectAsStateWithLifecycle()
 
     val showExportPasswordDialog by viewModel.showExportPasswordDialog.collectAsStateWithLifecycle()
     val showImportPasswordDialog by viewModel.showImportPasswordDialog.collectAsStateWithLifecycle()
@@ -81,6 +82,9 @@ fun SettingsScreen(
                 onRestoreFromCloud = { viewModel.restoreFromCloud() },
                 onRequestExportBackup = { viewModel.requestExportLocalBackup() },
                 onLaunchImportFile = { importFileLauncher.launch("text/*") },
+                onOpenPrivacyPolicy = { viewModel.openPrivacyPolicy() },
+                onDeleteAccount = { viewModel.deleteAccount(context) },
+                isAccountDeletionInProgress = isAccountDeletionInProgress,
                 context = context
             )
         }

@@ -279,6 +279,124 @@ class AuthManager(private val context: Context) {
             Result.failure(e)
         }
     }
+
+    /**
+     * Hesabi GERCEKTEN siler (sign-out / disable degil).
+     *
+     * Neden var: Google Play, hesap olusturan uygulamalarda kullaniciya hesap
+     * silme yolu sunmayi sart kosuyor. Cagri tarafi (ViewModel) once
+     * `SyncManager.deleteAllUserData` ile Firestore verisini siler; o adim
+     * basarili olmadan buraya gelmez. Boylece "hesap silindi" denildiginde
+     * geride kullanici verisi kalmaz.
+     *
+     * Re-auth: Firebase hassas islemlerde (delete) yakin zamanli giris ister
+     * (`ERROR_RECENT_LOGIN_REQUIRED`). Bu durumda kullaniciya parola SORMAYIZ
+     * (uygulamada parola yok, giris Google SSO); mevcut Credential Manager +
+     * Google akisiyla taze ID token alinip `reauthenticate` cagrilir ve silme
+     * tekrar denenir. Basarisiz/iptal olursa `REAUTH_REQUIRED` doner ve hesap
+     * SILINMIS GIBI GOSTERILMEZ.
+     *
+     * Guvenlik: log yalnizca exception sinif adini yazar; token/credential/
+     * e-posta/UID loglanmaz.
+     */
+    suspend fun deleteAccount(activityContext: Context): Result<Unit> {
+        val user = auth.currentUser
+            ?: return Result.failure(
+                SignInFailedException(
+                    SignInErrorKind.NO_ACCOUNT,
+                    "deleteAccount: no signed-in Firebase user"
+                )
+            )
+
+        return try {
+            try {
+                user.delete().await()
+            } catch (e: FirebaseAuthException) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                if (!isRecentLoginRequired(e)) throw e
+                val credential = requestGoogleAuthCredential(activityContext)
+                user.reauthenticate(credential).await()
+                user.delete().await()
+            }
+            credentialManager.clearCredentialState(ClearCredentialStateRequest())
+            _currentUser.value = null
+            Result.success(Unit)
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            if (com.example.BuildConfig.DEBUG) {
+                Log.e("AuthManager", "deleteAccount failed: ${e.javaClass.simpleName}")
+            }
+            if (e is SignInFailedException) return Result.failure(e)
+            val kind = when {
+                isRecentLoginRequired(e) -> SignInErrorKind.REAUTH_REQUIRED
+                e is FirebaseNetworkException -> SignInErrorKind.NETWORK
+                else -> SignInErrorKind.UNKNOWN
+            }
+            Result.failure(
+                SignInFailedException(kind, "deleteAccount: ${e.javaClass.simpleName}", e)
+            )
+        }
+    }
+
+    /**
+     * Firebase'in "recent login required" hatasi mi?
+     *
+     * Sinif adina VE errorCode'a bakiliyor: boylece Firebase sinifini derleme
+     * zamaninda sabit bagimliliga cevirmeden de taninir (projenin
+     * `CloudErrorMapper.classifyByShape` yaklasimiyla ayni).
+     */
+    private fun isRecentLoginRequired(error: Throwable?): Boolean {
+        var current: Throwable? = error
+        var hops = 0
+        while (current != null && hops < 8) {
+            hops++
+            if (current.javaClass.simpleName == "FirebaseAuthRecentLoginRequiredException") return true
+            if (current is FirebaseAuthException &&
+                current.errorCode == "ERROR_RECENT_LOGIN_REQUIRED"
+            ) {
+                return true
+            }
+            current = current.cause
+        }
+        return false
+    }
+
+    /**
+     * Yalnizca RE-AUTH icin: cihazdaki MEVCUT Google hesabindan taze ID token
+     * alir. `signInWithGoogle` bilerek DEGISTIRILMEDI (calisan giris akisina
+     * dokunmamak icin); burada hesap secici kapali ve otomatik secim acik,
+     * yani kullaniciya yeni hesap sectirilmez.
+     */
+    private suspend fun requestGoogleAuthCredential(
+        activityContext: Context
+    ): com.google.firebase.auth.AuthCredential {
+        val webClientId = context.getString(com.example.R.string.default_web_client_id)
+        val googleIdOption = GetGoogleIdOption.Builder()
+            .setFilterByAuthorizedAccounts(true)
+            .setServerClientId(webClientId)
+            .setAutoSelectEnabled(true)
+            .build()
+
+        val request = GetCredentialRequest.Builder()
+            .addCredentialOption(googleIdOption)
+            .build()
+
+        val response = credentialManager.getCredential(
+            request = request,
+            context = activityContext
+        )
+        val credential = response.credential
+        if (credential is CustomCredential &&
+            credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+        ) {
+            val idToken = GoogleIdTokenCredential.createFrom(credential.data).idToken
+            return GoogleAuthProvider.getCredential(idToken, null)
+        }
+        throw SignInFailedException(
+            SignInErrorKind.REAUTH_REQUIRED,
+            "Re-auth returned unexpected credential type: ${credential.type}"
+        )
+    }
 }
 
 /**

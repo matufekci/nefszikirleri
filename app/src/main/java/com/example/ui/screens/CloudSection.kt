@@ -50,12 +50,17 @@ fun CloudSection(
     onRestoreFromCloud: () -> Unit,
     onRequestExportBackup: () -> Unit,
     onLaunchImportFile: () -> Unit,
+    onOpenPrivacyPolicy: () -> Unit,
+    onDeleteAccount: () -> Unit,
+    isAccountDeletionInProgress: Boolean,
     context: Context,
     modifier: Modifier = Modifier
 ) {
     val colors = LocalAppColors.current
     val strings = AppStrings.get(lang)
     var accountExpanded by rememberSaveable { mutableStateOf(false) }
+    // Hesap silme onay ekrani (mevcut AlertDialog kalibiyla ayni stil).
+    var showDeleteAccountConfirm by rememberSaveable { mutableStateOf(false) }
 
     val headerTitle = if (currentUser != null) {
         currentUser.displayName ?: UiText.googleAccount.get(lang)
@@ -340,6 +345,41 @@ fun CloudSection(
                             )
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // PLAY UYUMLULUGU: hesap + iliskili bulut verisi silme.
+                    // Mevcut cikis butonuyla ayni tip (TextButton + hata rengi);
+                    // yeni gorsel dil eklenmedi.
+                    TextButton(
+                        onClick = { showDeleteAccountConfirm = true },
+                        enabled = !isCloudSyncing && !isAccountDeletionInProgress,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("btn_delete_account")
+                    ) {
+                        if (isAccountDeletionInProgress) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = colors.error
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                        } else {
+                            Icon(
+                                imageVector = Icons.Rounded.DeleteForever,
+                                contentDescription = null,
+                                tint = colors.error,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+                        Text(
+                            text = UiText.deleteAccount.get(lang),
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = colors.error
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -353,6 +393,95 @@ fun CloudSection(
                     onLaunchImportFile = onLaunchImportFile
                 )
             }
+
+            // 3. KISIM: GİZLİLİK POLİTİKASI (kart kapalıyken de erişilebilir)
+            // Play politikasi yalnizca store listing'de degil, uygulama icinde
+            // de erisilebilir olmali. Katlanabilir blogun DISINA kondu ki
+            // kullanici karti genisletmeden ulasabilsin.
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider(color = colors.border.copy(alpha = 0.4f))
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable { onOpenPrivacyPolicy() }
+                    .padding(vertical = 6.dp)
+                    .testTag("btn_privacy_policy"),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.PrivacyTip,
+                    contentDescription = null,
+                    tint = colors.primary,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = UiText.privacyPolicy.get(lang),
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = colors.text
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Icon(
+                    imageVector = Icons.Rounded.OpenInNew,
+                    contentDescription = null,
+                    tint = colors.textMuted,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
         }
+    }
+
+    // Hesap silme onayi: mevcut AlertDialog kalibiyle ayni stil
+    // (baslik Black + govde textMuted + birincil onay butonu).
+    if (showDeleteAccountConfirm) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!isAccountDeletionInProgress) showDeleteAccountConfirm = false
+            },
+            title = {
+                Text(
+                    text = UiText.deleteAccountConfirmTitle.get(lang),
+                    fontWeight = FontWeight.Black,
+                    color = colors.text
+                )
+            },
+            text = {
+                Text(
+                    text = UiText.deleteAccountConfirmMsg.get(lang),
+                    color = colors.textMuted,
+                    lineHeight = 20.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteAccountConfirm = false
+                        onDeleteAccount()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.error),
+                    enabled = !isAccountDeletionInProgress
+                ) {
+                    Text(
+                        text = UiText.deleteAccountConfirmBtn.get(lang),
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteAccountConfirm = false },
+                    enabled = !isAccountDeletionInProgress
+                ) {
+                    Text(
+                        text = strings.cancel,
+                        color = colors.textMuted,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        )
     }
 }

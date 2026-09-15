@@ -32,6 +32,13 @@ enum class SignInErrorKind {
     /** Google hesabi devre disi veya silinmis. */
     USER_DISABLED,
 
+    /**
+     * Firebase hassas islem (hesap silme) icin YAKIN ZAMANLI kimlik
+     * dogrulama istedi ve yeniden dogrulama saglanamadi/iptal edildi.
+     * Hesap SILINMEDI demektir; kullaniciya "silindi" gosterilmemeli.
+     */
+    REAUTH_REQUIRED,
+
     /** Baglanti yok / zaman asimi. */
     NETWORK,
 

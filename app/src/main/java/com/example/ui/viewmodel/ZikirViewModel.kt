@@ -13,7 +13,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.AppDatabase
 import com.example.data.cloud.AuthManager
+import com.example.data.cloud.SignInErrorKind
 import com.example.data.cloud.SyncManager
+import com.example.data.config.AppLinks
 import com.google.firebase.auth.FirebaseUser
 import com.example.data.model.AppSettings
 import com.example.data.model.AppStrings
@@ -162,6 +164,14 @@ class ZikirViewModel(
 
     private val _lastCloudSyncTimestamp = MutableStateFlow<Long?>(null)
     val lastCloudSyncTimestamp: StateFlow<Long?> = _lastCloudSyncTimestamp.asStateFlow()
+
+    /**
+     * Hesap silme islemi suruyor mu? Cift dokunmayi ve es zamanli ikinci
+     * silme istegini (race) engellemek icin kullanilir; buton bu bayrakla
+     * devre disi kalir.
+     */
+    private val _isAccountDeletionInProgress = MutableStateFlow(false)
+    val isAccountDeletionInProgress: StateFlow<Boolean> = _isAccountDeletionInProgress.asStateFlow()
 
     // +1 islemleri artik SENKRON (repository.addDhikrCount) yazilir; toplu
     // kanal + optimistic katman kaldirildi (titremenin kaynagiydi).
@@ -1098,6 +1108,105 @@ class ZikirViewModel(
             val strings = AppStrings.get(_uiState.value.settings.lang)
             _cloudSyncMessage.value = strings.cloudSignOutMessage
             onComplete()
+        }
+    }
+
+    /**
+     * Gizlilik politikasini tarayicida acar.
+     *
+     * Neden var: Google Play politikanin store listing'de VE uygulama icinde
+     * erisilebilir olmasini istiyor; uygulama icinde erisim noktasi yoktu.
+     * Adres `AppLinks` uzerinden merkezi olarak okunur. Adres henuz
+     * doldurulmadiysa (veya ornek/placeholder ise) SESSIZCE yanlis sayfa
+     * acilmaz; kullaniciya bilgi mesaji gosterilir. Crash olusmaz.
+     */
+    fun openPrivacyPolicy() {
+        val url = AppLinks.PRIVACY_POLICY_URL
+        if (!AppLinks.isUsable(url)) {
+            _cloudSyncMessage.value =
+                UiText.privacyPolicyUnavailable.get(_uiState.value.settings.lang)
+            return
+        }
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            getApplication<Application>().startActivity(intent)
+        } catch (e: Exception) {
+            if (com.example.BuildConfig.DEBUG) {
+                android.util.Log.w("ZikirViewModel", "openPrivacyPolicy failed: ${e.javaClass.simpleName}")
+            }
+            _cloudSyncMessage.value = UiText.openLinkFailed.get(_uiState.value.settings.lang)
+        }
+    }
+
+    /**
+     * Play uyumlu HESAP SILME akisi.
+     *
+     * Siralama bilerek boyle:
+     *  1. Once Firestore'daki TUM kullanici verisi silinir. Basarisizsa
+     *     hesaba hic dokunulmaz ve kullaniciya basari GOSTERILMEZ.
+     *  2. Sonra Firebase Auth hesabi silinir. Bulut silinmis ama hesap
+     *     silinememisse bu yarim durum ayri bir mesajla bildirilir
+     *     (hesap silinmis gibi gosterilmez).
+     *
+     * Yerel zikir verisi SILINMEZ: hesapla iliskisiz anonim/offline kullanim
+     * mevcut uygulama mantiginda korunur (Play hesabin ve iliskili BULUT
+     * verisinin silinmesini ister, cihazdaki anonim verinin silinmesini degil).
+     */
+    fun deleteAccount(activityContext: Context) {
+        // Cift dokunma / es zamanli ikinci istek -> tek islem calisir.
+        if (_isAccountDeletionInProgress.value) return
+
+        val uid = authManager.currentUser.value?.uid
+        if (uid.isNullOrBlank()) {
+            _cloudSyncMessage.value =
+                UiText.deleteAccountFailed.get(_uiState.value.settings.lang)
+            return
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            _isAccountDeletionInProgress.value = true
+            _isCloudSyncing.value = true
+            try {
+                val lang = _uiState.value.settings.lang
+
+                // 1. BULUT VERISI (users/<uid> + snapshots + history)
+                val cloudResult = syncManager.deleteAllUserData(uid)
+                if (cloudResult.isFailure) {
+                    _cloudSyncMessage.value = CloudErrorMapper.resolve(
+                        cloudResult.exceptionOrNull(),
+                        lang,
+                        UiText.deleteAccountFailed
+                    )
+                    return@launch
+                }
+
+                // 2. FIREBASE AUTH HESABI
+                val authResult = authManager.deleteAccount(activityContext)
+                if (authResult.isFailure) {
+                    val error = authResult.exceptionOrNull()
+                    _cloudSyncMessage.value =
+                        if (CloudErrorMapper.signInKind(error) == SignInErrorKind.REAUTH_REQUIRED) {
+                            UiText.accountDeletionReauthRequired.get(lang)
+                        } else {
+                            UiText.deleteAccountCloudOnlyDeleted.get(lang)
+                        }
+                    return@launch
+                }
+
+                // 3. LOCAL OTURUM / BULUT SENKRON DURUMU
+                //    `device_id` BILEREK korunur: hesapla baglantili degildir ve
+                //    silinirse ayni cihazdaki bir sonraki giriste "ayni cihaz"
+                //    tespiti bozulup gereksiz catisma ekrani cikardi (normal
+                //    bulut senkron davranisini bozmamak icin).
+                syncPrefs.edit { remove("sync_revision") }
+                _lastCloudSyncTimestamp.value = null
+                _cloudSyncMessage.value = UiText.deleteAccountSuccess.get(lang)
+            } finally {
+                _isAccountDeletionInProgress.value = false
+                _isCloudSyncing.value = false
+            }
         }
     }
 

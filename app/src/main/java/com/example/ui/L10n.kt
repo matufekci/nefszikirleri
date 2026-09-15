@@ -343,4 +343,86 @@ object UiText {
         "Dein Cloud-Backup wurde wiederhergestellt.",
         "Ta sauvegarde cloud a été restaurée."
     )
+
+    // --- Play uyumlulugu: uygulama ici gizlilik politikasi erisimi ---
+    val privacyPolicy = L10n(
+        "Gizlilik Politikası",
+        "سياسة الخصوصية",
+        "Privacy Policy",
+        "Datenschutzerklärung",
+        "Politique de confidentialité"
+    )
+    val privacyPolicyUnavailable = L10n(
+        "Gizlilik politikası adresi bu sürümde henüz tanımlı değil. Lütfen uygulama mağazası sayfasındaki bağlantıyı kullan.",
+        "لم يتم تعريف رابط سياسة الخصوصية في هذا الإصدار بعد. يرجى استخدام الرابط في صفحة التطبيق بالمتجر.",
+        "The privacy policy address is not configured in this build yet. Please use the link on the app's store listing.",
+        "Die Adresse der Datenschutzerklärung ist in dieser Version noch nicht hinterlegt. Bitte nutze den Link im Store-Eintrag der App.",
+        "L'adresse de la politique de confidentialité n'est pas encore configurée dans cette version. Utilisez le lien sur la fiche de l'application dans le store."
+    )
+    val openLinkFailed = L10n(
+        "Bağlantı açılamadı; cihazda uygun bir tarayıcı bulunamadı.",
+        "تعذّر فتح الرابط؛ لا يوجد متصفح مناسب على الجهاز.",
+        "The link could not be opened; no suitable browser was found on the device.",
+        "Der Link konnte nicht geöffnet werden; es wurde kein passender Browser gefunden.",
+        "Le lien n'a pas pu être ouvert ; aucun navigateur adapté n'a été trouvé sur l'appareil."
+    )
+
+    // --- Play uyumlulugu: hesap + iliskili veri silme ---
+    val deleteAccount = L10n(
+        "Hesabı Sil",
+        "حذف الحساب",
+        "Delete Account",
+        "Konto löschen",
+        "Supprimer le compte"
+    )
+    val deleteAccountConfirmTitle = L10n(
+        "Hesap kalıcı olarak silinsin mi?",
+        "هل تريد حذف الحساب نهائيًا؟",
+        "Delete account permanently?",
+        "Konto endgültig löschen?",
+        "Supprimer définitivement le compte ?"
+    )
+    val deleteAccountConfirmMsg = L10n(
+        "Google hesabın ve buluttaki tüm yedeklerin (zikirler, geçmiş, ayarlar, hatırlatıcılar) kalıcı olarak silinir. Bu işlem geri alınamaz. Bu cihazdaki kayıtlı veriler korunur.",
+        "سيتم حذف حسابك على Google وجميع نسخك الاحتياطية في السحابة (الأذكار، السجل، الإعدادات، المنبهات) نهائيًا. لا يمكن التراجع عن هذا الإجراء. تبقى بيانات هذا الجهاز محفوظة.",
+        "Your Google account and all of its cloud backups (dhikrs, history, settings, reminders) will be permanently deleted. This action cannot be undone. Data stored on this device is kept.",
+        "Dein Google-Konto und alle zugehörigen Cloud-Backups (Dhikr, Verlauf, Einstellungen, Erinnerungen) werden endgültig gelöscht. Dieser Schritt lässt sich nicht rückgängig machen. Die Daten auf diesem Gerät bleiben erhalten.",
+        "Votre compte Google et toutes ses sauvegardes cloud (dhikr, historique, paramètres, rappels) seront définitivement supprimés. Cette action est irréversible. Les données enregistrées sur cet appareil sont conservées."
+    )
+    val deleteAccountConfirmBtn = L10n(
+        "Kalıcı olarak sil",
+        "حذف نهائي",
+        "Delete permanently",
+        "Endgültig löschen",
+        "Supprimer définitivement"
+    )
+    val deleteAccountSuccess = L10n(
+        "Hesabın ve buluttaki verilerin kalıcı olarak silindi.",
+        "تم حذف حسابك وبياناتك في السحابة نهائيًا.",
+        "Your account and its cloud data have been permanently deleted.",
+        "Dein Konto und die zugehörigen Cloud-Daten wurden endgültig gelöscht.",
+        "Votre compte et ses données cloud ont été définitivement supprimés."
+    )
+    val deleteAccountFailed = L10n(
+        "Hesap silinemedi; hiçbir veri silinmedi. Lütfen daha sonra tekrar dene.",
+        "تعذّر حذف الحساب؛ لم يتم حذف أي بيانات. يرجى المحاولة لاحقًا.",
+        "The account could not be deleted; no data was removed. Please try again later.",
+        "Das Konto konnte nicht gelöscht werden; es wurden keine Daten entfernt. Bitte später erneut versuchen.",
+        "Le compte n'a pas pu être supprimé ; aucune donnée n'a été effacée. Veuillez réessayer plus tard."
+    )
+    /** Bulut verisi silindi ama Firebase Auth hesabi silinemedi -> yarim durumu ASLA basari gosterme. */
+    val deleteAccountCloudOnlyDeleted = L10n(
+        "Bulut verilerin silindi ancak Google hesabı silinemedi. Hesabı silmek için tekrar dene.",
+        "تم حذف بياناتك في السحابة، لكن تعذّر حذف حساب Google. أعد المحاولة لحذف الحساب.",
+        "Your cloud data was deleted, but the Google account could not be deleted. Please try again to delete the account.",
+        "Deine Cloud-Daten wurden gelöscht, aber das Google-Konto konnte nicht gelöscht werden. Bitte versuche erneut, das Konto zu löschen.",
+        "Vos données cloud ont été supprimées, mais le compte Google n'a pas pu être supprimé. Veuillez réessayer pour supprimer le compte."
+    )
+    val accountDeletionReauthRequired = L10n(
+        "Google hesabın yeniden doğrulanamadı; hesap silinmedi. Bağlantını kontrol edip tekrar dene.",
+        "تعذّرت إعادة التحقق من حساب Google؛ لم يتم حذف الحساب. تحقق من اتصالك ثم أعد المحاولة.",
+        "Your Google account could not be re-verified, so the account was not deleted. Check your connection and try again.",
+        "Dein Google-Konto konnte nicht erneut bestätigt werden; das Konto wurde nicht gelöscht. Prüfe die Verbindung und versuche es erneut.",
+        "Votre compte Google n'a pas pu être revalidé ; le compte n'a donc pas été supprimé. Vérifiez votre connexion puis réessayez."
+    )
 }
