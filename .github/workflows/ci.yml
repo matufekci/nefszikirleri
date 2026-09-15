@@ -53,8 +53,9 @@ jobs:
           if [ ! -f .env ] && [ -f .env.example ]; then cp .env.example .env; fi
           if [ ! -f app/.env ] && [ -f app/.env.example ]; then cp app/.env.example app/.env; fi
           if [ ! -f .env ] && [ -f app/.env.example ]; then cp app/.env.example .env; fi
+          # Guvenlik: .env icerigi LOGA BASILMAZ (secret sizintisi onleme).
+          # Yalnizca dosyanin varligi dogrulanir.
           ls -la .env 2>&1 || true
-          cat .env
 
       - name: Check Room schema exists
         run: |
@@ -193,7 +194,8 @@ jobs:
       - name: Create .env from example
         run: |
           cp .env.example .env
-          cat .env
+          # Guvenlik: .env icerigi loga basilmaz; yalnizca varlik dogrulanir.
+          ls -la .env 2>&1 || true
 
       - name: Build debug APK (no tests)
         run: ./gradlew assembleDebug -x test --stacktrace 2>&1 | tee build-apk-only.log
