@@ -29,8 +29,10 @@ class NotificationScheduler(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // Eski alarmi temizle; PendingIntent CANLI kalmali cunku asagida
+        // setAndAllowWhileIdle ile yeniden kullaniliyor. PendingIntent'i burada
+        // iptal etmek, kurulan alarmi teslim edilemez hale getirirdi.
         alarmManager.cancel(pendingIntent)
-        pendingIntent.cancel()
 
         if (isEnabled) {
             // Son zikirden INACTIVITY_TRIGGER_DAYS gün sonrasına kurulur; her zikirde
