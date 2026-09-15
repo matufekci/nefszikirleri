@@ -3,8 +3,11 @@ name: CI - Build & Test & Room Schema
 on:
   push:
     branches: [ main, arena/** ]
-  pull_request:
-    branches: [ main ]
+  # Gun sonu tam regresyon: 20:00 UTC = 23:00 Istanbul.
+  schedule:
+    - cron: '0 20 * * *'
+  # Istek uzerine tam regresyon (Actions -> Run workflow).
+  workflow_dispatch:
 
 # Aynı dal için push + pull_request çift tetikleme çakışmasın:
 # iki event da aynı concurrency grubuna düşer (pull_request'te head_ref,
@@ -17,6 +20,9 @@ concurrency:
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
+    # Tam test+lint yalnız gün sonu / manuel / main push'ında koşar;
+    # dal push'larında hızlı kapı (build-apk-only) yeterlidir.
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
     # NOT: job seviyesinde `continue-on-error` YOK. Testler patladiginda run
     # KIRMIZI olmali; yoksa sahte yesil olusuyor (2026-09-14'te yasandi:
     # OnboardingA11yLabelTest patladi ama run "success" dondu).
@@ -101,8 +107,7 @@ jobs:
 
   build-debug:
     runs-on: ubuntu-latest
-    if: always()
-    needs: unit-tests
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -160,7 +165,9 @@ jobs:
 
   build-apk-only:
     runs-on: ubuntu-latest
-    if: always()
+    # Hızlı derleme kapısı: her push'ta koşar (~8-10 dk), derleme kırılmasını
+    # ve kurulabilir debug APK'yı anında verir.
+    if: ${{ github.event_name == 'push' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -233,7 +240,7 @@ jobs:
     # kurulabilir ve Google girisi ayni SHA-1 ile calisir. Play'e cikacak
     # surumde gercek release anahtari ortam degiskenleriyle verilmelidir.
     runs-on: ubuntu-latest
-    if: always()
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v7
 
