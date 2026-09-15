@@ -217,7 +217,4 @@ object AppPalettes {
         ALL.find { it.id.equals(lower, ignoreCase = true) }?.let { return it }
         return legacyMapping[lower] ?: HadraGece
     }
-
-    fun getAllCanonicalIds(): List<String> = ALL.map { it.id }
-    fun getLegacyIds(): List<String> = legacyMapping.keys.toList()
 }
