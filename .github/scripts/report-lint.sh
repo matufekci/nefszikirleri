@@ -106,7 +106,11 @@ issue_locations() {  # $1 = severity duzenli ifadesi ("Error|Fatal" / "Warning")
       if (match(buf, /severity="[^"]*"/)) sev = substr(buf, RSTART + 10, RLENGTH - 11)
       if (match(buf, / file="[^"]*"/))    f   = substr(buf, RSTART + 7, RLENGTH - 8)
       if (match(buf, / line="[^"]*"/))    l   = substr(buf, RSTART + 7, RLENGTH - 8)
-      if (sev ~ want) print sev, id, f ":" l
+      msg = ""
+      if (match(buf, /message="[^"]*"/))  msg = substr(buf, RSTART + 9, RLENGTH - 10)
+      gsub(/[|]/, "/", msg)
+      if (length(msg) > 90) msg = substr(msg, 1, 90) "..."
+      if (sev ~ want) print sev, id, f ":" l, "::", msg
       buf = ""
     }
     /<issue/    { if (inissue) flush(); inissue = 1; buf = "" }
@@ -119,7 +123,7 @@ issue_locations() {  # $1 = severity duzenli ifadesi ("Error|Fatal" / "Warning")
 error_locs="$(issue_locations "Error|Fatal" | head -10 | awk '{ printf "%s %s %s | ", $1, $2, $3 }')"
 # Uyarilarin konumu da gerekli: 12 uyari icin "hangi dosya hangi satir"
 # bilinmeden duzeltme yapilamiyor (EmptySuperCall grep'le bile bulunamadi).
-warn_locs="$(issue_locations "Warning" | head -14 | awk '{ printf "%s %s | ", $2, $3 }' | sed 's#app/src/main/java/com/example/##g; s#app/src/main/##g; s#app/src/test/java/com/example/##g')"
+warn_locs="$(issue_locations "Warning" | head -14 | awk '{ m = ""; for (i = 5; i <= NF; i++) m = m (i > 5 ? " " : "") $i; printf "%s %s %s | ", $2, $3, m }' | sed 's#app/src/main/java/com/example/##g; s#app/src/main/##g; s#app/src/test/java/com/example/##g')"
 
 top_fatal="$(top_ids Fatal)"
 top_error="$(top_ids Error)"
