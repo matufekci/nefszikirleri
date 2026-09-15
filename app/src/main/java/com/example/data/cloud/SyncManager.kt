@@ -263,8 +263,13 @@ class SyncManager {
      * cikarildi (tahmin edilmedi):
      *   users/<uid>                                  -> kok belge (pointer + zikirs/slots/settings + syncMetadata)
      *   users/<uid>/snapshots/<snapshotId>           -> snapshot belgeleri
-     *   users/<uid>/snapshots/<snapshotId>/history/* -> gecmis meta + chunk_N
-     *   users/<uid>/history/*                        -> eski/legacy gecmis koleksiyonu
+     *   users/{uid}/snapshots/{snapshotId}/history/{meta,chunk_N} -> gecmis
+     *   users/{uid}/history/{meta,chunk_N}                        -> eski/legacy gecmis koleksiyonu
+     *
+     * NOT: Bu yollarda bilerek "yildiz" karakteri kullanilmiyor. Kotlin'de blok
+     * yorumlari IC ICE gecebildigi icin yorum icindeki bir slash+yildiz dizisi
+     * yeni bir yorum acar ve dosyanin kalanini yoruma cevirebilir (bu dosyada
+     * gercekten yasandi: "Unclosed comment" + zincirleme unresolved reference).
      *
      * Davranis kurallari:
      *  - Sayfali okuma + batch delete; sinirsiz okuma/dongu yok.
