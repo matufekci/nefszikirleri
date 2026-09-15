@@ -181,8 +181,8 @@ object AdaptiveReminderManager {
     }
 
     /**
-     * Hareketsizlik hatırlatıcısı için sırayla ayet döndürür: önce 5 uyarı ayeti,
-     * ardından 5 müjde ayeti; liste bitince başa sarar. Böylece kullanıcı aynı
+     * Hareketsizlik hatırlatıcısı için sırayla ayet döndürür: önce tüm uyarı ayetleri,
+     * ardından tüm müjde ayetleri; liste bitince başa sarar. Böylece kullanıcı aynı
      * ayeti üst üste görmez ve uyarı/müjde dengesi korunur.
      */
     fun getInactivityVerse(context: Context): SpiritualVerse {
