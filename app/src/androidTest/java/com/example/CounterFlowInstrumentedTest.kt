@@ -93,17 +93,55 @@ class CounterFlowInstrumentedTest {
         return key in cfg && cfg[key]
     }
 
-    /** Splash (min 3000 ms) gecene kadar sayac dugumunu bekler. */
+    /**
+     * TESHIS: basarisizlik aninda ekranda GERCEKTEN hangi bilinen tag'lerin
+     * oldugunu tek satirda dondurur. Boylece annotation'dan "uygulama hangi
+     * ekranda kaldi" (karsilama mi, ayarlar mi, hic mi acilmadi) okunabiliyor.
+     * Ham log dosyalari bu sandbox'tan okunamadigi icin (blob storage
+     * erisilemez) teshis bilgisinin assertion mesajinda tasinmasi sart.
+     *
+     * Tag'lerin hepsi uretim kodunda dogrulandi (testTag envanteri).
+     */
+    private fun probeKnownTags(): String {
+        val probe = listOf(
+            "giant_tap_button", "btn_intro_google_sign_in", "btn_intro_sign_out",
+            "btn_google_sign_in", "tab_liste", "tab_zikir", "tab_ayarlar",
+            "account_collapsible_header", "btn_privacy_policy", "btn_next_zikir"
+        )
+        val found = probe.filter { tag ->
+            composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+        }
+        return if (found.isEmpty()) "HICBIRI YOK" else found.joinToString(",")
+    }
+
+    /**
+     * Splash (min 3000 ms) gecene kadar sayac dugumunu bekler.
+     *
+     * waitUntil ZAMAN ASIMINDA ConditionNotMetException FIRLATIR; bu yuzden
+     * try/catch ile yutuluyor ki asagidaki assertTrue kendi teshis mesajini
+     * uretebilsin. Aksi halde annotation'da yalnizca Compose'un genel
+     * "condition not met" metni gorunuyor, ekranda ne oldugu gorunmuyor.
+     */
     private fun waitCounter(timeoutMs: Long = 25_000L) {
-        composeRule.waitUntil(timeoutMs) { readCountOrNull() != null }
+        try {
+            composeRule.waitUntil(timeoutMs) { readCountOrNull() != null }
+        } catch (ignored: Throwable) {
+            // asagidaki assertTrue teshis mesajiyla raporlayacak
+        }
         assertTrue(
-            "Sayac ekrana gelmedi (giant_tap_button/stateDescription bulunamadi)",
+            "Sayac ekrana gelmedi (giant_tap_button/stateDescription bulunamadi). " +
+                "Ekranda bulunan bilinen tag'ler: [${probeKnownTags()}]",
             readCountOrNull() != null
         )
     }
 
+    /** Beklenen degere kadar bekler; tutmazsa cagiran assertEquals raporlar. */
     private fun waitCount(expected: Long, timeoutMs: Long = 15_000L) {
-        composeRule.waitUntil(timeoutMs) { readCountOrNull() == expected }
+        try {
+            composeRule.waitUntil(timeoutMs) { readCountOrNull() == expected }
+        } catch (ignored: Throwable) {
+            // cagiran assertEquals gercek degeri zaten yazdiriyor
+        }
     }
 
     // ------------------------------------------------------------------ tests
@@ -171,11 +209,16 @@ class CounterFlowInstrumentedTest {
         composeRule.onNodeWithTag("tab_liste").performClick()
 
         val sideTabs = listOf("tab_liste", "tab_istatistik", "tab_bilgi", "tab_ayarlar")
-        composeRule.waitUntil(15_000) { sideTabs.count { isTagSelected(it) } == 1 }
+        try {
+            composeRule.waitUntil(15_000) { sideTabs.count { isTagSelected(it) } == 1 }
+        } catch (ignored: Throwable) {
+            // asagidaki assertEquals hangi tag'lerin selected oldugunu yazdiriyor
+        }
 
         val selected = sideTabs.filter { isTagSelected(it) }
         assertEquals(
-            "Yan sekmelerden tam olarak biri selected isaretlenmeli (bulunan: $selected)",
+            "Yan sekmelerden tam olarak biri selected isaretlenmeli (bulunan: $selected, " +
+                "ekrandaki tag'ler: [${probeKnownTags()}])",
             1,
             selected.size
         )
@@ -195,10 +238,21 @@ class CounterFlowInstrumentedTest {
 
         composeRule.onNodeWithTag("tab_ayarlar").performClick()
 
-        composeRule.waitUntil(15_000) {
+        try {
+            composeRule.waitUntil(15_000) {
+                composeRule.onAllNodesWithTag("account_collapsible_header")
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+        } catch (ignored: Throwable) {
+            // asagidaki assert'ler teshis mesajiyla raporlayacak
+        }
+
+        // 0. Ayarlar ekrani gercekten acildi mi (acilmadiysa nedeni gorunsun)
+        assertTrue(
+            "Ayarlar ekrani acilmadi. Ekranda bulunan bilinen tag'ler: [${probeKnownTags()}]",
             composeRule.onAllNodesWithTag("account_collapsible_header")
                 .fetchSemanticsNodes().isNotEmpty()
-        }
+        )
 
         // 1. Gizlilik politikasi satiri mevcut (tam olarak bir adet)
         composeRule.onAllNodesWithTag("btn_privacy_policy").assertCountEquals(1)

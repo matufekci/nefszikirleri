@@ -50,29 +50,53 @@ for f in "${files[@]}"; do
 
   # Başarısız testlerin adları: <testcase> içinde <failure>/<error> geçenler.
   names="$(awk '
+    function clean(c, m) {
+      gsub(/&#10;/, " ", m); gsub(/&#9;/, " ", m)
+      gsub(/&quot;/, sprintf("%c", 39), m)
+      gsub(/&lt;/, "<", m); gsub(/&gt;/, ">", m); gsub(/&amp;/, "&", m)
+      sub(/<\/failure>.*$/, "", m); sub(/<\/error>.*$/, "", m)
+      gsub(/[\r\n\t]/, " ", m)
+      sub(/^[ \t]+/, "", m)
+      if (length(m) > 400) m = substr(m, 1, 400) "..."
+      return (m == "" ? c : c " :: " m)
+    }
     /<testcase / {
       n=""; c=""
       if (match($0, /name="[^"]*"/))     n = substr($0, RSTART+6,  RLENGTH-7)
       if (match($0, /classname="[^"]*"/)) c = substr($0, RSTART+11, RLENGTH-12)
       cur = c "#" n
-      next
+      inbody = 0
+      # `next` YOK: bazi JUnit ciktilari <testcase ...><failure ...> ikilisini
+      # TEK satira yaziyor. next ile satir atlaninca failure kurali hic
+      # calismiyor ve basarisiz testin adi annotation icine hic dusmuyordu
+      # (yerel sentetik XML ile yakalandi). Satir akisa birakiliyor.
     }
     /<failure|<error/ {
-      if (cur != "") {
-        # Ham log dosyalari sandbox icinden okunamadigi icin hata MESAJINI da
-        # annotation icine gomuyoruz; yoksa sadece test adi gorunuyor,
-        # neden patladigi gorunmuyor.
-        msg = ""
-        if (match($0, /message="[^"]*"/)) msg = substr($0, RSTART+9, RLENGTH-10)
-        gsub(/&#10;/, " ", msg); gsub(/&#9;/, " ", msg)
-        gsub(/&quot;/, sprintf("%c", 39), msg)
-        gsub(/&lt;/, "<", msg); gsub(/&gt;/, ">", msg)
-        gsub(/&amp;/, "&", msg)
-        gsub(/[\r\n\t]/, " ", msg)
-        if (length(msg) > 400) msg = substr(msg, 1, 400) "..."
-        print (msg == "" ? cur : cur " :: " msg)
-        cur=""
+      if (cur == "") next
+      msg = ""
+      if (match($0, /message="[^"]*"/)) msg = substr($0, RSTART+9, RLENGTH-10)
+      if (msg == "") {
+        # Android connected-test XML cogu zaman message ATTRIBUTE yazmaz;
+        # hata metni elementin GOVDESINDE durur. Onceki surum yalnizca
+        # attribute a bakiyordu, bu yuzden emulator jobinda 4 basarisiz test
+        # sadece ADIYLA gorundu, nedeni gorunmedi. Artik govde de okunuyor.
+        body = $0
+        sub(/^[^>]*>/, "", body)
+        sub(/^[ \t]+/, "", body)
+        if (body == "") { inbody = 1; next }
+        msg = body
       }
+      print clean(cur, msg)
+      cur = ""; inbody = 0
+      next
+    }
+    inbody == 1 {
+      line = $0
+      sub(/^[ \t]+/, "", line)
+      inbody = 0
+      print clean(cur, line)
+      cur = ""
+      next
     }
   ' "$f")"
   if [ -n "$names" ]; then
