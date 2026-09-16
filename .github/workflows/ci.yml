@@ -505,13 +505,22 @@ jobs:
         # agaci annotation'a yaziliyor ki yol bir daha tahmin edilmesin.
         run: |
           rm -rf emulator-results && mkdir -p emulator-results
-          # DUZLESTIRME: onceki surum `cp {} emulator-results/` kullaniyordu.
-          # AGP sonuclari cihaz/variant basina AYRI dizine yaziyor; ayni ada
-          # sahip iki dosya birbirini EZIYORDU (run 35111359868'de 5 @Test
-          # varken yalnizca 4 test raporlandi). Hedef ad artik kaynak yolun
-          # '/' yerine '_' konmus hali -> cakisma imkânsiz.
+          # DUZLESTIRME: report-unit-tests.sh dosyalari `TEST-*.xml` globu ile
+          # ariyor, bu yuzden hedef ad TEST- ile BASLAMAK ZORUNDA. Onceki
+          # duzeltmede yolu ada gomdum ('outputs_..._TEST-...') ve glob
+          # eslesmedigi icin 'sonuc yok' kirmizisi aldim (run 35113325459).
+          # Cozum: orijinal ad korunur, cakisma olursa basina sayac eklenir.
           find app/build -name 'TEST-*.xml' -not -path '*/test-results/*' 2>/dev/null | while IFS= read -r f; do
-            dest="emulator-results/$(printf '%s' "${f#app/build/}" | tr '/' '_')"
+            base="$(basename "$f")"
+            dest="emulator-results/$base"
+            n=1
+            while [ -e "$dest" ]; do
+              # Sayac 'TEST-' ONEKINDEN SONRA ekleniyor: onekin onune
+              # konursa ('1_TEST-...') report-unit-tests.sh'in TEST-*.xml
+              # glob'u eslesmiyor. (Yerel testle yakalandi.)
+              dest="emulator-results/TEST-${n}_${base#TEST-}"
+              n=$((n + 1))
+            done
             cp "$f" "$dest" 2>/dev/null || true
           done
           echo "Bulunan connected XML'ler:"
@@ -519,6 +528,14 @@ jobs:
           FOUND=$(ls -1 emulator-results/ 2>/dev/null | sed 's/%/%25/g; s/\r//g' | awk '{printf "%s%%0A", $0}')
           if [ -n "$FOUND" ]; then
             echo "::notice title=Bulunan connected XML dosyalari::$FOUND"
+          fi
+          # Hangi testlerin GERCEKTEN kostugunu kesinlestirmek icin testcase
+          # adlari da annotation'a yaziliyor. Gerek: androidTest kaynaklarinda
+          # 5 @Test var ama rapor 4 test gosterdi; dosya sayisi tek oldugu
+          # icin cakisma aciklamasi elendi, gercek liste burada gorunecek.
+          CASES=$(grep -oh 'testcase name="[^"]*"' emulator-results/*.xml 2>/dev/null | sed 's/testcase name=//; s/"//g' | sed 's/%/%25/g; s/\r//g' | awk '{printf "%s%%0A", $0}')
+          if [ -n "$CASES" ]; then
+            echo "::notice title=Kosan connected testler::$CASES"
           fi
           if [ -z "$(ls -A emulator-results 2>/dev/null)" ]; then
             echo "Teshis: app/build altinda androidTest ile ilgili xml/dizinler:"

@@ -277,15 +277,12 @@ class CounterFlowInstrumentedTest {
      * QA plani E2: secili sekme bilgisinin TalkBack'e ulastiginin cihaz
      * dogrulamasi.
      *
-     * KAPSAM NOTU (koddan dogrulandi): `.semantics { selected = isSelected }`
-     * DhikrTabBar.kt:258'de YALNIZCA yan sekmelerin bulundugu `else` dalina
-     * uygulanmis; merkez "zikir" sekmesi (isCenterAction = true, satir
-     * ~159-181) `selected` TASIMIYOR. Bu yuzden test YAN sekmeler uzerinden
-     * olcuyor. Merkez sekmedeki eksik ayrica raporlandi ve burada "beklenen
-     * davranis" olarak sabitlenmedi (bir hatayi testle dondurmak istemiyoruz).
+     * GUNCEL DURUM: merkez Zikir sekmesi de artik `selected` tasiyor
+     * (DhikrTabBar.kt, merkez dal — onaylanan erisilebilirlik duzeltmesi).
+     * Bu test YAN sekmeler arasindaki secim gecisini olcer; merkez sekme
+     * asagidaki centerZikirTab_carriesSelectedSemantics testinde olculur.
      *
-     * Ikinci duzeltme: 5 sekme var (liste, istatistik, zikir, bilgi, ayarlar);
-     * onceki surum 4 tag kontrol ediyordu ve `bilgi` eksikti.
+     * 5 sekme var: liste, istatistik, zikir, bilgi, ayarlar.
      */
     @Test
     fun sideTabSelection_isExposedToSemantics_exactlyOneSelected() {
@@ -308,6 +305,59 @@ class CounterFlowInstrumentedTest {
             selected.size
         )
         assertTrue("Secili sekme tiklanan sekme olmali", selected.contains("tab_liste"))
+    }
+
+    /**
+     * ONAYLANAN ERISILEBILIRLIK DUZELTMESININ CIHAZ DOGRULAMASI.
+     *
+     * Onceki durum: `.semantics { selected = isSelected }` yalnizca yan
+     * sekmelere uygulaniyordu; uygulamanin ANA sekmesi olan merkez Zikir
+     * butonu `selected` tasimiyordu ve TalkBack aktif sekmede "secili"
+     * duyurmuyordu. Duzeltme DhikrTabBar.kt merkez dalina ayni deseni ekledi.
+     *
+     * Bu test iki seyi kilitliyor:
+     *  1. Acilista TalkBack'e TAM BIR secili sekme gidiyor (cift secim yok).
+     *  2. Zikir sekmesine dokununca secim Zikir'e geciyor ve baska sekme
+     *     secili kalmiyor.
+     */
+    @Test
+    fun centerZikirTab_carriesSelectedSemantics() {
+        waitCounter()
+
+        val allTabs = listOf(
+            "tab_liste", "tab_istatistik", "tab_zikir", "tab_bilgi", "tab_ayarlar"
+        )
+
+        // 1. Acilista tam bir sekme secili olmali
+        try {
+            composeRule.waitUntil(15_000) { allTabs.count { isTagSelected(it) } == 1 }
+        } catch (ignored: Throwable) {
+            // asagidaki assertEquals gercek sayiyi raporlayacak
+        }
+        assertEquals(
+            "Acilista tam olarak bir sekme selected olmali " +
+                "(secili: ${allTabs.filter { isTagSelected(it) }})",
+            1,
+            allTabs.count { isTagSelected(it) }
+        )
+
+        // 2. Zikir sekmesine dokun -> secim Zikir'e gecmeli
+        composeRule.onNodeWithTag("tab_zikir").performClick()
+        try {
+            composeRule.waitUntil(15_000) { isTagSelected("tab_zikir") }
+        } catch (ignored: Throwable) {
+            // asagidaki assert'ler raporlayacak
+        }
+        assertTrue(
+            "Merkez Zikir sekmesine dokunulunca selected=true olmali " +
+                "(secili: ${allTabs.filter { isTagSelected(it) }})",
+            isTagSelected("tab_zikir")
+        )
+        assertEquals(
+            "Zikir seciliyken baska hicbir sekme secili olmamali",
+            1,
+            allTabs.count { isTagSelected(it) }
+        )
     }
 
     /**

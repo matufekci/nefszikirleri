@@ -178,6 +178,16 @@ fun DhikrBottomBar(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null
                                     ) { onTabSelected(item.key) }
+                                    // ERISILEBILIRLIK DUZELTMESI: `selected`
+                                    // semantics'i daha once yalnizca yan
+                                    // sekmelere (asagidaki `else` dali)
+                                    // uygulanmisti; uygulamanin ANA sekmesi
+                                    // olan merkez Zikir butonu tasimiyordu.
+                                    // Sonuc: TalkBack aktif sekmede "secili"
+                                    // duyurmuyordu. Deseni yan sekmelerle
+                                    // birebir ayni tutuyoruz. Gorsel/etkilesim
+                                    // degisikligi YOK, yalnizca semantics.
+                                    .semantics { selected = isSelected }
                                     .testTag("tab_${item.key}")
                             ) {
                                 // Yükseltilmiş Belirgin Parlayan Halka
