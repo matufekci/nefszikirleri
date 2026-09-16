@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="tr" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nefs Zikirleri — Gizlilik Politikası</title>
+<meta name="description" content="Nefs Zikirleri uygulamasının gizlilik politikası. Privacy policy / Datenschutz / Politique de confidentialité / سياسة الخصوصية">
+<!--
+  ============================================================================
+  SAYFADA DOLDURULACAK TEK YER:
+  Asagidaki CONTACT_EMAIL sabitini kendi gercek e-posta adresinle degistir.
+  Tek yerde tutuluyor; sayfadaki tum baglantilar otomatik guncellenir.
+  "destek@example.com" bir YER TUTUCUDUR ve posta teslim etmez.
+  ============================================================================
+-->
+<style>
+  :root { --fg:#16202b; --mut:#5b6b7b; --line:#e3e9ef; --bg:#fff; --acc:#0f6b52; --soft:#f4f7f9; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:16px/1.7 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans","Noto Sans Arabic",sans-serif; }
+  .wrap { max-width:46rem; margin:0 auto; padding:2rem 1.25rem 5rem; }
+  header { border-bottom:1px solid var(--line); padding-bottom:1.25rem; margin-bottom:2rem; }
+  h1 { font-size:1.65rem; margin:0 0 .35rem; letter-spacing:-.01em; }
+  .app { color:var(--acc); font-weight:600; }
+  .meta { color:var(--mut); font-size:.85rem; margin:0; }
+  h2 { font-size:1.12rem; margin:2.25rem 0 .5rem; letter-spacing:-.01em; }
+  p, li { margin:.4rem 0; }
+  ul { padding-inline-start:1.25rem; margin:.4rem 0; }
+  table { width:100%; border-collapse:collapse; margin:.75rem 0; font-size:.92rem; }
+  th,td { text-align:start; border:1px solid var(--line); padding:.5rem .6rem; vertical-align:top; }
+  th { background:var(--soft); font-weight:600; }
+  a { color:var(--acc); }
+  .langs { display:flex; flex-wrap:wrap; gap:.4rem; margin:1rem 0 0; }
+  .langs button { font:inherit; font-size:.82rem; padding:.3rem .7rem; cursor:pointer;
+                  border:1px solid var(--line); border-radius:999px; background:var(--soft); color:var(--fg); }
+  .langs button[aria-pressed="true"] { background:var(--acc); border-color:var(--acc); color:#fff; }
+  .note { background:var(--soft); border-inline-start:3px solid var(--acc);
+          padding:.75rem 1rem; border-radius:0 6px 6px 0; margin:1rem 0; font-size:.93rem; }
+  footer { margin-top:3rem; padding-top:1.25rem; border-top:1px solid var(--line);
+           color:var(--mut); font-size:.85rem; }
+  @media print { .langs { display:none; } body { font-size:12pt; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="title"></h1>
+    <p class="app">Nefs Zikirleri</p>
+    <p class="meta" id="meta"></p>
+    <nav class="langs" id="langs" aria-label="Language / Dil"></nav>
+  </header>
+  <main id="body"></main>
+  <footer id="foot"></footer>
+</div>
+
+<script>
+var CONTACT_EMAIL = "destek@example.com";   // <-- BURAYI DEGISTIR
+var DELETION_PATH = "../account-deletion/"; // hesap silme sayfasi (ayni site)
+var EFFECTIVE     = "2026-09-17";
+
+var LANGS = ["tr","ar","en","de","fr"];
+
+var T = {
+tr: {
+  dir:"ltr", name:"Türkçe",
+  title:"Gizlilik Politikası",
+  meta:"Son güncelleme: " + EFFECTIVE,
+  intro:"Bu politika, Nefs Zikirleri uygulamasını kullandığında hangi verilerin işlendiğini ve bunlar üzerinde hangi haklara sahip olduğunu açıklar. Uygulama varsayılan olarak tamamen cihazında çalışır; bulut senkronizasyonu yalnızca sen Google hesabınla giriş yapmayı seçersen devreye girer.",
+  sec:[
+    { h:"1. İşlediğimiz veriler", p:[
+      "Cihazında yerel olarak (her zaman):",
+      ], li:[
+      "Zikir sayaçları, hedefler ve tamamlanan turlar",
+      "Günlük kayıt geçmişi (hangi gün kaç zikir)",
+      "Uygulama ayarların: dil, tema, yazı boyutu, titreşim, günlük hedef, tam ekran dokunuş",
+      "Rozetler ve manevi notların"
+      ], p2:[
+      "Bu veriler telefonundan çıkmaz. Yedekleme veya giriş yapmadığın sürece hiçbir sunucuya gönderilmez.",
+      "Google ile giriş yaparsan (isteğe bağlı):",
+      ], li2:[
+      "Firebase hesap kimliğin (benzersiz UID)",
+      "Yedeklenen zikir listesi, sayaçlar ve tur bilgileri",
+      "Hatırlatma saatleri ve açık/kapalı durumları",
+      "Uygulama ayarların ve günlük geçmiş kayıtların"
+      ], p3:[
+      "Bunlar Google Cloud Firestore üzerinde users/{kimlik} altında saklanır. Google hesabının adı ve e-posta adresi uygulama içinde sana gösterilir; ayrıca veritabanımıza yazılmaz."
+    ]},
+    { h:"2. Toplamadığımız veriler", li:[
+      "Reklam yok ve reklam kimliği (Advertising ID) kullanılmıyor",
+      "Analitik veya çökme raporu toplayan hiçbir araç yok (Firebase Analytics ve Crashlytics dahil)",
+      "Konum, rehber, kamera, mikrofon, takvim veya telefon durumu istenmiyor",
+      "IMEI, seri numarası, Android ID gibi kalıcı cihaz kimlikleri toplanmıyor ve başka hiçbir veriyle eşleştirilmiyor"
+    ]},
+    { h:"3. İzinler ve gerekçeleri", tbl:{
+      head:["İzin","Neden gerekiyor"],
+      rows:[
+        ["İnternet / Ağ durumu","Google ile giriş ve bulut yedekleme"],
+        ["Bildirimler","Zikir hatırlatmaları (Android 13 ve üzerinde senin onayınla)"],
+        ["Titreşim","Dokunuş geri bildirimi"],
+        ["Açılışta çalışma","Telefon yeniden başlayınca hatırlatma alarmlarının korunması"],
+        ["Uyku kilidi","Hatırlatmanın tam saatinde ulaşması"]
+      ]
+    }},
+    { h:"4. Verinin korunması", li:[
+      "Tüm aktarımlar TLS ile şifrelenir",
+      "Sunucu tarafı Firebase App Check (Play Integrity) ile yetkisiz isteklere karşı korunur",
+      "Uygulama içinden aldığın yedek dosyası AES/GCM ile şifrelenir; anahtar PBKDF2 (120.000 tur) ile senin parolandan türetilir ve parola hiçbir yerde saklanmaz",
+      "Bulut verisi Google'ın Firebase altyapısında barındırılır"
+    ]},
+    { h:"5. Verinin paylaşımı", p:[
+      "Verini satmıyor, kiralamıyor ve reklam amacıyla paylaşmıyoruz."
+      ], li:[
+      "Google (Firebase Authentication, Cloud Firestore, App Check) — bulut girişi ve yedekleme için hizmet sağlayıcı. Google'ın kendi gizlilik politikası geçerlidir: https://policies.google.com/privacy",
+      "Google Sign-In — yalnızca sen giriş yapmayı seçtiğinde, hesabını doğrulamak için"
+      ]},
+    { h:"6. Çocuklar", p:[
+      "Uygulama 13 yaş altı çocuklara yönelik değildir ve bilerek çocuklardan veri toplamıyoruz. Bir çocuğun verisinin bize ulaştığını düşünüyorsan aşağıdaki adresten bildir; derhal sileriz."
+    ]},
+    { h:"7. Saklama süresi", p:[
+      "Cihazındaki veriler sen uygulamayı kaldırana kadar kalır. Bulut verilerin, hesabını silene kadar saklanır. Hesabını sildiğinde buluttaki tüm kayıtların ve Firebase hesabın kalıcı olarak silinir (bkz. bölüm 8)."
+    ]},
+    { h:"8. Verini silme ve hakların", li:[
+      "Uygulama içinden: Ayarlar → hesap bölümü → Hesabı Sil. Bu işlem Firestore'daki tüm kayıtlarını (zikirler, ayarlar, geçmiş, anlık görüntüler) ve Firebase hesabını siler.",
+      "Web üzerinden: " + DELETION_PATH + " adresindeki hesap silme sayfasını kullanabilirsin.",
+      "Cihazındaki yerel veriler: uygulamayı kaldırman yeterlidir.",
+      "Google hesabının kendisi: Google hesap ayarlarından yönetilir."
+      ], p2:[
+      "Ayrıca verinin bir kopyasını isteme, düzeltme ve işlemeye itiraz etme hakkın var. Taleplerini aşağıdaki adresten iletebilirsin."
+    ]},
+    { h:"9. Bildirimler", p:[
+      "Uygulama, zikir temposuna göre günde en fazla üç hatırlatma gönderebilir (08:00 tempo değerlendirmesi, 20:00 akşam hatırlatması ve yalnızca günlük hedefin %75'i tamamlanmışsa 22:30 son viraj dokunuşu). Üç gün boyunca hiç zikir çekilmezse ek bir hatırlatma gelir."
+      ], p2:[
+      "Uygulama içinde ayrı bir bildirim anahtarı bulunmuyor; bildirimleri Android'in kendi ayarlarından (Ayarlar → Uygulamalar → Nefs Zikirleri → Bildirimler) kapatabilirsin. Bu, uygulamanın çalışmasını etkilemez."
+    ]},
+    { h:"10. Politika değişiklikleri", p:[
+      "Bu politikayı güncellersek sürüm tarihini yukarıda değiştiririz. Önemli bir değişiklik olursa uygulama içinde veya bu sayfada duyururuz."
+    ]},
+    { h:"11. İletişim", p:[
+      "Soruların ve taleplerin için: "
+    ]}
+  ],
+  foot:"Nefs Zikirleri — Gizlilik Politikası · Son güncelleme " + EFFECTIVE
+},
+
+en: {
+  dir:"ltr", name:"English",
+  title:"Privacy Policy",
+  meta:"Last updated: " + EFFECTIVE,
+  intro:"This policy explains what data is processed when you use Nefs Zikirleri and what rights you have over it. The app runs entirely on your device by default; cloud sync is enabled only if you choose to sign in with your Google account.",
+  sec:[
+    { h:"1. Data we process", p:["Stored locally on your device (always):"], li:[
+      "Dhikr counters, targets and completed rounds",
+      "Daily history (how many dhikr on which day)",
+      "Your app settings: language, theme, font scale, haptics, daily target, full-screen tap",
+      "Badges and your spiritual notes"
+      ], p2:["This data never leaves your phone. Nothing is sent to any server unless you sign in or create a backup.","If you sign in with Google (optional):"], li2:[
+      "Your Firebase account identifier (unique UID)",
+      "Your synced dhikr list, counters and round information",
+      "Reminder times and their on/off state",
+      "Your app settings and daily history records"
+      ], p3:["These are stored in Google Cloud Firestore under users/{uid}. Your Google account name and email address are shown to you inside the app; they are not written to our database."]},
+    { h:"2. Data we do not collect", li:[
+      "No advertising and no Advertising ID",
+      "No analytics or crash-reporting tools of any kind (including Firebase Analytics and Crashlytics)",
+      "No access to location, contacts, camera, microphone, calendar or phone state",
+      "No persistent device identifiers such as IMEI, serial number or Android ID; none are collected or linked to any other data"
+    ]},
+    { h:"3. Permissions and why", tbl:{ head:["Permission","Why it is needed"], rows:[
+      ["Internet / network state","Google sign-in and cloud backup"],
+      ["Notifications","Dhikr reminders (Android 13+, only with your consent)"],
+      ["Vibration","Tap feedback"],
+      ["Run at startup","Preserve reminder alarms after a reboot"],
+      ["Wake lock","Deliver reminders at the correct time"]
+    ]}},
+    { h:"4. How data is protected", li:[
+      "All transfers are encrypted with TLS",
+      "The backend is protected against unauthorised requests by Firebase App Check (Play Integrity)",
+      "Backup files you export are encrypted with AES/GCM; the key is derived from your passphrase with PBKDF2 (120,000 iterations) and the passphrase is never stored",
+      "Cloud data is hosted on Google's Firebase infrastructure"
+    ]},
+    { h:"5. How data is shared", p:["We do not sell, rent or share your data for advertising."], li:[
+      "Google (Firebase Authentication, Cloud Firestore, App Check) — service provider for sign-in and backup. Google's own privacy policy applies: https://policies.google.com/privacy",
+      "Google Sign-In — only when you choose to sign in, to verify your account"
+    ]},
+    { h:"6. Children", p:["The app is not directed at children under 13 and we do not knowingly collect data from children. If you believe a child's data has reached us, contact us at the address below and we will delete it promptly."]},
+    { h:"7. Retention", p:["Data on your device remains until you uninstall the app. Cloud data is kept until you delete your account. When you delete your account, all cloud records and your Firebase account are permanently deleted (see section 8)."]},
+    { h:"8. Deleting your data and your rights", li:[
+      "In the app: Settings → account section → Delete account. This removes all your Firestore records (dhikr, settings, history, snapshots) and your Firebase account.",
+      "On the web: use the account deletion page at " + DELETION_PATH + ".",
+      "Local data on your device: simply uninstall the app.",
+      "Your Google account itself: managed from your Google account settings."
+      ], p2:["You also have the right to request a copy of your data, to correct it, and to object to processing. Send any request to the address below."]},
+    { h:"9. Notifications", p:["The app may send up to three reminders per day based on your dhikr pace (08:00 pace evaluation, 20:00 evening reminder, and a 22:30 final-push nudge only if 75% of the daily target is already done). An additional reminder is sent if no dhikr is recorded for three days."],
+      p2:["There is no separate in-app notification switch; you can turn notifications off in Android's own settings (Settings → Apps → Nefs Zikirleri → Notifications). Doing so does not affect how the app works."]},
+    { h:"10. Changes to this policy", p:["If we update this policy we will change the revision date above. Material changes will be announced in the app or on this page."]},
+    { h:"11. Contact", p:["For questions and requests: "]}
+  ],
+  foot:"Nefs Zikirleri — Privacy Policy · Last updated " + EFFECTIVE
+},
+
+de: {
+  dir:"ltr", name:"Deutsch",
+  title:"Datenschutzerklärung",
+  meta:"Zuletzt aktualisiert: " + EFFECTIVE,
+  intro:"Diese Erklärung beschreibt, welche Daten bei der Nutzung von Nefs Zikirleri verarbeitet werden und welche Rechte du daran hast. Die App läuft standardmäßig vollständig auf deinem Gerät; die Cloud-Synchronisierung wird nur aktiviert, wenn du dich mit deinem Google-Konto anmeldest.",
+  sec:[
+    { h:"1. Verarbeitete Daten", p:["Lokal auf deinem Gerät (immer):"], li:[
+      "Dhikr-Zähler, Ziele und abgeschlossene Runden",
+      "Täglicher Verlauf (wie viele Dhikr an welchem Tag)",
+      "Deine App-Einstellungen: Sprache, Design, Schriftgröße, Vibration, Tagesziel, Vollbild-Tipp",
+      "Abzeichen und deine spirituellen Notizen"
+      ], p2:["Diese Daten verlassen dein Telefon nicht. Ohne Anmeldung oder Sicherung wird nichts an einen Server gesendet.","Bei Anmeldung mit Google (optional):"], li2:[
+      "Deine Firebase-Kontokennung (eindeutige UID)",
+      "Deine synchronisierte Dhikr-Liste, Zähler und Rundeninformationen",
+      "Erinnerungszeiten und deren Ein-/Aus-Status",
+      "Deine App-Einstellungen und täglichen Verlaufsdaten"
+      ], p3:["Diese werden in Google Cloud Firestore unter users/{uid} gespeichert. Name und E-Mail-Adresse deines Google-Kontos werden dir in der App angezeigt, aber nicht in unsere Datenbank geschrieben."]},
+    { h:"2. Was wir nicht erheben", li:[
+      "Keine Werbung und keine Werbe-ID (Advertising ID)",
+      "Keine Analyse- oder Absturzbericht-Tools (einschließlich Firebase Analytics und Crashlytics)",
+      "Kein Zugriff auf Standort, Kontakte, Kamera, Mikrofon, Kalender oder Telefonstatus",
+      "Keine dauerhaften Gerätekennungen wie IMEI, Seriennummer oder Android ID"
+    ]},
+    { h:"3. Berechtigungen und Zweck", tbl:{ head:["Berechtigung","Warum sie benötigt wird"], rows:[
+      ["Internet / Netzwerkstatus","Google-Anmeldung und Cloud-Sicherung"],
+      ["Benachrichtigungen","Dhikr-Erinnerungen (ab Android 13 nur mit deiner Zustimmung)"],
+      ["Vibration","Tipp-Rückmeldung"],
+      ["Beim Start ausführen","Erinnerungen nach einem Neustart erhalten"],
+      ["Wake Lock","Erinnerungen pünktlich zustellen"]
+    ]}},
+    { h:"4. Schutz der Daten", li:[
+      "Alle Übertragungen sind mit TLS verschlüsselt",
+      "Das Backend ist über Firebase App Check (Play Integrity) gegen unberechtigte Anfragen geschützt",
+      "Exportierte Sicherungsdateien sind mit AES/GCM verschlüsselt; der Schlüssel wird mit PBKDF2 (120.000 Durchläufe) aus deiner Passphrase abgeleitet, die nie gespeichert wird",
+      "Cloud-Daten werden auf der Firebase-Infrastruktur von Google gehostet"
+    ]},
+    { h:"5. Weitergabe", p:["Wir verkaufen, vermieten oder teilen deine Daten nicht zu Werbezwecken."], li:[
+      "Google (Firebase Authentication, Cloud Firestore, App Check) — Dienstleister für Anmeldung und Sicherung. Es gilt die Datenschutzerklärung von Google: https://policies.google.com/privacy",
+      "Google Sign-In — nur wenn du dich anmeldest, zur Kontobestätigung"
+    ]},
+    { h:"6. Kinder", p:["Die App richtet sich nicht an Kinder unter 13 Jahren und wir erheben wissentlich keine Daten von Kindern. Wenn du glaubst, dass Daten eines Kindes zu uns gelangt sind, kontaktiere uns bitte; wir löschen sie umgehend."]},
+    { h:"7. Speicherdauer", p:["Daten auf deinem Gerät bleiben, bis du die App deinstallierst. Cloud-Daten bleiben bis zur Kontolöschung erhalten. Bei der Kontolöschung werden alle Cloud-Daten und dein Firebase-Konto dauerhaft gelöscht (siehe Abschnitt 8)."]},
+    { h:"8. Löschung und deine Rechte", li:[
+      "In der App: Einstellungen → Kontobereich → Konto löschen. Dies entfernt alle Firestore-Datensätze (Dhikr, Einstellungen, Verlauf, Snapshots) und dein Firebase-Konto.",
+      "Im Web: nutze die Seite zur Kontolöschung unter " + DELETION_PATH + ".",
+      "Lokale Daten: deinstalliere einfach die App.",
+      "Dein Google-Konto selbst: wird in den Google-Kontoeinstellungen verwaltet."
+      ], p2:["Du hast außerdem das Recht auf eine Kopie deiner Daten, auf Berichtigung und auf Widerspruch. Anfragen richtest du an die unten genannte Adresse."]},
+    { h:"9. Benachrichtigungen", p:["Die App kann je nach Dhikr-Tempo bis zu drei Erinnerungen pro Tag senden (08:00 Tempo-Bewertung, 20:00 Abenderinnerung und 22:30 nur dann, wenn 75 % des Tagesziels erreicht sind). Wird drei Tage lang kein Dhikr erfasst, folgt eine zusätzliche Erinnerung."],
+      p2:["Es gibt keinen separaten Schalter in der App; du kannst Benachrichtigungen in den Android-Einstellungen deaktivieren (Einstellungen → Apps → Nefs Zikirleri → Benachrichtigungen). Die Funktion der App wird dadurch nicht beeinträchtigt."]},
+    { h:"10. Änderungen", p:["Bei Aktualisierungen ändern wir das Datum oben. Wesentliche Änderungen kündigen wir in der App oder auf dieser Seite an."]},
+    { h:"11. Kontakt", p:["Für Fragen und Anfragen: "]}
+  ],
+  foot:"Nefs Zikirleri — Datenschutzerklärung · Zuletzt aktualisiert " + EFFECTIVE
+},
+
+fr: {
+  dir:"ltr", name:"Français",
+  title:"Politique de confidentialité",
+  meta:"Dernière mise à jour : " + EFFECTIVE,
+  intro:"Cette politique explique quelles données sont traitées lorsque tu utilises Nefs Zikirleri et quels sont tes droits. L'application fonctionne entièrement sur ton appareil par défaut ; la synchronisation cloud n'est activée que si tu choisis de te connecter avec ton compte Google.",
+  sec:[
+    { h:"1. Données traitées", p:["Stockées localement sur ton appareil (toujours) :"], li:[
+      "Compteurs de dhikr, objectifs et tours terminés",
+      "Historique quotidien (combien de dhikr quel jour)",
+      "Tes réglages : langue, thème, taille de police, vibration, objectif quotidien, appui plein écran",
+      "Badges et tes notes spirituelles"
+      ], p2:["Ces données ne quittent pas ton téléphone. Rien n'est envoyé à un serveur sans connexion ni sauvegarde.","Si tu te connectes avec Google (facultatif) :"], li2:[
+      "Ton identifiant de compte Firebase (UID unique)",
+      "Ta liste de dhikr synchronisée, compteurs et informations de tour",
+      "Heures de rappel et leur état activé/désactivé",
+      "Tes réglages et ton historique quotidien"
+      ], p3:["Ces données sont stockées dans Google Cloud Firestore sous users/{uid}. Le nom et l'adresse e-mail de ton compte Google te sont affichés dans l'application ; ils ne sont pas écrits dans notre base."]},
+    { h:"2. Ce que nous ne collectons pas", li:[
+      "Aucune publicité et aucun identifiant publicitaire",
+      "Aucun outil d'analyse ou de rapport de plantage (y compris Firebase Analytics et Crashlytics)",
+      "Aucun accès à la position, aux contacts, à la caméra, au micro, au calendrier ou à l'état du téléphone",
+      "Aucun identifiant d'appareil persistant (IMEI, numéro de série, Android ID)"
+    ]},
+    { h:"3. Autorisations et raisons", tbl:{ head:["Autorisation","Pourquoi"], rows:[
+      ["Internet / état du réseau","Connexion Google et sauvegarde cloud"],
+      ["Notifications","Rappels de dhikr (Android 13+, avec ton consentement)"],
+      ["Vibration","Retour d'appui"],
+      ["Exécution au démarrage","Conserver les alarmes après un redémarrage"],
+      ["Wake lock","Délivrer les rappels à l'heure"]
+    ]}},
+    { h:"4. Protection des données", li:[
+      "Tous les transferts sont chiffrés en TLS",
+      "Le backend est protégé par Firebase App Check (Play Integrity)",
+      "Les sauvegardes exportées sont chiffrées en AES/GCM ; la clé est dérivée de ta phrase secrète par PBKDF2 (120 000 itérations) et n'est jamais stockée",
+      "Les données cloud sont hébergées sur l'infrastructure Firebase de Google"
+    ]},
+    { h:"5. Partage", p:["Nous ne vendons, ne louons ni ne partageons tes données à des fins publicitaires."], li:[
+      "Google (Firebase Authentication, Cloud Firestore, App Check) — prestataire pour la connexion et la sauvegarde. La politique de Google s'applique : https://policies.google.com/privacy",
+      "Google Sign-In — uniquement lorsque tu choisis de te connecter"
+    ]},
+    { h:"6. Enfants", p:["L'application ne s'adresse pas aux enfants de moins de 13 ans et nous ne collectons pas sciemment de données les concernant. Si tu penses que des données d'un enfant nous sont parvenues, contacte-nous ; nous les supprimerons rapidement."]},
+    { h:"7. Durée de conservation", p:["Les données de ton appareil restent jusqu'à la désinstallation. Les données cloud sont conservées jusqu'à la suppression de ton compte. Lors de cette suppression, tous les enregistrements cloud et ton compte Firebase sont définitivement effacés (voir section 8)."]},
+    { h:"8. Suppression et tes droits", li:[
+      "Dans l'application : Paramètres → section compte → Supprimer le compte. Cela supprime tous tes enregistrements Firestore (dhikr, réglages, historique, instantanés) et ton compte Firebase.",
+      "Sur le web : utilise la page de suppression de compte à " + DELETION_PATH + ".",
+      "Données locales : désinstalle simplement l'application.",
+      "Ton compte Google lui-même : il se gère depuis les paramètres de ton compte Google."
+      ], p2:["Tu disposes aussi d'un droit d'accès, de rectification et d'opposition. Adresse tes demandes à l'adresse ci-dessous."]},
+    { h:"9. Notifications", p:["L'application peut envoyer jusqu'à trois rappels par jour selon ton rythme (08:00 évaluation du rythme, 20:00 rappel du soir, et 22:30 uniquement si 75 % de l'objectif quotidien est atteint). Un rappel supplémentaire est envoyé après trois jours sans dhikr."],
+      p2:["Il n'existe pas d'interrupteur dédié dans l'application ; tu peux désactiver les notifications dans les réglages Android (Paramètres → Applications → Nefs Zikirleri → Notifications). Cela n'affecte pas le fonctionnement de l'application."]},
+    { h:"10. Modifications", p:["En cas de mise à jour, nous modifions la date ci-dessus. Les changements importants seront annoncés dans l'application ou sur cette page."]},
+    { h:"11. Contact", p:["Pour toute question ou demande : "]}
+  ],
+  foot:"Nefs Zikirleri — Politique de confidentialité · Dernière mise à jour " + EFFECTIVE
+},
+
+ar: {
+  dir:"rtl", name:"العربية",
+  title:"سياسة الخصوصية",
+  meta:"آخر تحديث: " + EFFECTIVE,
+  intro:"توضح هذه السياسة البيانات التي تتم معالجتها عند استخدام تطبيق «أنفس الأذكار» وحقوقك تجاهها. يعمل التطبيق بالكامل على جهازك بشكل افتراضي، ولا يتم تفعيل المزامنة السحابية إلا إذا اخترت تسجيل الدخول بحساب Google الخاص بك.",
+  sec:[
+    { h:"١. البيانات التي نعالجها", p:["تُخزَّن محليًا على جهازك (دائمًا):"], li:[
+      "عدّادات الأذكار والأهداف والجولات المكتملة",
+      "السجل اليومي (كم ذكرًا في أي يوم)",
+      "إعداداتك: اللغة، السمة، حجم الخط، الاهتزاز، الهدف اليومي، النقر بملء الشاشة",
+      "الأوسمة وملاحظاتك الروحية"
+      ], p2:["لا تغادر هذه البيانات هاتفك. لا يُرسل أي شيء إلى أي خادم ما لم تسجّل الدخول أو تنشئ نسخة احتياطية.","إذا سجّلت الدخول عبر Google (اختياري):"], li2:[
+      "معرّف حساب Firebase الخاص بك (UID فريد)",
+      "قائمة الأذكار المتزامنة والعدّادات وبيانات الجولات",
+      "أوقات التذكير وحالتها (مفعّلة/معطّلة)",
+      "إعدادات التطبيق وسجلك اليومي"
+      ], p3:["تُخزَّن هذه البيانات في Google Cloud Firestore تحت users/{uid}. يُعرض اسم حساب Google وبريده الإلكتروني لك داخل التطبيق فقط، ولا يُكتب في قاعدة بياناتنا."]},
+    { h:"٢. ما لا نجمعه", li:[
+      "لا إعلانات ولا معرّف إعلاني (Advertising ID)",
+      "لا أدوات تحليلات أو تقارير أعطال إطلاقًا (بما فيها Firebase Analytics وCrashlytics)",
+      "لا وصول إلى الموقع أو جهات الاتصال أو الكاميرا أو الميكروفون أو التقويم أو حالة الهاتف",
+      "لا معرّفات جهاز دائمة مثل IMEI أو الرقم التسلسلي أو Android ID"
+    ]},
+    { h:"٣. الأذونات وأسبابها", tbl:{ head:["الإذن","لماذا هو مطلوب"], rows:[
+      ["الإنترنت / حالة الشبكة","تسجيل الدخول عبر Google والنسخ الاحتياطي السحابي"],
+      ["الإشعارات","تذكيرات الأذكار (أندرويد ١٣ وأحدث، بموافقتك فقط)"],
+      ["الاهتزاز","استجابة اللمس"],
+      ["التشغيل عند الإقلاع","الحفاظ على منبّهات التذكير بعد إعادة التشغيل"],
+      ["قفل الإيقاظ","تسليم التذكيرات في وقتها"]
+    ]}},
+    { h:"٤. حماية البيانات", li:[
+      "جميع عمليات النقل مشفّرة عبر TLS",
+      "الخلفية محمية بـ Firebase App Check (Play Integrity) ضد الطلبات غير المصرّح بها",
+      "ملفات النسخ الاحتياطي التي تصدّرها مشفّرة بـ AES/GCM، ويشتق المفتاح من عبارتك السرية عبر PBKDF2 (١٢٠٫٠٠٠ دورة) ولا تُخزَّن العبارة أبدًا",
+      "تُستضاف البيانات السحابية على بنية Firebase التابعة لـ Google"
+    ]},
+    { h:"٥. مشاركة البيانات", p:["نحن لا نبيع بياناتك ولا نؤجّرها ولا نشاركها لأغراض إعلانية."], li:[
+      "Google (Firebase Authentication وCloud Firestore وApp Check) — مزوّد خدمة لتسجيل الدخول والنسخ الاحتياطي، وتُسري عليه سياسة Google: https://policies.google.com/privacy",
+      "Google Sign-In — فقط عندما تختار تسجيل الدخول، للتحقق من حسابك"
+    ]},
+    { h:"٦. الأطفال", p:["التطبيق غير موجّه للأطفال دون ١٣ عامًا ولا نجمع بياناتهم عن علم. إن اعتقدت أن بيانات طفل وصلت إلينا، راسلنا على العنوان أدناه وسنحذفها فورًا."]},
+    { h:"٧. مدة الاحتفاظ", p:["تبقى بيانات جهازك حتى تحذف التطبيق. وتبقى البيانات السحابية حتى تحذف حسابك. وعند حذف الحساب تُحذف جميع السجلات السحابية وحساب Firebase نهائيًا (انظر القسم ٨)."]},
+    { h:"٨. حذف بياناتك وحقوقك", li:[
+      "من داخل التطبيق: الإعدادات ← قسم الحساب ← حذف الحساب. يحذف هذا جميع سجلاتك في Firestore (الأذكار، الإعدادات، السجل، اللقطات) وحساب Firebase.",
+      "عبر الويب: استخدم صفحة حذف الحساب على " + DELETION_PATH + ".",
+      "البيانات المحلية: يكفي إلغاء تثبيت التطبيق.",
+      "حساب Google نفسه: يُدار من إعدادات حسابك في Google."
+      ], p2:["ولك أيضًا حق طلب نسخة من بياناتك وتصحيحها والاعتراض على معالجتها. أرسل طلباتك إلى العنوان أدناه."]},
+    { h:"٩. الإشعارات", p:["قد يرسل التطبيق ما يصل إلى ثلاثة تذكيرات يوميًا حسب وتيرتك (٠٨:٠٠ تقييم الوتيرة، ٢٠:٠٠ تذكير المساء، ٢٢:٣٠ فقط إذا أُنجز ٧٥٪ من الهدف اليومي). ويُرسل تذكير إضافي إذا لم يُسجَّل أي ذكر خلال ثلاثة أيام."],
+      p2:["لا يوجد مفتاح منفصل داخل التطبيق؛ يمكنك إيقاف الإشعارات من إعدادات أندرويد (الإعدادات ← التطبيقات ← أنفس الأذكار ← الإشعارات)، ولا يؤثر ذلك على عمل التطبيق."]},
+    { h:"١٠. تغييرات السياسة", p:["عند التحديث نغيّر التاريخ أعلاه، ونعلن عن التغييرات الجوهرية داخل التطبيق أو على هذه الصفحة."]},
+    { h:"١١. التواصل", p:["للأسئلة والطلبات: "]}
+  ],
+  foot:"أنفس الأذكار — سياسة الخصوصية · آخر تحديث " + EFFECTIVE
+}
+};
+
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function linkify(s){
+  return esc(s).replace(/(https?:\/\/[^\s،]+)/g, function(u){
+    return '<a href="'+u+'" rel="noopener">'+u+'</a>';
+  });
+}
+
+function render(lang){
+  var t = T[lang] || T.tr;
+  document.documentElement.lang = lang;
+  document.documentElement.dir = t.dir;
+  document.getElementById("title").textContent = t.title;
+  document.getElementById("meta").textContent = t.meta;
+  document.title = "Nefs Zikirleri — " + t.title;
+
+  var out = '<p class="note">'+linkify(t.intro)+'</p>';
+  t.sec.forEach(function(s){
+    out += '<h2>'+esc(s.h)+'</h2>';
+    if (s.p)  s.p.forEach(function(x){ out += '<p>'+linkify(x)+'</p>'; });
+    if (s.li) out += '<ul>'+s.li.map(function(x){ return '<li>'+linkify(x)+'</li>'; }).join('')+'</ul>';
+    if (s.p2) s.p2.forEach(function(x){ out += '<p>'+linkify(x)+'</p>'; });
+    if (s.li2) out += '<ul>'+s.li2.map(function(x){ return '<li>'+linkify(x)+'</li>'; }).join('')+'</ul>';
+    if (s.p3) s.p3.forEach(function(x){ out += '<p>'+linkify(x)+'</p>'; });
+    if (s.tbl){
+      out += '<table><thead><tr>'+s.tbl.head.map(function(h){ return '<th>'+esc(h)+'</th>'; }).join('')+'</tr></thead><tbody>'
+           + s.tbl.rows.map(function(r){ return '<tr>'+r.map(function(c){ return '<td>'+esc(c)+'</td>'; }).join('')+'</tr>'; }).join('')
+           + '</tbody></table>';
+    }
+  });
+  // Iletisim bolumune e-posta baglantisi eklenir
+  out += '<p><a href="mailto:'+CONTACT_EMAIL+'">'+esc(CONTACT_EMAIL)+'</a></p>';
+  document.getElementById("body").innerHTML = out;
+  document.getElementById("foot").textContent = t.foot;
+
+  Array.prototype.forEach.call(document.querySelectorAll("#langs button"), function(b){
+    b.setAttribute("aria-pressed", b.dataset.lang === lang ? "true" : "false");
+  });
+  try { localStorage.setItem("nefs_privacy_lang", lang); } catch(e){}
+}
+
+(function(){
+  var nav = document.getElementById("langs");
+  LANGS.forEach(function(l){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.dataset.lang = l;
+    b.textContent = T[l].name;
+    b.addEventListener("click", function(){ render(l); });
+    nav.appendChild(b);
+  });
+  var saved = null;
+  try { saved = localStorage.getItem("nefs_privacy_lang"); } catch(e){}
+  var guess = saved || (navigator.language || "tr").slice(0,2).toLowerCase();
+  render(LANGS.indexOf(guess) >= 0 ? guess : "tr");
+})();
+</script>
+</body>
+</html>
