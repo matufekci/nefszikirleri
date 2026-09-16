@@ -434,6 +434,13 @@ jobs:
           # continue-on-error ile job suruyor; kesin karari asagidaki
           # raporlama adimi XML'lerden veriyor (unit-tests job'i deseni).
           script: |
+            # emulator-runner bu blogu `sh -e` (errexit) ile kosuyor: gradlew
+            # hata verince script O SATIRDA OLUYORDU. Kanit: emulator-test.log
+            # redirect sayesinde olusurken, hemen sonrasindaki `adb logcat -d`
+            # ve `tail` hic calismadi (run 35096776682: "Logcat yok"). Bu
+            # yuzden errexit kapatiliyor ve gradlew'in kodu `|| VAR=$?` ile
+            # yakalaniyor (errexit altinda `$?` okumak ise yaramaz).
+            set +e
             adb shell pm grant com.aistudio.nefszikir.kdhrmq android.permission.POST_NOTIFICATIONS || true
             # ONEMLI: emulator-runner `script` blogunu /usr/bin/sh (dash) ile
             # kosuyor ve dash `set -o pipefail` DESTEKLEMIYOR. Onceki turda
@@ -442,10 +449,10 @@ jobs:
             # sahte-kirmizi'ya cevirmis oldum. POSIX-uyumlu cozum: pipe yok,
             # Gradle'in cikis kodu dogrudan yakalaniyor.
             adb logcat -c 2>/dev/null || true
-            ./gradlew connectedDebugAndroidTest --stacktrace > emulator-test.log 2>&1
-            GRADLE_STATUS=$?
+            GRADLE_STATUS=0
+            ./gradlew connectedDebugAndroidTest --stacktrace > emulator-test.log 2>&1 || GRADLE_STATUS=$?
             adb logcat -d -v time > emulator-logcat.log 2>/dev/null || true
-            tail -n 60 emulator-test.log
+            tail -n 60 emulator-test.log 2>/dev/null || true
             exit $GRADLE_STATUS
         continue-on-error: true
 

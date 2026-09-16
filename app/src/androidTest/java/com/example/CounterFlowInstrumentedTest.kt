@@ -103,15 +103,36 @@ class CounterFlowInstrumentedTest {
      * Tag'lerin hepsi uretim kodunda dogrulandi (testTag envanteri).
      */
     private fun probeKnownTags(): String {
-        val probe = listOf(
-            "giant_tap_button", "btn_intro_google_sign_in", "btn_intro_sign_out",
-            "btn_google_sign_in", "tab_liste", "tab_zikir", "tab_ayarlar",
-            "account_collapsible_header", "btn_privacy_policy", "btn_next_zikir"
-        )
-        val found = probe.filter { tag ->
-            composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+        return try {
+            val probe = listOf(
+                "giant_tap_button", "btn_intro_google_sign_in", "btn_intro_sign_out",
+                "btn_google_sign_in", "tab_liste", "tab_zikir", "tab_ayarlar",
+                "account_collapsible_header", "btn_privacy_policy", "btn_next_zikir"
+            )
+            val found = probe.filter { tag ->
+                composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+            }
+            if (found.isEmpty()) "HICBIRI YOK" else found.joinToString(",")
+        } catch (t: Throwable) {
+            "PROBE YAPILAMADI: ${t.javaClass.simpleName}"
         }
-        return if (found.isEmpty()) "HICBIRI YOK" else found.joinToString(",")
+    }
+
+    /**
+     * TESHIS: "No compose hierarchies found in the app" hatasinin 3 olasi
+     * nedeninden hangisi gecerli, bunu ayirt eder. Activity HIC
+     * baslatilamadiysa `composeRule.activity` erisimi istisna firlatir;
+     * baslatilip hemen bittiyse isFinishing/isDestroyed true doner; ikisi de
+     * degilse Activity ayakta demektir ve sorun setContent tarafindadir.
+     */
+    private fun activityProbe(): String {
+        return try {
+            val act = composeRule.activity
+            "sinif=${act.javaClass.name} finishing=${act.isFinishing} " +
+                "destroyed=${act.isDestroyed}"
+        } catch (t: Throwable) {
+            "activity ERISILEMEDI: ${t.javaClass.simpleName}: ${t.message}"
+        }
     }
 
     /**
@@ -128,10 +149,25 @@ class CounterFlowInstrumentedTest {
         } catch (ignored: Throwable) {
             // asagidaki assertTrue teshis mesajiyla raporlayacak
         }
+        val count: Long? = try {
+            readCountOrNull()
+        } catch (t: Throwable) {
+            // "No compose hierarchies found in the app" buraya dusuyor. Ham
+            // istisna teshis bilgisi ICERMIYOR; bu yuzden gercek neden
+            // (Activity baslatildi mi / ayakta mi / hangi ekrandayiz)
+            // assertion mesajina gomuluyor.
+            assertTrue(
+                "Semantics agacina erisilemedi: ${t.javaClass.simpleName}: ${t.message} " +
+                    "|| Activity: [${activityProbe()}] || Tag'ler: [${probeKnownTags()}]",
+                false
+            )
+            null
+        }
         assertTrue(
             "Sayac ekrana gelmedi (giant_tap_button/stateDescription bulunamadi). " +
-                "Ekranda bulunan bilinen tag'ler: [${probeKnownTags()}]",
-            readCountOrNull() != null
+                "Activity: [${activityProbe()}] || Ekranda bulunan bilinen tag'ler: " +
+                "[${probeKnownTags()}]",
+            count != null
         )
     }
 
