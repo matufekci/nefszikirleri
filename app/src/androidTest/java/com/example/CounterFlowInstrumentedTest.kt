@@ -91,10 +91,15 @@ class CounterFlowInstrumentedTest {
             }
             try {
                 val instrumentation = InstrumentationRegistry.getInstrumentation()
+                // SDK'nin HERKESE ACIK UiAutomation API'sinde yalnizca 2
+                // argumanli surum var; UserHandle/userId alan 3 argumanli
+                // surumler gizli. Kanit (run 35102817524 derleyici ciktisi):
+                //   "Too many arguments for 'fun grantRuntimePermission(
+                //    p0: String!, p1: String!): Unit'"
+                // 2 argumanli surum izni mevcut kullanici icin verir.
                 instrumentation.uiAutomation.grantRuntimePermission(
                     instrumentation.targetContext.packageName,
-                    android.Manifest.permission.POST_NOTIFICATIONS,
-                    android.os.Process.myUserHandle()
+                    android.Manifest.permission.POST_NOTIFICATIONS
                 )
             } catch (ignored: Throwable) {
                 // Izin verilemezse test yine kosar; dialog mesaji teshis
