@@ -426,21 +426,37 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           # Bildirim izni ONCEDEN veriliyor: Android 13+ sistem izin dialogu
           # ekrani kapatip Compose dokunmalarini yutabiliyordu (flaky test).
+          #
+          # `set -o pipefail` SART: pipesiz halinde `gradlew | tee` komutun
+          # degil tee'nin exit kodunu donduruyor, yani testler patlasa bile
+          # adim YESIL gorunuyordu (sahte yesil). continue-on-error ile job
+          # devam ediyor; kesin kararı asagidaki raporlama adimi veriyor
+          # (unit-tests job'indaki desenin aynisi).
           script: |
             adb shell pm grant com.aistudio.nefszikir.kdhrmq android.permission.POST_NOTIFICATIONS || true
+            set -o pipefail
             ./gradlew connectedDebugAndroidTest --stacktrace 2>&1 | tee emulator-test.log
+        continue-on-error: true
 
       - name: Emulator test sonuclarini raporla
         if: always()
-        # Connected sonuclar ic ice dizine yaziliyor; report-unit-tests.sh ise
-        # duz dizinde TEST-*.xml ariyor. Bu yuzden once duzlestiriliyor, sonra
-        # AYNI script kullaniliyor (annotation + exit 1 enforcement dahil).
+        # Connected sonuclar AGP surumune gore farkli yola yaziliyor ve bu
+        # job'da sabit yol (`app/build/outputs/androidTest-results`) BOS
+        # dondu; testler kosmus olmasina ragmen "sonuc yok" diye kirmizi
+        # olduk. Bu yuzden artik app/build ALTINDA TEST-*.xml araniyor
+        # (birim test sonuclari haric tutularak) ve bulunamazsa gercek dizin
+        # agaci annotation'a yaziliyor ki yol bir daha tahmin edilmesin.
         run: |
           rm -rf emulator-results && mkdir -p emulator-results
-          find app/build/outputs/androidTest-results -name 'TEST-*.xml' \
+          find app/build -name 'TEST-*.xml' -not -path '*/test-results/*' \
             -exec cp {} emulator-results/ \; 2>/dev/null || true
+          echo "Bulunan connected XML'ler:"
+          ls -1 emulator-results/ 2>/dev/null || true
           if [ -z "$(ls -A emulator-results 2>/dev/null)" ]; then
-            echo "::error title=Emulator testi kosmadi::androidTest-results icinde TEST-*.xml yok (emulator boot olmadi mi?)"
+            echo "Teshis: app/build altinda androidTest ile ilgili xml/dizinler:"
+            find app/build -iname '*.xml' -path '*androidTest*' 2>/dev/null | head -20 || true
+            find app/build/outputs app/build/reports -maxdepth 3 -type d 2>/dev/null | head -30 || true
+            echo "::error title=Emulator testi sonucu bulunamadi::TEST-*.xml yok; connected testler hic kosmadi ya da sonuc yolu degisti (teshis listesine bak)"
             exit 1
           fi
           ./.github/scripts/report-unit-tests.sh emulator-results
