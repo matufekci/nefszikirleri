@@ -329,3 +329,128 @@ jobs:
         # Yalnizca gercek keystore ile imzalandiginda anlamli; unsigned build'de atla.
         if: ${{ always() && steps.keys.outputs.signed == 'true' }}
         run: bash .github/scripts/report-apk-signer.sh app/build/outputs/apk/release/app-release.apk
+
+  # ============================================================
+  # EMULATOR TESTLERI (Prompt 13.1)
+  # ============================================================
+  # Neden var: Robolectric birim testleri JVM'de kosuyor; gercek Compose
+  # penceresi, gercek dokunma, gercek Activity recreation ve gercek TalkBack
+  # semantics agaci URETMİYOR. Dolayisiyla "dokununca sayac artiyor mu",
+  # "recreation sonrasi durum korunuyor mu", "secili sekme semantics'e
+  # aktariliyor mu" sorulari bugune kadar hic cihazda dogrulanmamisti.
+  #
+  # Bu job gercek bir Android emulatoru baslatir ve `connectedDebugAndroidTest`
+  # ile app/src/androidTest altindaki testleri KOŞAR. Basarisizlik job'u
+  # kirmiziya cevirir (report-unit-tests.sh exit 1 verir).
+  #
+  # Gate bilerek ayni: her push'ta kosmaz (emulator ~10-15 dk), yalnizca tam
+  # regresyon kosularinda calisir.
+  emulator-tests:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full]') }}
+    timeout-minutes: 70
+    steps:
+      - name: Run actions/checkout@v7
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Setup Android SDK (imajdaki kurulu SDK)
+        run: bash .github/scripts/setup-android-sdk.sh
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Prepare google-services.json (gercek Firebase yapilandirmasi)
+        run: bash .github/scripts/prepare-google-services.sh
+
+      - name: Create .env from example
+        run: |
+          if [ ! -f .env ]; then cp .env.example .env; fi
+
+      - name: KVM'i etkinlestir (hizlandirilmis emulator icin sart)
+        # GitHub'in Linux kosucularinda /dev/kvm mevcut ama varsayilan olarak
+        # kvm grubuna yazma izni yok. Bu kural olmadan emulator yazilim
+        # emulasyonuna duser ve boot dakikalarca surer / zaman asimina ugrar.
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          if [ ! -e /dev/kvm ]; then
+            echo "::warning::/dev/kvm yok; emulator yazilim emulasyonuna dusebilir (yavas)"
+          else
+            ls -l /dev/kvm
+          fi
+
+      - name: Sistem imajini kur (36 -> 35 -> 34 fallback)
+        # Fallback bilerek var: tek bir API seviyesine sabitlemek, Google o
+        # imaji yayindan kaldirirsa job'u sebebsiz kirmiziya ceviriyor
+        # (setup-android action'inda yasanan 404 senaryosunun aynisi).
+        id: img
+        run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKM="$(ls -d "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -1 || true)"
+          if [ -z "$SDKM" ]; then echo "::error::sdkmanager bulunamadi"; exit 1; fi
+          yes 2>/dev/null | "$SDKM" --install emulator >/dev/null 2>&1 || true
+          API=""
+          for level in 36 35 34; do
+            pkg="system-images;android-${level};google_apis;x86_64"
+            echo "deneniyor: $pkg"
+            if yes 2>/dev/null | timeout 900 "$SDKM" --install "$pkg" >/dev/null 2>&1; then
+              API="$level"
+              break
+            fi
+          done
+          if [ -z "$API" ]; then
+            echo "::error::Hicbir sistem imaji kurulamadi (36/35/34)"
+            exit 1
+          fi
+          echo "Kurulacak emulator: android-$API (google_apis, x86_64)"
+          echo "api=$API" >> "$GITHUB_OUTPUT"
+
+      - name: Emulatorde connected testleri kos
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ steps.img.outputs.api }}
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          disable-animations: true
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          # Bildirim izni ONCEDEN veriliyor: Android 13+ sistem izin dialogu
+          # ekrani kapatip Compose dokunmalarini yutabiliyordu (flaky test).
+          script: |
+            adb shell pm grant com.aistudio.nefszikir.kdhrmq android.permission.POST_NOTIFICATIONS || true
+            ./gradlew connectedDebugAndroidTest --stacktrace 2>&1 | tee emulator-test.log
+
+      - name: Emulator test sonuclarini raporla
+        if: always()
+        # Connected sonuclar ic ice dizine yaziliyor; report-unit-tests.sh ise
+        # duz dizinde TEST-*.xml ariyor. Bu yuzden once duzlestiriliyor, sonra
+        # AYNI script kullaniliyor (annotation + exit 1 enforcement dahil).
+        run: |
+          rm -rf emulator-results && mkdir -p emulator-results
+          find app/build/outputs/androidTest-results -name 'TEST-*.xml' \
+            -exec cp {} emulator-results/ \; 2>/dev/null || true
+          if [ -z "$(ls -A emulator-results 2>/dev/null)" ]; then
+            echo "::error title=Emulator testi kosmadi::androidTest-results icinde TEST-*.xml yok (emulator boot olmadi mi?)"
+            exit 1
+          fi
+          ./.github/scripts/report-unit-tests.sh emulator-results
+
+      - name: Upload emulator test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: emulator-test-reports
+          path: |
+            app/build/outputs/androidTest-results/
+            app/build/reports/androidTests/
+            emulator-test.log
