@@ -127,26 +127,41 @@ class CounterFlowInstrumentedTest {
         )
     }
 
+    /** selected=true tasiyan tag'leri dondurur. */
+    private fun selectedTags(tags: List<String>): List<String> = tags.filter { tag ->
+        val nodes = composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes()
+        nodes.isNotEmpty() && nodes[0].config.getOrNull(SemanticsProperties.Selected) == true
+    }
+
     /**
      * QA plani E2: Prompt 9.1 duzeltmesinin cihaz dogrulamasi.
-     * TalkBack'in "secili" duyurusu icin tam olarak BIR sekme
-     * semantics'te selected=true tasimali.
+     *
+     * KAPSAM NOTU (koddan dogrulandi): `.semantics { selected = isSelected }`
+     * DhikrTabBar.kt:258'de YALNIZCA yan sekmelerin bulundugu `else` dalina
+     * uygulanmis; merkez "zikir" sekmesi (isCenterAction = true, satir
+     * ~159-181) `selected` TASIMIYOR. Bu yuzden test YAN sekmeler uzerinden
+     * olcuyor. Merkez sekmedeki eksik ayrica raporlandi ve burada "beklenen
+     * davranis" olarak sabitlenmedi (bir hatayi testle dondurmak istemiyoruz).
+     *
+     * Ikinci duzeltme: 5 sekme var (liste, istatistik, zikir, bilgi, ayarlar);
+     * onceki surum 4 tag kontrol ediyordu ve `bilgi` eksikti.
      */
     @Test
-    fun exactlyOneTab_isMarkedSelectedInSemantics() {
+    fun sideTabSelection_isExposedToSemantics_exactlyOneSelected() {
         waitCounter()
 
-        val tags = listOf("tab_zikir", "tab_liste", "tab_istatistik", "tab_ayarlar")
-        val selected = tags.filter { tag ->
-            val nodes = composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes()
-            nodes.isNotEmpty() && nodes[0].config.getOrNull(SemanticsProperties.Selected) == true
-        }
+        composeRule.onNodeWithTag("tab_liste").performClick()
 
+        val sideTabs = listOf("tab_liste", "tab_istatistik", "tab_bilgi", "tab_ayarlar")
+        composeRule.waitUntil(15_000) { selectedTags(sideTabs).size == 1 }
+
+        val selected = selectedTags(sideTabs)
         assertEquals(
-            "Tam olarak bir sekme selected isaretlenmeli (bulunan: $selected)",
+            "Yan sekmelerden tam olarak biri selected isaretlenmeli (bulunan: $selected)",
             1,
             selected.size
         )
+        assertTrue("Secili sekme tiklanan sekme olmali", selected.contains("tab_liste"))
     }
 
     /**

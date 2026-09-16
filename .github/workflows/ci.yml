@@ -427,15 +427,24 @@ jobs:
           # Bildirim izni ONCEDEN veriliyor: Android 13+ sistem izin dialogu
           # ekrani kapatip Compose dokunmalarini yutabiliyordu (flaky test).
           #
-          # `set -o pipefail` SART: pipesiz halinde `gradlew | tee` komutun
-          # degil tee'nin exit kodunu donduruyor, yani testler patlasa bile
-          # adim YESIL gorunuyordu (sahte yesil). continue-on-error ile job
-          # devam ediyor; kesin kararı asagidaki raporlama adimi veriyor
-          # (unit-tests job'indaki desenin aynisi).
+          # Sahte-yesil korumasi: `gradlew | tee` tek basina komutun degil
+          # tee'nin exit kodunu donduruyor (testler patlasa bile adim YESIL
+          # gorunur). pipefail ISE /usr/bin/sh (dash) altinda desteklenmiyor;
+          # bu yuzden pipe hic kullanilmiyor, cikis kodu dogrudan aliniyor.
+          # continue-on-error ile job suruyor; kesin karari asagidaki
+          # raporlama adimi XML'lerden veriyor (unit-tests job'i deseni).
           script: |
             adb shell pm grant com.aistudio.nefszikir.kdhrmq android.permission.POST_NOTIFICATIONS || true
-            set -o pipefail
-            ./gradlew connectedDebugAndroidTest --stacktrace 2>&1 | tee emulator-test.log
+            # ONEMLI: emulator-runner `script` blogunu /usr/bin/sh (dash) ile
+            # kosuyor ve dash `set -o pipefail` DESTEKLEMIYOR. Onceki turda
+            # (run 35081870564) tam bu satirda "Illegal option" ile exit code 2
+            # alindi; Gradle HIC kosmadi. Yani pipefail'i eklerken sahte-yesil'i
+            # sahte-kirmizi'ya cevirmis oldum. POSIX-uyumlu cozum: pipe yok,
+            # Gradle'in cikis kodu dogrudan yakalaniyor.
+            ./gradlew connectedDebugAndroidTest --stacktrace > emulator-test.log 2>&1
+            GRADLE_STATUS=$?
+            tail -n 60 emulator-test.log
+            exit $GRADLE_STATUS
         continue-on-error: true
 
       - name: Emulator test sonuclarini raporla
@@ -456,6 +465,20 @@ jobs:
             echo "Teshis: app/build altinda androidTest ile ilgili xml/dizinler:"
             find app/build -iname '*.xml' -path '*androidTest*' 2>/dev/null | head -20 || true
             find app/build/outputs app/build/reports -maxdepth 3 -type d 2>/dev/null | head -30 || true
+            # Annotation BU sandbox'tan okunabilen TEK kanal: artifact/log
+            # indirme blob storage'a erisemedigi icin (HTTP 000) Gradle
+            # hatasinin ozeti dogrudan annotation'a yaziliyor. Aksi halde
+            # "neden kosmadi" sorusu bir tur daha bilinmez kaliyor.
+            if [ -f emulator-test.log ]; then
+              DETAIL=$(grep -aE "^e: |error:|FAILED|Execution failed|What went wrong|Caused by:|BUILD (SUCCESSFUL|FAILED)|INSTALL_|Unable to |No connected devices|Could not determine" emulator-test.log | tail -n 25 | sed 's/%/%25/g; s/\r//g' | awk '{printf "%s%%0A", $0}')
+              if [ -n "$DETAIL" ]; then
+                echo "::error title=Connected test ayrintisi (Gradle log ozeti)::$DETAIL"
+              else
+                echo "::error title=Gradle logunda hata satiri yok::emulator-test.log var ama bilinen hata kaliplari eslesmedi (log kuyrugu adim cikisinda)"
+              fi
+            else
+              echo "::error title=Gradle logu olusmadi::emulator-test.log yok; script calisma dizini workspace olmayabilir (pwd=$(pwd))"
+            fi
             echo "::error title=Emulator testi sonucu bulunamadi::TEST-*.xml yok; connected testler hic kosmadi ya da sonuc yolu degisti (teshis listesine bak)"
             exit 1
           fi
