@@ -22,15 +22,31 @@ object AppLinks {
 
     /**
      * Gizlilik politikasi adresi.
-     * TODO(sahibi): gercek production adresi ile doldur (https:// ile baslamali).
+     *
+     * GitHub Pages uzerinden servis edilir (repo: matufekci/nefszikirleri,
+     * kaynak klasor: /docs, dosya: docs/privacy/index.html). Sayfa 5 dilde
+     * (tr/ar/en/de/fr) ve icerigi bu repodaki koddan dogrulanarak yazildi.
+     *
+     * ONEMLI: Bu adresin gercekten calismasi icin iki sart var:
+     *  1. Sayfalar `main` dalinda olmali (Pages varsayilan dali servis eder),
+     *  2. Play Console / repo Settings > Pages'te "Deploy from a branch"
+     *     -> main -> /docs secili olmali.
+     * Ikisi saglanmadan yayinlanan surumde satir 404 acar.
      */
-    const val PRIVACY_POLICY_URL: String = ""
+    const val PRIVACY_POLICY_URL: String =
+        "https://matufekci.github.io/nefszikirleri/privacy/"
 
     /**
      * Harici hesap silme talebi adresi (Play Console "Data deletion" alani).
-     * TODO(sahibi): gercek production adresi ile doldur (https:// ile baslamali).
+     *
+     * NOT: Bu sabit su an uygulama icinde HICBIR yerden okunmuyor; Play
+     * politikasi web silme linkini STORE LISTING uzerinden istiyor ve o alan
+     * Play Console > Veri guvenligi formuna bu adresin yazilmasiyla doluyor.
+     * Uygulama ici silme yolu ayrica mevcut (Ayarlar > hesap > Hesabi Sil,
+     * `btn_delete_account`), yani iki yol da saglanmis oluyor.
      */
-    const val ACCOUNT_DELETION_URL: String = ""
+    const val ACCOUNT_DELETION_URL: String =
+        "https://matufekci.github.io/nefszikirleri/account-deletion/"
 
     /** Uretimde gercekten acilabilir bir adres mi? */
     fun isUsable(url: String): Boolean {
