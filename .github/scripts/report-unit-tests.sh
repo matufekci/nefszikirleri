@@ -31,9 +31,17 @@ failed_lines=""
 suite_lines=""
 
 for f in "${files[@]}"; do
-  # İlk <testsuite ...> etiketindeki sayaçlar.
-  suite_tag="$(grep -o '<testsuite [^>]*>' "$f" | head -1)"
-  get() { printf '%s' "$suite_tag" | grep -o "$1=\"[0-9]*\"" | head -1 | grep -o '[0-9]*'; }
+  # DOSYADAKI TUM <testsuite> etiketlerinin sayaclari TOPLANIYOR.
+  # Onceki surum `head -1` ile yalnizca ILK etiketi okuyordu. Android
+  # connected XML tek dosyada sinif basina AYRI <testsuite> yaziyor;
+  # sonuc: 6 test kosarken 5 raporlandi (run 35116431365) ve daha
+  # onemlisi, ikinci testsuite icindeki bir failure ATLANIP sahte yesil
+  # uretebilirdi. Artik hepsi toplanıyor.
+  suite_tags="$(grep -o '<testsuite [^>]*>' "$f")"
+  get() {
+    printf '%s\n' "$suite_tags" | grep -o "$1=\"[0-9]*\"" | grep -o '[0-9]*' \
+      | awk '{ s += $1 } END { print s + 0 }'
+  }
 
   t="$(get tests)";   t="${t:-0}"
   fl="$(get failures)"; fl="${fl:-0}"
@@ -46,7 +54,14 @@ for f in "${files[@]}"; do
   skipped=$((skipped + sk))
 
   suite_name="$(basename "$f" .xml)"; suite_name="${suite_name#TEST-}"
-  suite_lines="${suite_lines}${suite_name}: ${t} test, ${fl} failure, ${er} error${NL}"
+  # Birden fazla testsuite varsa hangi siniflarin kosuldugu da gorunsun.
+  # `name=` ARANIRKEN basa bosluk sart: yoksa hostname="..." icindeki
+  # 'name=' alt dizesi de eslesip sinif listesi yerine cihaz adi yaziyordu
+  # (yerel fixture ile yakalandi).
+  suite_classes="$(printf '%s\n' "$suite_tags" | grep -o ' name="[^"]*"' \
+    | sed 's/^ name="//; s/"$//' \
+    | awk '{ printf "%s%s", (NR > 1 ? ", " : ""), $0 }')"
+  suite_lines="${suite_lines}${suite_name} [${suite_classes:-?}]: ${t} test, ${fl} failure, ${er} error${NL}"
 
   # Başarısız testlerin adları: <testcase> içinde <failure>/<error> geçenler.
   names="$(awk '
@@ -54,6 +69,7 @@ for f in "${files[@]}"; do
       gsub(/&#10;/, " ", m); gsub(/&#9;/, " ", m)
       gsub(/&quot;/, sprintf("%c", 39), m)
       gsub(/&lt;/, "<", m); gsub(/&gt;/, ">", m); gsub(/&amp;/, "&", m)
+      sub(/^<(failure|error)[^>]*>/, "", m)
       sub(/<\/failure>.*$/, "", m); sub(/<\/error>.*$/, "", m)
       gsub(/[\r\n\t]/, " ", m)
       sub(/^[ \t]+/, "", m)
