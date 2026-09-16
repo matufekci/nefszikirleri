@@ -441,11 +441,44 @@ jobs:
             # alindi; Gradle HIC kosmadi. Yani pipefail'i eklerken sahte-yesil'i
             # sahte-kirmizi'ya cevirmis oldum. POSIX-uyumlu cozum: pipe yok,
             # Gradle'in cikis kodu dogrudan yakalaniyor.
+            adb logcat -c 2>/dev/null || true
             ./gradlew connectedDebugAndroidTest --stacktrace > emulator-test.log 2>&1
             GRADLE_STATUS=$?
+            adb logcat -d -v time > emulator-logcat.log 2>/dev/null || true
             tail -n 60 emulator-test.log
             exit $GRADLE_STATUS
         continue-on-error: true
+
+      - name: Logcat teshisi (crash / Activity acilisi)
+        if: always()
+        # Testler artik KOSUYOR ama 4'u de "No compose hierarchies found in
+        # the app" ile patliyor: setContent cagiran Activity hic olusmamis.
+        # Bunun nedeni yalnizca logcat'te gorunur. Artifact/log indirme bu
+        # sandbox'tan mumkun olmadigi icin (blob storage HTTP 000) kritik
+        # logcat satirlari annotation'a tasiniyor. Bu adim job'i KIRMIZI
+        # YAPMAZ; karari asagidaki raporlama adimi verir.
+        run: |
+          if [ ! -f emulator-logcat.log ]; then
+            echo "::warning title=Logcat yok::emulator-logcat.log olusmadi"
+            exit 0
+          fi
+          echo "logcat satir sayisi: $(wc -l < emulator-logcat.log)"
+          CRASH=$(grep -aE "FATAL EXCEPTION|AndroidRuntime:|Force finishing activity|am_crash|ANR in |has died|Shutting down VM" emulator-logcat.log | tail -n 25 | sed 's/%/%25/g; s/\r//g' | awk '{printf "%s%%0A", $0}')
+          if [ -n "$CRASH" ]; then
+            echo "::warning title=Logcat CRASH izleri::$CRASH"
+          else
+            echo "::notice title=Logcat::FATAL/crash satiri bulunamadi"
+          fi
+          DISP=$(grep -aE "Displayed com\.|ActivityTaskManager: Displayed|ActivityManager: Displayed" emulator-logcat.log | tail -n 5 | sed 's/%/%25/g; s/\r//g' | awk '{printf "%s%%0A", $0}')
+          if [ -n "$DISP" ]; then
+            echo "::notice title=Activity acilis izi (Displayed)::$DISP"
+          else
+            echo "::warning title=Activity hic Displayed olmadi::MainActivity ekrana hic gelmedi, dolayisiyla setContent hic calismadi"
+          fi
+          PROC=$(grep -aE "Start proc .*com\.aistudio|Killing .*com\.aistudio|Process com\.aistudio" emulator-logcat.log | tail -n 10 | sed 's/%/%25/g; s/\r//g' | awk '{printf "%s%%0A", $0}')
+          if [ -n "$PROC" ]; then
+            echo "::notice title=Surec yasam dongusu::$PROC"
+          fi
 
       - name: Emulator test sonuclarini raporla
         if: always()
@@ -493,3 +526,4 @@ jobs:
             app/build/outputs/androidTest-results/
             app/build/reports/androidTests/
             emulator-test.log
+            emulator-logcat.log
