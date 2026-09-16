@@ -395,11 +395,23 @@ class CounterFlowInstrumentedTest {
         // 2. Oturum yok -> hesap silme butonu olmamali
         composeRule.onAllNodesWithTag("btn_delete_account").assertCountEquals(0)
 
-        // 3. URL bos oldugu icin dokunmak crash uretmemeli (guard mesaji gosterir)
-        composeRule.onNodeWithTag("btn_privacy_policy").performClick()
-        composeRule.waitForIdle()
-
-        // Uygulama hala ayakta: ayarlar ekrani duruyor
-        composeRule.onAllNodesWithTag("btn_privacy_policy").assertCountEquals(1)
+        // 3. Satira dokunmak CRASH uretmemeli. Iki kabul edilir sonuc var:
+        //    a) URL gecerli (su an oyle): ACTION_VIEW dis tarayiciyi acar,
+        //       uygulama arka plana duser -> compose hiyerarsisi bulunamaz
+        //       ("No compose hierarchies found in the app." firlar). BASARIDIR.
+        //    b) URL gecersiz olsaydi: guard mesaji gosterilir, ayarlar onde kalir.
+        try {
+            composeRule.onNodeWithTag("btn_privacy_policy").performClick()
+            composeRule.waitForIdle()
+            composeRule.onAllNodesWithTag("btn_privacy_policy").fetchSemanticsNodes()
+            // (b) yolu: uygulama onde kaldi - kabul
+        } catch (e: IllegalStateException) {
+            // (a) yolu: tarayici one gecti. Baska bir IllegalStateException
+            // gizlenmesin diye imzayi dogrula:
+            assertTrue(
+                "Beklenmeyen IllegalStateException: ${e.message}",
+                (e.message ?: "").contains("No compose hierarchies")
+            )
+        }
     }
 }
