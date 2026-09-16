@@ -63,6 +63,43 @@ class CounterFlowInstrumentedTest {
                 .edit()
                 .putBoolean(KEY_INTRO_COMPLETED, true)
                 .commit()
+            grantNotificationPermission()
+        }
+
+        /**
+         * KOK NEDEN DUZELTMESI (run 35100282128 logcat kaniti).
+         *
+         * [MainApp] ilk kompozisyonda POST_NOTIFICATIONS iznini istiyor
+         * (MainApp.kt:90-98, API 33+). Izin verilmeyince sistem izin dialogu
+         * MainActivity'nin UZERINDE kaliyor; Activity hic cizilmiyor, Compose
+         * root pencereye baglanmiyor ve 4 test de "No compose hierarchies
+         * found in the app" ile patliyordu. Logcat'te MainActivity icin tek
+         * bir "Displayed" satiri yoktu, buna karsilik GrantPermissionsActivity
+         * 4 kez gorunuyordu.
+         *
+         * CI'daki `adb shell pm grant` bunu COZMUYOR: connectedDebugAndroidTest
+         * uygulamayi bu satirdan SONRA kuruyor, yani grant calisirken paket
+         * henuz kurulu degil ve komut sessizce basarisiz oluyordu. Izin burada,
+         * UiAutomation uzerinden veriliyor; @BeforeClass Activity
+         * baslatilmadan once kostugu icin dialog hic cikmiyor.
+         */
+        private fun grantNotificationPermission() {
+            if (android.os.Build.VERSION.SDK_INT <
+                android.os.Build.VERSION_CODES.TIRAMISU
+            ) {
+                return // API 33 altinda bu izin runtime izni degil
+            }
+            try {
+                val instrumentation = InstrumentationRegistry.getInstrumentation()
+                instrumentation.uiAutomation.grantRuntimePermission(
+                    instrumentation.targetContext.packageName,
+                    android.Manifest.permission.POST_NOTIFICATIONS,
+                    android.os.Process.myUserHandle()
+                )
+            } catch (ignored: Throwable) {
+                // Izin verilemezse test yine kosar; dialog mesaji teshis
+                // probunda (activityProbe/probeKnownTags) gorunur.
+            }
         }
     }
 

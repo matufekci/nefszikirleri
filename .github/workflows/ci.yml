@@ -424,8 +424,16 @@ jobs:
           disable-animations: true
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          # Bildirim izni ONCEDEN veriliyor: Android 13+ sistem izin dialogu
-          # ekrani kapatip Compose dokunmalarini yutabiliyordu (flaky test).
+          # POST_NOTIFICATIONS hakkinda ONEMLI NOT (run 35100282128 logcat
+          # kaniti): asagidaki `adb shell pm grant` satiri ISE YARAMIYOR,
+          # cunku connectedDebugAndroidTest uygulamayi bundan SONRA kuruyor;
+          # grant calisirken paket kurulu degil ve komut sessizce basarisiz
+          # oluyor. Izin verilmeyince MainApp.kt:90-98 acilista sistem izin
+          # dialogunu firlatiyor, dialog MainActivity'nin uzerinde kaldigi
+          # icin Activity hic cizilmiyor, Compose root pencereye baglanmiyor
+          # ve 4 test de "No compose hierarchies found" aliyordu. Gercek
+          # cozum testin icinde (UiAutomation ile grant); satir zararsiz
+          # oldugu icin birakildi.
           #
           # Sahte-yesil korumasi: `gradlew | tee` tek basina komutun degil
           # tee'nin exit kodunu donduruyor (testler patlasa bile adim YESIL
