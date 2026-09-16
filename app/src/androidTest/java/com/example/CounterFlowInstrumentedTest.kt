@@ -255,7 +255,14 @@ class CounterFlowInstrumentedTest {
         waitCount(before + 1)
         assertEquals(before + 1, readCountOrNull())
 
-        composeRule.activity.recreate()
+        // Activity.recreate() ANA THREAD ister; test govdesi ise
+        // instrumentation thread'inde kosuyor. Dogrudan cagri
+        // "Must be called from main thread" firlatiyordu (run 35107267025).
+        // runOnMainSync ile main thread'e tasiniyor; sonrasindaki
+        // waitCounter/waitCount yeni instance'in oturmasini bekliyor.
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            composeRule.activity.recreate()
+        }
 
         waitCounter()
         waitCount(before + 1)
