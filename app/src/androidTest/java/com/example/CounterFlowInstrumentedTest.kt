@@ -3,7 +3,6 @@ package com.example
 import android.content.Context
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertCountEquals
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -18,7 +17,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * GERCEK CIHAZ/EMULATOR testleri (Prompt 13.1).
+ * GERCEK CIHAZ/EMULATOR testleri.
  *
  * Neden var: Robolectric birim testleri (185 adet) JVM uzerinde kosuyor ve
  * gercek Compose penceresi, gercek dokunma, gercek Activity yasam dongusu ve
@@ -29,7 +28,16 @@ import org.junit.runner.RunWith
  *   3. Secili sekme bilgisinin semantics agacina (TalkBack) ulasmasi.
  *
  * Bu sinif yalnizca MEVCUT davranisi olcer; hicbir uretim kodunu degistirmez.
- * Test tag'leri zaten uretim kodunda mevcuttu (test icin eklenmedi).
+ *
+ * API NOTU (run 35086809758 derleyici ciktisindan ogrenildi):
+ *  - `assertExists` bu Compose surumunde `androidx.compose.ui.test` icinde
+ *    TOP-LEVEL fonksiyon DEGIL (import'u "Unresolved reference" verdi).
+ *    Bu yuzden varlik kontrolu, importu derleyici tarafindan DOGRULANMIS olan
+ *    `assertCountEquals` ile yapiliyor.
+ *  - `SemanticsConfiguration.getOrNull(...)` bir extension ve import
+ *    edilmediginde cozulemuyor. Import yolu tahminine girmek yerine yalnizca
+ *    SINIF UYESI olan `contains` (`key in cfg`) ve `get` (`cfg[key]`)
+ *    operatorleri kullaniliyor.
  */
 @RunWith(AndroidJUnit4::class)
 class CounterFlowInstrumentedTest {
@@ -60,14 +68,29 @@ class CounterFlowInstrumentedTest {
 
     // ---------------------------------------------------------------- helpers
 
-    /** "count / target" bicimindeki stateDescription'dan sayaci okur. */
+    /**
+     * "count / target" bicimindeki stateDescription'dan sayaci okur.
+     * Yalnizca SemanticsConfiguration UYE operatorleri kullanilir.
+     */
     private fun readCountOrNull(): Long? {
         val nodes = composeRule.onAllNodesWithTag("giant_tap_button").fetchSemanticsNodes()
         if (nodes.isEmpty()) return null
-        val stateDesc = nodes[0].config.getOrNull(SemanticsProperties.StateDescription) ?: return null
+        val cfg = nodes[0].config
+        val key = SemanticsProperties.StateDescription
+        if (key !in cfg) return null
+        val stateDesc = cfg[key]
         val countPart = stateDesc.split("/").firstOrNull()?.trim() ?: return null
         val digits = countPart.filter { it.isDigit() }
         return digits.toLongOrNull()
+    }
+
+    /** Bir tag'in semantics agacinda selected=true tasip tasimadigi. */
+    private fun isTagSelected(tag: String): Boolean {
+        val nodes = composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes()
+        if (nodes.isEmpty()) return false
+        val cfg = nodes[0].config
+        val key = SemanticsProperties.Selected
+        return key in cfg && cfg[key]
     }
 
     /** Splash (min 3000 ms) gecene kadar sayac dugumunu bekler. */
@@ -104,8 +127,8 @@ class CounterFlowInstrumentedTest {
 
     /**
      * QA plani A4/A8: Activity recreation (configuration change / process
-     * recreation benzeri) sonrasi sayac korunmali. SavedStateHandle +
-     * Room birlikte dogru calisiyorsa deger ayni kalir.
+     * recreation benzeri) sonrasi sayac korunmali. SavedStateHandle + Room
+     * birlikte dogru calisiyorsa deger ayni kalir.
      */
     @Test
     fun recreation_preservesCounterValue() {
@@ -127,14 +150,9 @@ class CounterFlowInstrumentedTest {
         )
     }
 
-    /** selected=true tasiyan tag'leri dondurur. */
-    private fun selectedTags(tags: List<String>): List<String> = tags.filter { tag ->
-        val nodes = composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes()
-        nodes.isNotEmpty() && nodes[0].config.getOrNull(SemanticsProperties.Selected) == true
-    }
-
     /**
-     * QA plani E2: Prompt 9.1 duzeltmesinin cihaz dogrulamasi.
+     * QA plani E2: secili sekme bilgisinin TalkBack'e ulastiginin cihaz
+     * dogrulamasi.
      *
      * KAPSAM NOTU (koddan dogrulandi): `.semantics { selected = isSelected }`
      * DhikrTabBar.kt:258'de YALNIZCA yan sekmelerin bulundugu `else` dalina
@@ -153,9 +171,9 @@ class CounterFlowInstrumentedTest {
         composeRule.onNodeWithTag("tab_liste").performClick()
 
         val sideTabs = listOf("tab_liste", "tab_istatistik", "tab_bilgi", "tab_ayarlar")
-        composeRule.waitUntil(15_000) { selectedTags(sideTabs).size == 1 }
+        composeRule.waitUntil(15_000) { sideTabs.count { isTagSelected(it) } == 1 }
 
-        val selected = selectedTags(sideTabs)
+        val selected = sideTabs.filter { isTagSelected(it) }
         assertEquals(
             "Yan sekmelerden tam olarak biri selected isaretlenmeli (bulunan: $selected)",
             1,
@@ -182,8 +200,8 @@ class CounterFlowInstrumentedTest {
                 .fetchSemanticsNodes().isNotEmpty()
         }
 
-        // 1. Gizlilik politikasi satiri mevcut
-        composeRule.onNodeWithTag("btn_privacy_policy").assertExists()
+        // 1. Gizlilik politikasi satiri mevcut (tam olarak bir adet)
+        composeRule.onAllNodesWithTag("btn_privacy_policy").assertCountEquals(1)
 
         // 2. Oturum yok -> hesap silme butonu olmamali
         composeRule.onAllNodesWithTag("btn_delete_account").assertCountEquals(0)
@@ -193,6 +211,6 @@ class CounterFlowInstrumentedTest {
         composeRule.waitForIdle()
 
         // Uygulama hala ayakta: ayarlar ekrani duruyor
-        composeRule.onNodeWithTag("btn_privacy_policy").assertExists()
+        composeRule.onAllNodesWithTag("btn_privacy_policy").assertCountEquals(1)
     }
 }
