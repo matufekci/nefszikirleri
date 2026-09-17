@@ -10,8 +10,15 @@ import androidx.compose.ui.platform.LocalContext
  * Erişilebilirlik - Reduced Motion (Hareketi Azalt) ve Animasyon Ölçeği Yönetim Yardımcısı
  */
 object MotionUtils {
-    fun isReduceMotionEnabled(context: Context, isZenMode: Boolean = false): Boolean {
-        if (isZenMode) return true
+    /**
+     * Yalnizca SISTEMIN 'hareketi azalt' ayarina bakar.
+     *
+     * Eskiden `if (isZenMode) return true` satiri vardi; bu yuzden zen/tam
+     * ekran moduna gecince halkanin etrafindaki isilti ve sanatsal dis
+     * efekt katmani tamamen kapatiliyordu. Zen modu artik erisilebilirlik
+     * ayarini ezmiyor; kullanici sistemi kapatmadiysa isiltilar kalir.
+     */
+    fun isReduceMotionEnabled(context: Context): Boolean {
         return try {
             val animatorScale = Settings.Global.getFloat(
                 context.contentResolver,
@@ -31,9 +38,9 @@ object MotionUtils {
 }
 
 @Composable
-fun rememberShouldReduceMotion(isZenMode: Boolean = false): Boolean {
+fun rememberShouldReduceMotion(): Boolean {
     val context = LocalContext.current
-    return remember(context, isZenMode) {
-        MotionUtils.isReduceMotionEnabled(context, isZenMode)
+    return remember(context) {
+        MotionUtils.isReduceMotionEnabled(context)
     }
 }

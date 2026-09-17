@@ -109,70 +109,6 @@ object LuxuryCirclePalettes {
             )
 
             // 2. GÜNDÜZ • GÜL & BEYAZ (Soft Pudra Krem & Pembe Altın Seramik)
-            "gul_gunduz" -> DhikrCirclePalette(
-                effectType = CircleEffectType.ROSE_PETAL_AURA,
-                outerBezel = listOf(
-                    Color(0xFFE07A8A),
-                    Color(0xFFF4B8C1),
-                    Color(0xFFF59E0B),
-                    Color(0xFFFDF0CD),
-                    Color(0xFFD46074),
-                    Color(0xFFE07A8A)
-                ),
-                innerDisc = listOf(
-                    Color(0xFFFFFFFF),
-                    Color(0xFFFDF6F8),
-                    Color(0xFFF8E9EC)
-                ),
-                innerBorder = Color(0xFFDECAD0),
-                baseTrack = Color(0xFFE8D4DA).copy(alpha = 0.55f),
-                baseTrackLight = Color(0xFFFCE8ED).copy(alpha = 0.72f),
-                baseTrackDark = Color(0xFFD8B9C2).copy(alpha = 0.58f),
-                specularHighlight = Color(0xFFFFFFFF).copy(alpha = 0.80f),
-                outerRimHighlight = Color(0xFFFFFFFF).copy(alpha = 0.70f),
-                innerRimHighlight = Color(0xFFFFFFFF).copy(alpha = 0.42f),
-                progressArc = listOf(
-                    Color(0xFFBE123C),
-                    Color(0xFFE11D48),
-                    Color(0xFFF43F5E),
-                    Color(0xFFFB7185),
-                    Color(0xFFFDA4AF),
-                    Color(0xFFFDE68A),
-                    Color(0xFFFFF5F7)
-                ),
-                progressBloom = listOf(
-                    Color(0xFFBE123C).copy(alpha = 0.30f),
-                    Color(0xFFE11D48).copy(alpha = 0.50f),
-                    Color(0xFFFB7185).copy(alpha = 0.65f),
-                    Color(0xFFFDA4AF).copy(alpha = 0.75f),
-                    Color(0xFFFDE68A).copy(alpha = 0.85f)
-                ),
-                liquidWave = listOf(
-                    Color.Transparent,
-                    Color(0xFFFDA4AF).copy(alpha = 0.45f),
-                    Color(0xFFFFFFFF).copy(alpha = 0.90f),
-                    Color(0xFFFDE68A).copy(alpha = 0.60f),
-                    Color.Transparent
-                ),
-                tipGlow = listOf(
-                    Color(0xFFFDE68A).copy(alpha = 0.90f),
-                    Color(0xFFFB7185).copy(alpha = 0.50f),
-                    Color.Transparent
-                ),
-                tipCore = Color(0xFFFFF5F7),
-                arabicText = Color(0xFF9F1239),
-                countText = Color(0xFF28111A),
-                subText = Color(0xFF6B4853),
-                badgeBg = Color(0xFFBE123C).copy(alpha = 0.12f),
-                badgeBorder = Color(0xFFBE123C).copy(alpha = 0.40f),
-                badgeText = Color(0xFF9F1239),
-                ambientGlow = listOf(
-                    Color(0xFFFB7185).copy(alpha = 0.22f),
-                    Color(0xFFBE123C).copy(alpha = 0.14f),
-                    Color(0xFFFDE68A).copy(alpha = 0.10f),
-                    Color.Transparent
-                )
-            )
 
             // 3. GECE • HADRÂ & ZÜMRÜT (Derin Gece Zümrüdü & Kristal Derinliği)
             "hadra_gece" -> DhikrCirclePalette(
@@ -241,137 +177,8 @@ object LuxuryCirclePalettes {
             )
 
             // 4. GECE • GÜL & SİYAH (Gece Gülü & Derin Yakut Kristal)
-            "gul_gece" -> DhikrCirclePalette(
-                effectType = CircleEffectType.ROSE_PETAL_AURA,
-                outerBezel = listOf(
-                    Color(0xFFFB7185),
-                    Color(0xFFE11D48),
-                    Color(0xFFFDE68A),
-                    Color(0xFFFDA4AF),
-                    Color(0xFF881337),
-                    Color(0xFFFB7185)
-                ),
-                innerDisc = listOf(
-                    Color(0xFF261021),
-                    Color(0xFF1A0A16),
-                    Color(0xFF0E040C)
-                ),
-                innerBorder = Color(0xFFFB7185).copy(alpha = 0.40f),
-                baseTrack = Color(0xFF3B162E).copy(alpha = 0.65f),
-                baseTrackLight = Color(0xFF551E41).copy(alpha = 0.80f),
-                baseTrackDark = Color(0xFF1C0816).copy(alpha = 0.90f),
-                specularHighlight = Color(0xFFFFF0F5).copy(alpha = 0.60f),
-                outerRimHighlight = Color(0xFFFB7185).copy(alpha = 0.50f),
-                innerRimHighlight = Color(0xFFFDA4AF).copy(alpha = 0.35f),
-                progressArc = listOf(
-                    Color(0xFFBE123C),
-                    Color(0xFFE11D48),
-                    Color(0xFFF43F5E),
-                    Color(0xFFFB7185),
-                    Color(0xFFFDA4AF),
-                    Color(0xFFFDE68A),
-                    Color(0xFFFFF5F7)
-                ),
-                progressBloom = listOf(
-                    Color(0xFFBE123C).copy(alpha = 0.35f),
-                    Color(0xFFE11D48).copy(alpha = 0.55f),
-                    Color(0xFFFB7185).copy(alpha = 0.70f),
-                    Color(0xFFFDA4AF).copy(alpha = 0.80f),
-                    Color(0xFFFDE68A).copy(alpha = 0.90f)
-                ),
-                liquidWave = listOf(
-                    Color.Transparent,
-                    Color(0xFFFDA4AF).copy(alpha = 0.50f),
-                    Color(0xFFFFFFFF).copy(alpha = 0.95f),
-                    Color(0xFFFDE68A).copy(alpha = 0.65f),
-                    Color.Transparent
-                ),
-                tipGlow = listOf(
-                    Color(0xFFFDE68A).copy(alpha = 0.95f),
-                    Color(0xFFFB7185).copy(alpha = 0.60f),
-                    Color.Transparent
-                ),
-                tipCore = Color(0xFFFFF5F7),
-                arabicText = Color(0xFFFDA4AF),
-                countText = Color(0xFFFFF1F2),
-                subText = Color(0xFFFBCFE8).copy(alpha = 0.85f),
-                badgeBg = Color(0xFFFB7185).copy(alpha = 0.22f),
-                badgeBorder = Color(0xFFFB7185).copy(alpha = 0.60f),
-                badgeText = Color(0xFFFDE68A),
-                ambientGlow = listOf(
-                    Color(0xFFFB7185).copy(alpha = 0.35f),
-                    Color(0xFFE11D48).copy(alpha = 0.25f),
-                    Color(0xFFFDE68A).copy(alpha = 0.18f),
-                    Color.Transparent
-                )
-            )
 
             // 5. KİSVE (Ultra-Metalik 24K Ayna Altın & Ağır Krom Yansıma)
-            "kisve" -> DhikrCirclePalette(
-                effectType = CircleEffectType.KISVE_GOLD_LATTICE,
-                outerBezel = listOf(
-                    Color(0xFFD4AF37),
-                    Color(0xFFFFFDF5),
-                    Color(0xFF78350F),
-                    Color(0xFFFDE68A),
-                    Color(0xFF996515),
-                    Color(0xFFFFFDF5),
-                    Color(0xFFD4AF37)
-                ),
-                innerDisc = listOf(
-                    Color(0xFF1F1B12),
-                    Color(0xFF14120D),
-                    Color(0xFF0A0906)
-                ),
-                innerBorder = Color(0xFFD4AF37).copy(alpha = 0.60f),
-                baseTrack = Color(0xFF332B18).copy(alpha = 0.70f),
-                baseTrackLight = Color(0xFF6B5824).copy(alpha = 0.90f),
-                baseTrackDark = Color(0xFF181409).copy(alpha = 0.95f),
-                specularHighlight = Color(0xFFFFFFFD).copy(alpha = 0.95f),
-                outerRimHighlight = Color(0xFFFEF3C7).copy(alpha = 0.85f),
-                innerRimHighlight = Color(0xFFD4AF37).copy(alpha = 0.65f),
-                progressArc = listOf(
-                    Color(0xFF92400E),
-                    Color(0xFFB45309),
-                    Color(0xFFD4AF37),
-                    Color(0xFFF59E0B),
-                    Color(0xFFFBBF24),
-                    Color(0xFFFEF08A),
-                    Color(0xFFFFFDF5)
-                ),
-                progressBloom = listOf(
-                    Color(0xFFB45309).copy(alpha = 0.40f),
-                    Color(0xFFD4AF37).copy(alpha = 0.65f),
-                    Color(0xFFF59E0B).copy(alpha = 0.80f),
-                    Color(0xFFFBBF24).copy(alpha = 0.90f),
-                    Color(0xFFFEF08A).copy(alpha = 0.95f)
-                ),
-                liquidWave = listOf(
-                    Color.Transparent,
-                    Color(0xFFFDE68A).copy(alpha = 0.60f),
-                    Color(0xFFFFFFFF).copy(alpha = 0.98f),
-                    Color(0xFFFEF08A).copy(alpha = 0.75f),
-                    Color.Transparent
-                ),
-                tipGlow = listOf(
-                    Color(0xFFFEF08A).copy(alpha = 0.98f),
-                    Color(0xFFD4AF37).copy(alpha = 0.75f),
-                    Color.Transparent
-                ),
-                tipCore = Color(0xFFFFFDF5),
-                arabicText = Color(0xFFFEF3C7),
-                countText = Color(0xFFFFFDF5),
-                subText = Color(0xFFE7E5E4).copy(alpha = 0.90f),
-                badgeBg = Color(0xFFD4AF37).copy(alpha = 0.28f),
-                badgeBorder = Color(0xFFD4AF37).copy(alpha = 0.70f),
-                badgeText = Color(0xFFFEF3C7),
-                ambientGlow = listOf(
-                    Color(0xFFD4AF37).copy(alpha = 0.45f),
-                    Color(0xFFF59E0B).copy(alpha = 0.32f),
-                    Color(0xFFFEF08A).copy(alpha = 0.22f),
-                    Color.Transparent
-                )
-            )
 
             // 6. GECE • ONİKS & SAF SİYAH (Füme Obsidian Kristal Cam & Titanyum Yansıma)
             "siyah", "obsidian" -> DhikrCirclePalette(
@@ -434,6 +241,71 @@ object LuxuryCirclePalettes {
                     Color(0xFF64748B).copy(alpha = 0.30f),
                     Color(0xFF475569).copy(alpha = 0.20f),
                     Color(0xFFCBD5E1).copy(alpha = 0.12f),
+                    Color.Transparent
+                )
+            )
+
+            // PEMBE LÜKS • Açık pudra zemin + ahududu/roze altın çember
+            "pembe_lux", "pembe", "pink", "pinky" -> DhikrCirclePalette(
+                effectType = CircleEffectType.ROSE_PETAL_AURA,
+                outerBezel = listOf(
+                    Color(0xFFD6367F),
+                    Color(0xFFC08A3E),
+                    Color(0xFFE56FA8),
+                    Color(0xFFFBD3E3),
+                    Color(0xFFB02568),
+                    Color(0xFFD6367F)
+                ),
+                innerDisc = listOf(
+                    Color(0xFFFFFFFF),
+                    Color(0xFFFFF1F6),
+                    Color(0xFFFBD3E3)
+                ),
+                innerBorder = Color(0xFFF3B8D0),
+                baseTrack = Color(0xFFF8C3D9).copy(alpha = 0.50f),
+                baseTrackLight = Color(0xFFFBD3E3).copy(alpha = 0.70f),
+                baseTrackDark = Color(0xFFE593B8).copy(alpha = 0.55f),
+                specularHighlight = Color(0xFFFFFFFF).copy(alpha = 0.80f),
+                outerRimHighlight = Color(0xFFFFFFFF).copy(alpha = 0.70f),
+                innerRimHighlight = Color(0xFFFFFFFF).copy(alpha = 0.45f),
+                progressArc = listOf(
+                    Color(0xFFD6367F),
+                    Color(0xFFE56FA8),
+                    Color(0xFFF28CBB),
+                    Color(0xFFC08A3E),
+                    Color(0xFFE3B36A),
+                    Color(0xFFFFF7FB)
+                ),
+                progressBloom = listOf(
+                    Color(0xFFD6367F).copy(alpha = 0.30f),
+                    Color(0xFFE56FA8).copy(alpha = 0.50f),
+                    Color(0xFFF28CBB).copy(alpha = 0.65f),
+                    Color(0xFFE3B36A).copy(alpha = 0.75f),
+                    Color(0xFFFFE9F2).copy(alpha = 0.85f)
+                ),
+                liquidWave = listOf(
+                    Color.Transparent,
+                    Color(0xFFE56FA8).copy(alpha = 0.45f),
+                    Color(0xFFFFFFFF).copy(alpha = 0.90f),
+                    Color(0xFFFBD3E3).copy(alpha = 0.60f),
+                    Color.Transparent
+                ),
+                tipGlow = listOf(
+                    Color(0xFFFFE9F2).copy(alpha = 0.90f),
+                    Color(0xFFD6367F).copy(alpha = 0.50f),
+                    Color.Transparent
+                ),
+                tipCore = Color(0xFFFFF7FB),
+                arabicText = Color(0xFFC08A3E),
+                countText = Color(0xFF471D33),
+                subText = Color(0xFF8C5A72),
+                badgeBg = Color(0xFFD6367F).copy(alpha = 0.12f),
+                badgeBorder = Color(0xFFD6367F).copy(alpha = 0.40f),
+                badgeText = Color(0xFFB02568),
+                ambientGlow = listOf(
+                    Color(0xFFE56FA8).copy(alpha = 0.22f),
+                    Color(0xFFD6367F).copy(alpha = 0.14f),
+                    Color(0xFFE3B36A).copy(alpha = 0.10f),
                     Color.Transparent
                 )
             )

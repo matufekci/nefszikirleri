@@ -21,7 +21,9 @@ import androidx.compose.ui.unit.dp
 fun BackupPasswordDialog(
     title: String,
     message: String,
+    labelText: String,
     actionText: String,
+    cancelText: String,
     onDismissRequest: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
@@ -38,7 +40,7 @@ fun BackupPasswordDialog(
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text("Parola") },
+                    label = { Text(text = labelText) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth()
@@ -54,7 +56,7 @@ fun BackupPasswordDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismissRequest) {
-                Text(text = "İptal")
+                Text(text = cancelText)
             }
         }
     )

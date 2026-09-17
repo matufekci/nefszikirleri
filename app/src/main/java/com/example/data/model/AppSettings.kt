@@ -14,15 +14,26 @@ data class AppSettings(
     val fullScreenTap: Boolean = false,
     val keepAwakeEnabled: Boolean = true,
     val completedRounds: Int = 0,
-    val reminderEnabled: Boolean = false,
-    val inactivityAlertEnabled: Boolean = false,
+    /**
+     * Hatırlatıcı ayarları kaldırıldı: bildirim temposunu DailyEvaluationWorker
+     * içindeki tempo matematiği (1.140.000 zikir / 6 ay) çekilen zikirlere göre
+     * otomatik belirler. Aşağıdaki üç kolon, Room şema/migration uyumluluğu
+     * bozulmasın ve eski yedekler doğrulanabilsin diye bilerek muhafaza ediliyor.
+     */
+    val reminderEnabled: Boolean = false, // artık UI'da yok — işlevsiz
+    val inactivityAlertEnabled: Boolean = false, // artık UI'da yok — işlevsiz
     val selectedZikirId: Int = 1,
     val lastActiveTimestamp: Long = System.currentTimeMillis(),
     val counterTexture: String = "geometric", // "none", "geometric", "kaaba", "floral", "tasbih", "stars"
     val fontScale: Float = 1.15f, // 1.0f (Küçük), 1.15f (Normal - Varsayılan), 1.30f (Büyük), 1.45f (Çok Büyük)
     val hapticTapMode: String = "light", // "light", "medium", "strong"
-    val hapticMilestoneMode: String = "double", // "double", "long", "triple"
-    val targetReminderEnabled: Boolean = false, // Hedef hatırlatıcısı
+    /**
+     * Merhale (33/100 katları) titreşim ayarı kaldırıldı; zikir ekranındaki 3 kademeli
+     * titreşim modu (`hapticTapMode`) yeterli. Kolon, Room şema/migration uyumluluğu
+     * bozulmasın ve eski yedekler doğrulanabilsin diye bilerek muhafaza ediliyor.
+     */
+    val hapticMilestoneMode: String = "double", // "double", "long", "triple" — artık UI'da yok
+    val targetReminderEnabled: Boolean = false, // artık UI'da yok — işlevsiz (bkz. reminderEnabled notu)
     val acknowledgedBadges: String = "", // Comma-separated acknowledged badge IDs
     /**
      * Bu alanlar (`autoReorderSettings` ve `settingsUsageStats`) artık hiçbir UI tarafından kullanılmamaktadır.

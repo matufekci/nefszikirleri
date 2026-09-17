@@ -3,10 +3,7 @@ package com.example.receiver
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.example.data.local.AppDatabase
 import com.example.util.NotificationScheduler
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class BootReceiver : BroadcastReceiver() {
@@ -21,31 +18,14 @@ class BootReceiver : BroadcastReceiver() {
             val pendingResult = goAsync()
             com.example.NefsApplication.applicationScope.launch {
                 try {
-                    val db = AppDatabase.getDatabase(context)
-                    val settings = db.settingsDao().getSettingsDirect()
-                    val slots = db.reminderDao().getAllSlotsList()
-                    val scheduler = NotificationScheduler(context)
+                    // Hareketsizlik emniyet ağı ayarlardan bağımsız olarak her açılışta kurulur.
+                    NotificationScheduler(context).scheduleInactivityAlert(true)
 
-                    if (settings?.reminderEnabled == true) {
-                        scheduler.scheduleDailyReminders(slots, true)
-                    } else {
-                        // Ensure orphan alarms are cleaned even if disabled
-                        scheduler.scheduleDailyReminders(emptyList(), false)
-                    }
+                    // 20:00 / 22:30 günlük hedef hatırlatma zincirini yeniden kur.
+                    NotificationScheduler(context).scheduleDailyTargetReminders()
 
-                    if (settings?.inactivityAlertEnabled == true) {
-                        scheduler.scheduleInactivityAlert(true)
-                    }
-
-                    if (settings?.targetReminderEnabled == true) {
-                        scheduler.scheduleTargetReminder(true)
-                    }
-
-                    // Reschedule WorkManager periodic evaluation
+                    // Tempo matematiğini yürüten günlük değerlendirmeyi yeniden planla.
                     com.example.NefsApplication.scheduleDailyEvaluation(context)
-
-                    // Legacy adaptive check - now handled by WorkManager, keep for backward compat
-                    com.example.util.AdaptiveReminderManager.schedulePeriodicEvaluation(context)
                 } catch (e: Exception) {
                     if (e is kotlinx.coroutines.CancellationException) throw e
                     if (com.example.BuildConfig.DEBUG) {

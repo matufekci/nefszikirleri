@@ -1,14 +1,11 @@
 package com.example
 
 import android.content.Context
-import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import androidx.room.Room
 import com.example.data.local.AppDatabase
 import com.example.data.model.AppSettings
 import com.example.data.model.ReminderSlot
-import com.example.receiver.BootReceiver
-import com.example.receiver.ReminderAlarmReceiver
 import com.example.util.NotificationScheduler
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -43,23 +40,16 @@ class NotificationAlarmReceiverTest {
     @Test
     fun testNotificationScheduler_ScheduleAndCancel() {
         val scheduler = NotificationScheduler(context)
-        val slots = listOf(
-            ReminderSlot(id = 1, hour = 8, minute = 0, isEnabled = true),
-            ReminderSlot(id = 2, hour = 18, minute = 30, isEnabled = false)
-        )
 
-        // Should execute smoothly without throwing exceptions or security errors
-        scheduler.scheduleDailyReminders(slots, isEnabled = true)
+        // Yalnızca hareketsizlik emniyet ağı planlanır; slot/hedef alarmları kaldırıldı.
         scheduler.scheduleInactivityAlert(isEnabled = true)
-        scheduler.scheduleTargetReminder(isEnabled = true)
-
-        scheduler.scheduleDailyReminders(slots, isEnabled = false)
         scheduler.scheduleInactivityAlert(isEnabled = false)
-        scheduler.scheduleTargetReminder(isEnabled = false)
+        scheduler.cancelAllScheduledAlarms()
     }
 
     @Test
     fun testDatabase_SettingsAndSlotsPersistence() = runBlocking {
+        // Ayar kolonları ve slot tablosu yedek/şema uyumluluğu için korunuyor.
         database.settingsDao().insertOrUpdate(
             AppSettings(id = 1, reminderEnabled = true, inactivityAlertEnabled = true, targetReminderEnabled = true)
         )

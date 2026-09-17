@@ -17,6 +17,11 @@ class ExampleInstrumentedTest {
   fun useAppContext() {
     // Context of the app under test.
     val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-    assertEquals("com.example", appContext.packageName)
+    // NOT: Sabit "com.example" YANLISTI. `namespace` com.example olsa da
+    // gercek applicationId `com.aistudio.nefszikir.kdhrmq`; packageName onu
+    // dondurur. Bu test hic cihazda kosmadigi icin hata fark edilmemisti;
+    // emulator job'i eklenince kesin kirmizi olurdu. Artik BuildConfig'ten
+    // okunuyor, yani ikisi de degisse test dogru kalir.
+    assertEquals(com.example.BuildConfig.APPLICATION_ID, appContext.packageName)
   }
 }

@@ -11,7 +11,6 @@ import androidx.work.testing.TestListenableWorkerBuilder
 import com.example.data.backup.BackupManager
 import com.example.data.cloud.CloudBackupData
 import com.example.data.cloud.CloudDataCorruptionException
-import com.example.data.cloud.SyncManager
 import com.example.data.local.AppDatabase
 import com.example.data.model.AppSettings
 import com.example.data.model.DhikrDataValidator
@@ -21,12 +20,10 @@ import com.example.data.model.ZikirContent
 import com.example.data.model.ZikirHistory
 import com.example.data.model.PendingOperation
 import com.example.util.MonotonicTime
-import java.util.UUID
 import com.example.data.repository.ZikirRepository
 import com.example.receiver.BootReceiver
 import com.example.receiver.ReminderAlarmReceiver
 import com.example.util.AdaptiveReminderManager
-import com.example.util.NumberFormatter
 import com.example.worker.DailyEvaluationWorker
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -47,7 +44,6 @@ import org.robolectric.annotation.Config
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
-import java.util.Calendar
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -591,7 +587,7 @@ class ProductionRegressionSuiteTest {
         val results = coroutineScope {
             (1..20).map {
                 async(Dispatchers.Default) {
-                    AdaptiveReminderManager.tryReserveQuota(context)
+                    AdaptiveReminderManager.tryReserveQuota(context, 4)
                 }
             }.awaitAll()
         }

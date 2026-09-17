@@ -182,7 +182,7 @@ object RealisticRosePetalEngine {
                 // Ana Orta Damar (Central Midrib)
                 val veinPath = Path().apply {
                     moveTo(center.x, center.y + hh * 0.85f)
-                    quadraticBezierTo(
+                    quadraticTo(
                         center.x + curlFactor * hw * 0.15f, center.y,
                         center.x + curlFactor * hw * 0.08f, center.y - hh * 0.70f
                     )

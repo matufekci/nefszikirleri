@@ -1,9 +1,10 @@
 package com.example.ui.viewmodel
 
+import com.example.ui.UiText
+
 import android.app.Application
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.core.content.FileProvider
 import androidx.core.content.edit
@@ -12,44 +13,39 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.AppDatabase
 import com.example.data.cloud.AuthManager
+import com.example.data.cloud.SignInErrorKind
 import com.example.data.cloud.SyncManager
+import com.example.data.config.AppLinks
 import com.google.firebase.auth.FirebaseUser
 import com.example.data.model.AppSettings
 import com.example.data.model.AppStrings
 import com.example.data.model.Badge
 import com.example.data.model.BadgeManager
-import com.example.data.model.DailyAggregate
-import com.example.data.model.ReminderSlot
 import com.example.data.model.Zikir
 import com.example.data.model.ZikirContent
 import com.example.data.model.ZikirHistory
-import com.example.data.model.PendingOperation
 import com.example.data.repository.ZikirRepository
+import com.example.util.ChildLockPrefs
+import com.example.util.CloudErrorMapper
+import com.example.util.StreakCalculator
 import com.example.util.HapticHelper
 import com.example.util.NotificationScheduler
+import com.example.util.MonotonicTime
 import com.example.util.NumberFormatter
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
 import org.json.JSONObject
-import java.io.File
-import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
 import java.util.Locale
-import java.util.UUID
 
 data class DayChartItem(
     val dateKey: String,
@@ -59,7 +55,6 @@ data class DayChartItem(
 )
 
 data class MonthChartItem(
-    val monthIndex: Int,
     val label: String,
     val amount: Long,
     val ratio: Float
@@ -71,22 +66,6 @@ data class CelebrationData(
     val nextZikirId: Int?
 )
 
-data class UndoSnapshot(
-    val zikirId: Int,
-    val previousCount: Long,
-    val previousStartedAt: Long?,
-    val previousCompletedAt: Long?,
-    val historyId: Long?
-)
-
-data class TimeSlotItem(
-    val title: String,
-    val rangeText: String,
-    val icon: String,
-    val amount: Long,
-    val percentage: Float
-)
-
 data class SequenceWarningData(
     val attemptedZikirId: Int,
     val requiredZikirId: Int
@@ -96,7 +75,6 @@ data class DhikrUiState(
     val zikirs: List<Zikir> = ZikirContent.INITIAL_DEFINITIONS.map { Zikir(id = it.id, target = it.defaultTarget, count = 0L) },
     val selectedId: Int = 1,
     val history: List<ZikirHistory> = emptyList(),
-    val reminderSlots: List<ReminderSlot> = emptyList(),
     val settings: AppSettings = AppSettings(),
     val tab: String = "zikir",
     val todayRecited: Long = 0L,
@@ -106,7 +84,6 @@ data class DhikrUiState(
     val last7Days: List<DayChartItem> = emptyList(),
     val last30Days: List<DayChartItem> = emptyList(),
     val last6Months: List<MonthChartItem> = emptyList(),
-    val timeSlots: List<TimeSlotItem> = emptyList(),
     val totalDone: Long = 0L,
     val completedCount: Int = 0,
     val overallRemaining: Long = 0L,
@@ -133,6 +110,29 @@ class ZikirViewModel(
     private val savedStateHandle: SavedStateHandle
 ) : AndroidViewModel(application) {
 
+    private companion object {
+        const val KEY_FAST_JUMP_COMPLETED_OFFSET = "fast_jump_completed_offset"
+        const val KEY_FAST_JUMP_TOTAL_OFFSET = "fast_jump_total_offset"
+    }
+
+    /** Çocuk kilidi: kilit açıkken sayaç eylemleri VM düzeyinde yok sayılır. */
+    fun isChildLocked(): Boolean = ChildLockPrefs.isEnabled(getApplication())
+
+    /**
+     * En uzun seri onbellegi: Room her dokunusta AYNI icerikte yeni bir liste
+     * gonderiyor; icerik degismediyse ~2N parse yerine hazir sonuc kullanilir.
+     */
+    @Volatile
+    private var bestStreakCache: Pair<List<String>, Int>? = null
+
+    private fun bestStreakFor(dateKeys: List<String>): Int {
+        val cached = bestStreakCache
+        if (cached != null && cached.first == dateKeys) return cached.second
+        val value = StreakCalculator.longestRunDays(dateKeys)
+        bestStreakCache = dateKeys to value
+        return value
+    }
+
     private val settingsMutex = Mutex()
 
     private suspend fun updateSettingsSafely(modifier: (AppSettings) -> AppSettings) {
@@ -142,7 +142,7 @@ class ZikirViewModel(
             repository.updateSettings(updated)
             try {
                 val prefs = getApplication<Application>().getSharedPreferences("nefs_app_prefs", Context.MODE_PRIVATE)
-                prefs.edit().putString("lang", updated.lang).apply()
+                prefs.edit { putString("lang", updated.lang) }
             } catch (_: Exception) {}
         }
     }
@@ -165,7 +165,48 @@ class ZikirViewModel(
     private val _lastCloudSyncTimestamp = MutableStateFlow<Long?>(null)
     val lastCloudSyncTimestamp: StateFlow<Long?> = _lastCloudSyncTimestamp.asStateFlow()
 
-    private val increments = Channel<PendingOperation>(capacity = Channel.UNLIMITED)
+    /**
+     * Hesap silme islemi suruyor mu? Cift dokunmayi ve es zamanli ikinci
+     * silme istegini (race) engellemek icin kullanilir; buton bu bayrakla
+     * devre disi kalir.
+     */
+    private val _isAccountDeletionInProgress = MutableStateFlow(false)
+    val isAccountDeletionInProgress: StateFlow<Boolean> = _isAccountDeletionInProgress.asStateFlow()
+
+    // +1 islemleri artik SENKRON (repository.addDhikrCount) yazilir; toplu
+    // kanal + optimistic katman kaldirildi (titremenin kaynagiydi).
+
+    /**
+     * Kullanıcının yaptığı son açık seçim (liste -> "Öncekileri Tamamla ve Buradan
+     * Başla" ya da kilitli olmayan bir basamağa dokunma). Room akışları hedefle
+     * tutarlı hale gelene kadar bu basamağın ilk eksik basamağa düşürülmesini
+     * engeller. Bkz. [SelectedZikirResolver].
+     */
+    @Volatile
+    private var pendingSelection: SelectedZikirResolver.Pending? = null
+
+    /**
+     * Hızlı intikal ("Öncekileri Tamamla") ile otomatik tamamlanan basamaklar rozet
+     * kazandırmamalı. Bu prefs, atlama sırasında eklenen basamak/zikir sayısını biriktirir
+     * ve rozet değerlendirmesi gerçek (sırayla) ilerlemeye göre yapılır.
+     */
+    private val badgeProgressPrefs by lazy {
+        getApplication<Application>().getSharedPreferences("badge_progress_prefs", Context.MODE_PRIVATE)
+    }
+
+    private fun addFastJumpBadgeOffset(completedZikirs: Int, addedCount: Long) {
+        if (completedZikirs <= 0 && addedCount <= 0L) return
+        badgeProgressPrefs.edit {
+            putInt(
+                KEY_FAST_JUMP_COMPLETED_OFFSET,
+                badgeProgressPrefs.getInt(KEY_FAST_JUMP_COMPLETED_OFFSET, 0) + completedZikirs
+            )
+            putLong(
+                KEY_FAST_JUMP_TOTAL_OFFSET,
+                badgeProgressPrefs.getLong(KEY_FAST_JUMP_TOTAL_OFFSET, 0L) + addedCount
+            )
+        }
+    }
 
     private val _uiState: MutableStateFlow<DhikrUiState>
     val uiState: StateFlow<DhikrUiState>
@@ -179,25 +220,8 @@ class ZikirViewModel(
         _uiState = MutableStateFlow(DhikrUiState(selectedId = initialSelectedId, tab = initialTab))
         uiState = _uiState.asStateFlow()
 
-        // Channel-based batching worker
         viewModelScope.launch {
-            repository.processUnappliedOperations()
-            
-            while (isActive) {
-                val first = increments.receive()
-                delay(40) // 40ms batch window
-
-                val batch = mutableListOf(first)
-                while (true) {
-                    val next = increments.tryReceive().getOrNull() ?: break
-                    batch.add(next)
-                }
-
-                repository.applyBatchOperations(batch)
-            }
-        }
-
-        viewModelScope.launch {
+            repository.processUnappliedOperations() // eski surumden kalan pending op'lar
             repository.ensureInitialized()
 
             val sixMonthsAgo = System.currentTimeMillis() - (185L * 24 * 60 * 60 * 1000L)
@@ -211,20 +235,31 @@ class ZikirViewModel(
 
             combine(
                 repository.allZikirs,
-                repository.allSlots,
                 repository.settings,
                 statsFlow
-            ) { dbZikirs, slots, settingsObj, (recentHistory, dailyStats, distinctActiveDates) ->
+            ) { dbZikirs, settingsObj, (recentHistory, dailyStats, distinctActiveDates) ->
                 val settings = settingsObj ?: AppSettings()
                 val zikirs = if (dbZikirs.isNotEmpty()) dbZikirs else _uiState.value.zikirs
-                val savedId = savedStateHandle.get<Int>("selectedZikirId")
-                var selectedId = savedId ?: settings.selectedZikirId.coerceIn(1, 15)
-                
-                // Terkib-i Şerif tertip emniyeti: Kilitli zikir seçiliyse ilk eksik basamağa yönlendir
-                if (zikirs.isNotEmpty() && !isZikirUnlocked(selectedId, zikirs)) {
-                    selectedId = getFirstIncompleteZikirId(zikirs)
+                // Tek kaynak settings.selectedZikirId. savedStateHandle echo'su
+                // restore sonrasi ilk emission'da 1 yazip secimi ilk zikire
+                // kilitliyordu; bu golgeleme kaldirildi.
+                val savedId: Int? = null
+
+                // Terkib-i Şerif tertip emniyeti + hızlı intikal yarışının çözümü:
+                // kullanıcı açık bir seçim yaptıysa (ör. "Öncekileri Tamamla ve Buradan
+                // Başla"), Room'un eski zikir listesiyle gelen ara emission'ı o seçimi
+                // ilk eksik basamağa düşürmesin. Bkz. SelectedZikirResolver.
+                val resolution = SelectedZikirResolver.resolve(
+                    savedId = savedId,
+                    settingsSelectedId = settings.selectedZikirId,
+                    zikirs = zikirs,
+                    pending = pendingSelection,
+                    nowMs = MonotonicTime.now()
+                )
+                val selectedId = resolution.selectedId
+                if (resolution.clearPending) {
+                    pendingSelection = null
                 }
-                savedStateHandle["selectedZikirId"] = selectedId
 
                 val savedTab = savedStateHandle.get<String>("currentTab") ?: _uiState.value.tab
                 savedStateHandle["currentTab"] = savedTab
@@ -270,30 +305,13 @@ class ZikirViewModel(
                     cal.add(Calendar.DAY_OF_YEAR, -1)
                 }
 
-                // Best streak calculation from distinct active dates
-                var bestStreak = streakCount
-                if (distinctActiveDates.isNotEmpty()) {
-                    val sortedDates = distinctActiveDates.sorted()
-                    var currentRun = 1
-                    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-                    for (i in 1 until sortedDates.size) {
-                        try {
-                            val d1 = sdf.parse(sortedDates[i - 1])
-                            val d2 = sdf.parse(sortedDates[i])
-                            if (d1 != null && d2 != null) {
-                                val diffDays = ((d2.time - d1.time) / (1000 * 60 * 60 * 24L))
-                                if (diffDays == 1L) {
-                                    currentRun++
-                                    if (currentRun > bestStreak) bestStreak = currentRun
-                                } else {
-                                    currentRun = 1
-                                }
-                            }
-                        } catch (e: Exception) {
-                            currentRun = 1
-                        }
-                    }
-                }
+                // En uzun seri: takvim gunu sayisi uzerinden (DST'den bagimsiz).
+                // Eski surum "yyyy-MM-dd"yi yerel gece yarisina parse edip farki
+                // 86.400.000'e boluyordu; yaz saati uygulayan bolgelerde bahar
+                // gecisinde iki gun arasi 23 saat oldugu icin bolum 0 cikiyor ve
+                // seri YANLISLIKLA kopuyordu. Ayrica komsu her cift icin iki parse
+                // yapiliyordu (her dokunusta). Bkz. StreakCalculator.
+                val bestStreak = maxOf(streakCount, bestStreakFor(distinctActiveDates))
 
                 // 7 Days Chart (SQL günlük toplam haritasından)
                 val sevenDaysList = mutableListOf<DayChartItem>()
@@ -311,12 +329,23 @@ class ZikirViewModel(
                 val overall7DayAvg = sevenDaysList.sumOf { it.amount } / 7L
                 val current7DayAvg = if (overall7DayAvg > 0) overall7DayAvg else 0L
 
-                // Son 7 günlük ortalamaya dayalı tahmini bitiş süreleri
+                // Son 7 günlük ortalamaya dayalı tahmini bitiş süreleri.
+                // 2 yılı aşan öngörüler anlamsız olduğundan ekrana null gider
+                // ve istatistik "hesaplanıyor" yazar; 2 yılın altına inince
+                // gerçek tarih görünmeye başlar.
+                val twoYearsMs = 2L * 365 * 24 * 60 * 60 * 1000
+                val nowMs = System.currentTimeMillis()
                 val overallEstDays = if (overall7DayAvg > 0) (overallRemaining + overall7DayAvg - 1) / overall7DayAvg else 0L
-                val overallEstDate = if (overallEstDays > 0) System.currentTimeMillis() + (overallEstDays * 24 * 60 * 60 * 1000L) else null
+                val overallEstDate = if (overallEstDays > 0) {
+                    (nowMs + overallEstDays * 24 * 60 * 60 * 1000L)
+                        .takeIf { it <= nowMs + twoYearsMs }
+                } else null
 
                 val currentEstDays = if (current7DayAvg > 0) (currentRemaining + current7DayAvg - 1) / current7DayAvg else 0L
-                val currentEstDate = if (currentEstDays > 0) System.currentTimeMillis() + (currentEstDays * 24 * 60 * 60 * 1000L) else null
+                val currentEstDate = if (currentEstDays > 0) {
+                    (nowMs + currentEstDays * 24 * 60 * 60 * 1000L)
+                        .takeIf { it <= nowMs + twoYearsMs }
+                } else null
 
                 // 30 Days Chart (SQL günlük toplam haritasından)
                 val thirtyDaysList = mutableListOf<DayChartItem>()
@@ -339,62 +368,23 @@ class ZikirViewModel(
                     val label = NumberFormatter.getMonthLabel(mCal.time, settings.lang)
                     val prefix = String.format(Locale.US, "%04d-%02d", targetYear, targetMonth + 1)
                     val amt = dailyStats.filter { it.dateKey.startsWith(prefix) }.sumOf { it.total }.coerceAtLeast(0L)
-                    sixMonthsList.add(MonthChartItem(targetMonth, label, amt, 0f))
+                    sixMonthsList.add(MonthChartItem(label, amt, 0f))
                 }
                 val max6 = sixMonthsList.maxOfOrNull { it.amount }?.coerceAtLeast(1L) ?: 1L
                 val sixMonthsWithRatio = sixMonthsList.map { it.copy(ratio = (it.amount.toFloat() / max6.toFloat()).coerceIn(0.04f, 1f)) }
 
-                // Time of Day distribution (Son aktiviteler üzerinden hafif hesaplama)
-                var seherAmt = 0L
-                var daytimeAmt = 0L
-                var eveningAmt = 0L
-                var nightAmt = 0L
-                val addHistory = recentHistory.filter { it.type == "add" }
-                addHistory.forEach { h ->
-                    val hCal = Calendar.getInstance().apply { timeInMillis = h.timestamp }
-                    val hour = hCal.get(Calendar.HOUR_OF_DAY)
-                    when (hour) {
-                        in 4..7 -> seherAmt += h.amount
-                        in 8..16 -> daytimeAmt += h.amount
-                        in 17..22 -> eveningAmt += h.amount
-                        else -> nightAmt += h.amount
-                    }
-                }
-                val langStrings = AppStrings.get(settings.lang)
-                val timeSlotsTotal = (seherAmt + daytimeAmt + eveningAmt + nightAmt).coerceAtLeast(1L).toFloat()
-                val timeSlots = listOf(
-                    TimeSlotItem(
-                        title = langStrings.timeSlotDawn,
-                        rangeText = "04:00 - 08:00",
-                        icon = "🌅",
-                        amount = seherAmt,
-                        percentage = (seherAmt / timeSlotsTotal)
-                    ),
-                    TimeSlotItem(
-                        title = langStrings.timeSlotDay,
-                        rangeText = "08:00 - 17:00",
-                        icon = "☀️",
-                        amount = daytimeAmt,
-                        percentage = (daytimeAmt / timeSlotsTotal)
-                    ),
-                    TimeSlotItem(
-                        title = langStrings.timeSlotEvening,
-                        rangeText = "17:00 - 23:00",
-                        icon = "🌙",
-                        amount = eveningAmt,
-                        percentage = (eveningAmt / timeSlotsTotal)
-                    ),
-                    TimeSlotItem(
-                        title = langStrings.timeSlotNight,
-                        rangeText = "23:00 - 04:00",
-                        icon = "✨",
-                        amount = nightAmt,
-                        percentage = (nightAmt / timeSlotsTotal)
-                    )
-                )
-
                 // Badges & Unlocked Badge Detection
-                val allBadges = BadgeManager.getAllBadges(totalDone, completedCount, bestStreak, settings.lang)
+                // Hızlı intikalle otomatik tamamlanan basamaklar rozet kazandırmaz:
+                // offset, güncel değeri aşamaz (sıfırlama/yeni tur sonrası kendini onarır).
+                val badgeCompletedCount = BadgeProgress.badgeCompletedCount(
+                    completedCount = completedCount,
+                    storedOffset = badgeProgressPrefs.getInt(KEY_FAST_JUMP_COMPLETED_OFFSET, 0)
+                )
+                val badgeTotalDone = BadgeProgress.badgeTotalDone(
+                    totalDone = totalDone,
+                    storedOffset = badgeProgressPrefs.getLong(KEY_FAST_JUMP_TOTAL_OFFSET, 0L)
+                )
+                val allBadges = BadgeManager.getAllBadges(badgeTotalDone, badgeCompletedCount, bestStreak, settings.lang)
                 val acknowledgedBadges = settings.acknowledgedBadges.split(",").filter { it.isNotBlank() }.toSet()
                 val newlyUnlockedBadge = allBadges.firstOrNull { it.isUnlocked && !acknowledgedBadges.contains(it.id) }
 
@@ -414,7 +404,6 @@ class ZikirViewModel(
                         selectedId = selectedId,
                         tab = savedTab,
                         history = recentHistory,
-                        reminderSlots = slots,
                         settings = settings,
                         todayRecited = todayRecited,
                         todayPercent = todayPercent,
@@ -423,7 +412,6 @@ class ZikirViewModel(
                         last7Days = sevenDaysWithRatio,
                         last30Days = thirtyDaysWithRatio,
                         last6Months = sixMonthsWithRatio,
-                        timeSlots = timeSlots,
                         totalDone = totalDone,
                         completedCount = completedCount,
                         overallRemaining = overallRemaining,
@@ -435,7 +423,7 @@ class ZikirViewModel(
                         canUndo = true,
                         badges = allBadges,
                         badgeCelebrationData = badgeToCelebrate,
-                        showRoundModal = if (completedCount == 15 && !current.showRoundModal) true else current.showRoundModal,
+                        showRoundModal = if (badgeCompletedCount == 15 && !current.showRoundModal) true else current.showRoundModal,
                         isHydrated = true
                     )
                 }
@@ -479,6 +467,7 @@ class ZikirViewModel(
     }
 
     fun incrementCount(amount: Long) {
+        if (isChildLocked()) return
         val state = _uiState.value
         val currentZikir = state.currentZikir ?: return
         
@@ -503,34 +492,6 @@ class ZikirViewModel(
         val newCount = currentZikir.count + addAmt
         val reachedTarget = newCount >= currentZikir.target
 
-        // Optimistic UI Update
-        val updatedZikirs = state.zikirs.map { z ->
-            if (z.id == currentZikir.id) z.copy(count = newCount) else z
-        }
-        val updatedCurrentZikir = currentZikir.copy(count = newCount)
-
-        if (reachedTarget) {
-            hapticHelper.celebration()
-            val nextId = if (currentZikir.id < 15) currentZikir.id + 1 else null
-            val zikirName = ZikirContent.getZikirName(currentZikir.id, state.settings.lang)
-            _uiState.update {
-                it.copy(
-                    zikirs = updatedZikirs,
-                    currentZikir = updatedCurrentZikir,
-                    celebrationData = CelebrationData(currentZikir.id, zikirName, nextId),
-                    canUndo = true
-                )
-            }
-        } else {
-            _uiState.update {
-                it.copy(
-                    zikirs = updatedZikirs,
-                    currentZikir = updatedCurrentZikir,
-                    canUndo = true
-                )
-            }
-        }
-
         if (state.settings.hapticEnabled && !reachedTarget) {
             val intensity = state.settings.hapticTapMode
             when (amount) {
@@ -542,30 +503,35 @@ class ZikirViewModel(
             }
         }
 
-        if (state.settings.inactivityAlertEnabled) {
-            notificationScheduler.scheduleInactivityAlert(true)
-        }
+        // Her zikirden sonra hareketsizlik sayacını sıfırla (3 gün sonra tekrar kurulsun).
+        notificationScheduler.scheduleInactivityAlert(true)
 
-        val opId = UUID.randomUUID().toString()
-        val now = com.example.util.MonotonicTime.now()
-        val dateKey = NumberFormatter.getDateKey(now)
-        
-        val pendingOp = PendingOperation(
-            operationId = opId,
-            zikirId = currentZikir.id,
-            amount = addAmt,
-            timestamp = now,
-            dateKey = dateKey,
-            status = "created"
-        )
-        
-        viewModelScope.launch {
-            repository.createPendingOperation(pendingOp)
-            increments.trySend(pendingOp)
+        // SENKRON YAZMA: Room transaction hemen calisir ve allZikirs Flow'u
+        // yeni sayiyi TEK emission ile getirir. Optimistic guncelleme + 40ms
+        // toplu kanal kaldirildi; boylece ekran once artip sonra dusen
+        // titreme yasamaz - sayinin tek kaynagi DB'dir.
+        viewModelScope.launch(Dispatchers.IO) {
+            val (_, reached) = repository.addDhikrCount(currentZikir.id, addAmt)
+            withContext(Dispatchers.Main) {
+                if (reached) {
+                    hapticHelper.celebration()
+                    val nextId = if (currentZikir.id < 15) currentZikir.id + 1 else null
+                    val zikirName = ZikirContent.getZikirName(currentZikir.id, state.settings.lang)
+                    _uiState.update {
+                        it.copy(
+                            celebrationData = CelebrationData(currentZikir.id, zikirName, nextId),
+                            canUndo = true
+                        )
+                    }
+                } else {
+                    _uiState.update { it.copy(canUndo = true) }
+                }
+            }
         }
     }
 
     fun decrementCount(amount: Long) {
+        if (isChildLocked()) return
         val state = _uiState.value
         val currentZikir = state.currentZikir ?: return
         if (currentZikir.count <= 0) return
@@ -579,6 +545,7 @@ class ZikirViewModel(
         }
     }
     fun undoLastAction() {
+        if (isChildLocked()) return
         val state = _uiState.value
         val currentZikirId = state.selectedId
         viewModelScope.launch {
@@ -590,28 +557,11 @@ class ZikirViewModel(
     }
 
 
-    fun getFirstIncompleteZikirId(zikirs: List<Zikir> = _uiState.value.zikirs): Int {
-        for (id in 1..15) {
-            val z = zikirs.find { it.id == id } ?: return id
-            if (z.count < z.target) {
-                return id
-            }
-        }
-        return 1
-    }
+    fun getFirstIncompleteZikirId(zikirs: List<Zikir> = _uiState.value.zikirs): Int =
+        SelectedZikirResolver.firstIncompleteId(zikirs)
 
-    fun isZikirUnlocked(id: Int, zikirs: List<Zikir> = _uiState.value.zikirs): Boolean {
-        if (id <= 1) return true
-        if (zikirs.isEmpty()) return false
-        // Bir zikrin açık olabilmesi için kendisinden önceki 1..(id-1) tüm zikirlerin hedeflerinin tamamlanmış olması şarttır.
-        for (prevId in 1 until id) {
-            val prev = zikirs.find { it.id == prevId } ?: return false
-            if (prev.count < prev.target) {
-                return false
-            }
-        }
-        return true
-    }
+    fun isZikirUnlocked(id: Int, zikirs: List<Zikir> = _uiState.value.zikirs): Boolean =
+        SelectedZikirResolver.isUnlocked(id, zikirs)
 
     fun selectZikir(id: Int, bypassValidation: Boolean = false) {
         val validId = id.coerceIn(1, 15)
@@ -635,6 +585,7 @@ class ZikirViewModel(
         }
 
         savedStateHandle["selectedZikirId"] = validId
+        pendingSelection = SelectedZikirResolver.Pending(validId, MonotonicTime.now())
         viewModelScope.launch {
             updateSettingsSafely { it.copy(selectedZikirId = validId) }
             _uiState.update {
@@ -660,7 +611,17 @@ class ZikirViewModel(
         val validId = targetZikirId.coerceIn(1, 15)
         autoShownZeroInfoZikirIds.clear()
         savedStateHandle["selectedZikirId"] = validId
+        pendingSelection = SelectedZikirResolver.Pending(validId, MonotonicTime.now())
         savedStateHandle["currentTab"] = "zikir"
+
+        // Atlamanın otomatik tamamlayacağı basamakları DB yazımından önce hesapla ve
+        // rozet offset'ini hemen işle; aksi halde ara emission rozet kutlaması tetikler.
+        val jumpedZikirs = _uiState.value.zikirs.filter { it.id < validId && it.count < it.target }
+        addFastJumpBadgeOffset(
+            completedZikirs = jumpedZikirs.size,
+            addedCount = jumpedZikirs.sumOf { (it.target - it.count).coerceAtLeast(0L) }
+        )
+
         viewModelScope.launch {
             repository.fastJumpToZikir(validId)
             _uiState.update {
@@ -692,6 +653,7 @@ class ZikirViewModel(
     }
 
     fun resetCurrentZikir() {
+        if (isChildLocked()) return
         val currentId = _uiState.value.selectedId
         autoShownZeroInfoZikirIds.remove(currentId)
         _uiState.update { s ->
@@ -706,6 +668,7 @@ class ZikirViewModel(
     }
 
     fun resetAllZikirs() {
+        if (isChildLocked()) return
         autoShownZeroInfoZikirIds.clear()
         _uiState.update { s ->
             val updated = s.zikirs.map { it.copy(count = 0L, startedAt = null, completedAt = null) }
@@ -774,17 +737,6 @@ class ZikirViewModel(
         setDailyTarget(current + delta)
     }
 
-    fun toggleHaptic() {
-        viewModelScope.launch {
-            var newHaptic = false
-            updateSettingsSafely { 
-                newHaptic = !it.hapticEnabled
-                it.copy(hapticEnabled = newHaptic) 
-            }
-            if (newHaptic) hapticHelper.tap()
-        }
-    }
-
     fun cycleHapticMode() {
         viewModelScope.launch {
             val currentEnabled = _uiState.value.settings.hapticEnabled
@@ -807,66 +759,10 @@ class ZikirViewModel(
         }
     }
 
-    fun toggleFullScreenTap() {
-        viewModelScope.launch {
-            updateSettingsSafely { it.copy(fullScreenTap = !it.fullScreenTap) }
-        }
-    }
 
     fun toggleKeepAwake() {
         viewModelScope.launch {
             updateSettingsSafely { it.copy(keepAwakeEnabled = !it.keepAwakeEnabled) }
-        }
-    }
-
-    fun toggleReminder(enabled: Boolean) {
-        viewModelScope.launch {
-            updateSettingsSafely { it.copy(reminderEnabled = enabled) }
-            notificationScheduler.scheduleDailyReminders(_uiState.value.reminderSlots, enabled)
-        }
-    }
-
-    fun toggleInactivityAlert(enabled: Boolean) {
-        viewModelScope.launch {
-            updateSettingsSafely { it.copy(inactivityAlertEnabled = enabled) }
-            notificationScheduler.scheduleInactivityAlert(enabled)
-        }
-    }
-
-    fun addReminderSlot(hour: Int, minute: Int) {
-        viewModelScope.launch {
-            if (_uiState.value.reminderSlots.size < 5) {
-                repository.addReminderSlot(hour, minute)
-                if (_uiState.value.settings.reminderEnabled) {
-                    val freshSlots = repository.getAllSlotsList()
-                    notificationScheduler.scheduleDailyReminders(freshSlots, true)
-                }
-            }
-        }
-    }
-
-    fun updateReminderSlot(slot: ReminderSlot, hourDelta: Int, minDelta: Int) {
-        viewModelScope.launch {
-            val newHour = (slot.hour + hourDelta + 24) % 24
-            val newMin = (slot.minute + minDelta + 60) % 60
-            val updated = slot.copy(hour = newHour, minute = newMin)
-            repository.updateReminderSlot(updated)
-            if (_uiState.value.settings.reminderEnabled) {
-                val freshSlots = repository.getAllSlotsList()
-                notificationScheduler.scheduleDailyReminders(freshSlots, true)
-            }
-        }
-    }
-
-    fun removeReminderSlot(id: Long) {
-        viewModelScope.launch {
-            if (_uiState.value.reminderSlots.size > 1) {
-                repository.removeReminderSlot(id)
-                if (_uiState.value.settings.reminderEnabled) {
-                    val freshSlots = repository.getAllSlotsList()
-                    notificationScheduler.scheduleDailyReminders(freshSlots, true)
-                }
-            }
         }
     }
 
@@ -882,9 +778,6 @@ class ZikirViewModel(
         _uiState.update { it.copy(showRoundModal = show) }
     }
 
-    fun toggleSidebar(open: Boolean) {
-        _uiState.update { it.copy(isSidebarOpen = open) }
-    }
 
     fun toggleZenMode(enabled: Boolean? = null) {
         _uiState.update { current ->
@@ -893,43 +786,11 @@ class ZikirViewModel(
         }
     }
 
-    fun setCounterTexture(texture: String) {
-        viewModelScope.launch {
-            val allowed = setOf("none", "geometric", "kaaba", "floral", "tasbih", "stars")
-            val safe = if (texture in allowed) texture else "geometric"
-            updateSettingsSafely { it.copy(counterTexture = safe) }
-        }
-    }
 
     fun setFontScale(scale: Float) {
         viewModelScope.launch {
             val clamped = scale.coerceIn(0.7f, 1.5f)
             updateSettingsSafely { it.copy(fontScale = clamped) }
-        }
-    }
-
-    fun setHapticTapMode(mode: String) {
-        viewModelScope.launch {
-            val allowed = setOf("light", "medium", "strong")
-            val safe = if (mode in allowed) mode else "light"
-            updateSettingsSafely { it.copy(hapticTapMode = safe) }
-            hapticHelper.tap(safe)
-        }
-    }
-
-    fun setHapticMilestoneMode(mode: String) {
-        viewModelScope.launch {
-            val allowed = setOf("double", "long", "triple")
-            val safe = if (mode in allowed) mode else "double"
-            updateSettingsSafely { it.copy(hapticMilestoneMode = safe) }
-            hapticHelper.milestone33(safe)
-        }
-    }
-
-    fun toggleTargetReminder(enabled: Boolean) {
-        viewModelScope.launch {
-            updateSettingsSafely { it.copy(targetReminderEnabled = enabled) }
-            notificationScheduler.scheduleTargetReminder(enabled)
         }
     }
 
@@ -960,11 +821,6 @@ class ZikirViewModel(
         }
     }
 
-    fun toggleAutoReorder() {
-        viewModelScope.launch {
-            updateSettingsSafely { it.copy(autoReorderSettings = !it.autoReorderSettings) }
-        }
-    }
 
     fun incrementSettingUsage(category: String) {
         viewModelScope.launch {
@@ -1077,13 +933,13 @@ class ZikirViewModel(
                     }
                 } else {
                     withContext(Dispatchers.Main) {
-                        onError(result.exceptionOrNull()?.localizedMessage ?: "Export Error")
+                        onError(CloudErrorMapper.resolve(result.exceptionOrNull(), _uiState.value.settings.lang, UiText.exportStatsError))
                     }
                 }
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 withContext(Dispatchers.Main) {
-                    onError(e.localizedMessage ?: "Export & Share Error")
+                    onError(CloudErrorMapper.resolve(e, _uiState.value.settings.lang, UiText.exportStatsError))
                 }
             }
         }
@@ -1118,11 +974,11 @@ class ZikirViewModel(
                     } else {
                         val ex = result.exceptionOrNull()
                         if (ex is com.example.data.backup.PasswordRequiredException) {
-                            withContext(Dispatchers.Main) { onError(ex.localizedMessage ?: "Parola gerekli") }
+                            withContext(Dispatchers.Main) { onError(UiText.passwordRequired.get(_uiState.value.settings.lang)) }
                             return@launch
                         }
                         if (ex is com.example.data.backup.WrongPasswordException) {
-                            withContext(Dispatchers.Main) { onError(ex.localizedMessage ?: "Yanlış parola") }
+                            withContext(Dispatchers.Main) { onError(UiText.wrongPassword.get(_uiState.value.settings.lang)) }
                             return@launch
                         }
                         
@@ -1190,7 +1046,7 @@ class ZikirViewModel(
                                 withContext(Dispatchers.Main) { onSuccess(restoredZikirs.size) }
                             } catch (fallbackE: Exception) {
                                 withContext(Dispatchers.Main) {
-                                    onError(fallbackE.localizedMessage ?: strings.importStatsBackupError)
+                                    onError(CloudErrorMapper.resolve(fallbackE, _uiState.value.settings.lang, strings.importStatsBackupError))
                                 }
                             }
                         }
@@ -1199,7 +1055,7 @@ class ZikirViewModel(
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 withContext(Dispatchers.Main) {
-                    onError(e.localizedMessage ?: strings.importStatsBackupError)
+                    onError(CloudErrorMapper.resolve(e, _uiState.value.settings.lang, strings.importStatsBackupError))
                 }
             }
         }
@@ -1219,13 +1075,26 @@ class ZikirViewModel(
                 onSuccess = { user ->
                     val userName = user.displayName ?: user.email ?: ""
                     _cloudSyncMessage.value = strings.cloudWelcomeMessage.replace("{0}", userName)
-                    backupToCloudSilently(user.uid)
                     onResult(true, null)
+                    // BULUT ONCELIKLI: once oku, gerekiyorsa geri yukle,
+                    // ikisi de doluysa kullaniciya sor. Artik yerel veri
+                    // giris aninda sessizce buluta YUKLENMIYOR.
+                    syncCloudAfterSignIn(user.uid)
                 },
                 onFailure = { error ->
-                    val msg = error.localizedMessage ?: strings.cloudGenericSignInError
-                    _cloudSyncMessage.value = msg
-                    onResult(false, msg)
+                    // Kullanici Google seciciyi KENDI istedigiyle kapattiysa
+                    // ekranda hata mesaji gosterilmez (bu bir hata degil).
+                    if (CloudErrorMapper.isCancelled(error)) {
+                        onResult(false, null)
+                    } else {
+                        val msg = CloudErrorMapper.resolveSignIn(
+                            error,
+                            _uiState.value.settings.lang,
+                            strings.cloudGenericSignInError
+                        )
+                        _cloudSyncMessage.value = msg
+                        onResult(false, msg)
+                    }
                 }
             )
         }
@@ -1242,24 +1111,212 @@ class ZikirViewModel(
         }
     }
 
-    private fun backupToCloudSilently(userId: String) {
+    /**
+     * Gizlilik politikasini tarayicida acar.
+     *
+     * Neden var: Google Play politikanin store listing'de VE uygulama icinde
+     * erisilebilir olmasini istiyor; uygulama icinde erisim noktasi yoktu.
+     * Adres `AppLinks` uzerinden merkezi olarak okunur. Adres henuz
+     * doldurulmadiysa (veya ornek/placeholder ise) SESSIZCE yanlis sayfa
+     * acilmaz; kullaniciya bilgi mesaji gosterilir. Crash olusmaz.
+     */
+    fun openPrivacyPolicy() {
+        val url = AppLinks.PRIVACY_POLICY_URL
+        if (!AppLinks.isUsable(url)) {
+            _cloudSyncMessage.value =
+                UiText.privacyPolicyUnavailable.get(_uiState.value.settings.lang)
+            return
+        }
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            getApplication<Application>().startActivity(intent)
+        } catch (e: Exception) {
+            if (com.example.BuildConfig.DEBUG) {
+                android.util.Log.w("ZikirViewModel", "openPrivacyPolicy failed: ${e.javaClass.simpleName}")
+            }
+            _cloudSyncMessage.value = UiText.openLinkFailed.get(_uiState.value.settings.lang)
+        }
+    }
+
+    /**
+     * Play uyumlu HESAP SILME akisi.
+     *
+     * Siralama bilerek boyle:
+     *  1. Once Firestore'daki TUM kullanici verisi silinir. Basarisizsa
+     *     hesaba hic dokunulmaz ve kullaniciya basari GOSTERILMEZ.
+     *  2. Sonra Firebase Auth hesabi silinir. Bulut silinmis ama hesap
+     *     silinememisse bu yarim durum ayri bir mesajla bildirilir
+     *     (hesap silinmis gibi gosterilmez).
+     *
+     * Yerel zikir verisi SILINMEZ: hesapla iliskisiz anonim/offline kullanim
+     * mevcut uygulama mantiginda korunur (Play hesabin ve iliskili BULUT
+     * verisinin silinmesini ister, cihazdaki anonim verinin silinmesini degil).
+     */
+    fun deleteAccount(activityContext: Context) {
+        // Cift dokunma / es zamanli ikinci istek -> tek islem calisir.
+        if (_isAccountDeletionInProgress.value) return
+
+        val uid = authManager.currentUser.value?.uid
+        if (uid.isNullOrBlank()) {
+            _cloudSyncMessage.value =
+                UiText.deleteAccountFailed.get(_uiState.value.settings.lang)
+            return
+        }
+
         viewModelScope.launch(Dispatchers.IO) {
+            _isAccountDeletionInProgress.value = true
+            _isCloudSyncing.value = true
             try {
-                val snapshot = repository.getAtomicSnapshot()
-                val res = syncManager.backupToCloud(
-                    userId = userId,
-                    zikirs = snapshot.zikirs,
-                    history = snapshot.history,
-                    slots = snapshot.slots,
-                    settings = snapshot.settings,
-                    localRevision = getLocalRevision(),
-                    deviceId = getDeviceId()
+                val lang = _uiState.value.settings.lang
+
+                // 1. BULUT VERISI (users/<uid> + snapshots + history)
+                val cloudResult = syncManager.deleteAllUserData(uid)
+                if (cloudResult.isFailure) {
+                    _cloudSyncMessage.value = CloudErrorMapper.resolve(
+                        cloudResult.exceptionOrNull(),
+                        lang,
+                        UiText.deleteAccountFailed
+                    )
+                    return@launch
+                }
+
+                // 2. FIREBASE AUTH HESABI
+                val authResult = authManager.deleteAccount(activityContext)
+                if (authResult.isFailure) {
+                    val error = authResult.exceptionOrNull()
+                    _cloudSyncMessage.value =
+                        if (CloudErrorMapper.signInKind(error) == SignInErrorKind.REAUTH_REQUIRED) {
+                            UiText.accountDeletionReauthRequired.get(lang)
+                        } else {
+                            UiText.deleteAccountCloudOnlyDeleted.get(lang)
+                        }
+                    return@launch
+                }
+
+                // 3. LOCAL OTURUM / BULUT SENKRON DURUMU
+                //    `device_id` BILEREK korunur: hesapla baglantili degildir ve
+                //    silinirse ayni cihazdaki bir sonraki giriste "ayni cihaz"
+                //    tespiti bozulup gereksiz catisma ekrani cikardi (normal
+                //    bulut senkron davranisini bozmamak icin).
+                syncPrefs.edit { remove("sync_revision") }
+                _lastCloudSyncTimestamp.value = null
+                _cloudSyncMessage.value = UiText.deleteAccountSuccess.get(lang)
+            } finally {
+                _isAccountDeletionInProgress.value = false
+                _isCloudSyncing.value = false
+            }
+        }
+    }
+
+    /**
+     * Giris sonrasi BULUT ONCELIKLI senkronizasyon.
+     *
+     * Eski davranis hataliydi: giris basarili olunca backupToCloudSilently()
+     * cagriliyor, yani YEREL veri sessizce buluta yukleniyordu. Eski yedek
+     * hic cekilmiyor, kullaniciya sorulmuyor ve hata bile gosterilmiyordu
+     * (catch (_: Exception) {}). Ustelik taze kurulumda localRevision 0
+     * oldugu icin SyncManager'daki koruma (remoteRevision > localRevision)
+     * devreye girmiyor ve buluttaki revision 0/eksikse ESKI YEDEK EZILIYORDU.
+     *
+     * Yeni davranis:
+     *  1. Once buluttaki yedek OKUNUR; bu asamada hicbir sey yazilmaz.
+     *  2. Bulutta yedek yoksa -> yerel veri yuklenir (bulut ilk kez olusur).
+     *  3. Bulutta yedek varsa ve bu cihaz bosa (taze kurulum) -> otomatik
+     *     geri yuklenir; kullaniciyi gereksiz soruyla mesgul etmeyiz.
+     *  4. Ikisi de dolu -> kullaniciya SORULUR (SyncConflictDialog).
+     */
+    private fun syncCloudAfterSignIn(userId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val lang = _uiState.value.settings.lang
+            try {
+                _isCloudSyncing.value = true
+                val remote = syncManager.restoreFromCloud(userId)
+                val remoteData = remote.getOrNull()
+
+                if (remoteData == null) {
+                    // Bulutta yedek yok (veya okunamadi): bu cihazin verisini yukle.
+                    uploadLocalAfterSignIn(userId)
+                    return@launch
+                }
+
+                val localSnapshot = repository.getAtomicSnapshot()
+                val localIsEmpty = localSnapshot.history.isEmpty() &&
+                    localSnapshot.zikirs.all { it.count == 0L }
+
+                if (localIsEmpty) {
+                    repository.restoreFullCloudBackup(
+                        zikirs = remoteData.zikirs,
+                        settings = remoteData.settings,
+                        slots = remoteData.reminderSlots,
+                        history = remoteData.history
+                    )
+                    alignSelectionAfterRestore(
+                        zikirs = remoteData.zikirs,
+                        history = remoteData.history,
+                        backedUpSelection = remoteData.settings.selectedZikirId
+                    )
+                    setLocalRevision(remoteData.syncMetadata?.revision ?: 0L)
+                    _lastCloudSyncTimestamp.value = remoteData.lastSyncedAt
+                    _cloudSyncMessage.value = UiText.cloudRestoredOnSignIn.get(lang)
+                } else {
+                    // Hem yerel hem bulut dolu -> karar kullanicinin.
+                    _syncConflictState.value = remoteData
+                }
+                _isCloudSyncing.value = false
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                _isCloudSyncing.value = false
+                _cloudSyncMessage.value = CloudErrorMapper.resolve(
+                    e,
+                    lang,
+                    AppStrings.get(lang).cloudGenericRestoreError
                 )
-                res.onSuccess { ts ->
+            }
+        }
+    }
+
+    /**
+     * Bulutta hic yedek yokken bu cihazin verisini yukler.
+     * Eskiden hatalar sessizce yutuluyordu; artik kullaniciya gosterilir.
+     */
+    private suspend fun uploadLocalAfterSignIn(userId: String) {
+        val lang = _uiState.value.settings.lang
+        try {
+            val snapshot = repository.getAtomicSnapshot()
+            val res = syncManager.backupToCloud(
+                userId = userId,
+                zikirs = snapshot.zikirs,
+                history = snapshot.history,
+                slots = snapshot.slots,
+                settings = snapshot.settings,
+                localRevision = getLocalRevision(),
+                deviceId = getDeviceId()
+            )
+            res.fold(
+                onSuccess = { ts ->
                     setLocalRevision(getLocalRevision() + 1)
                     _lastCloudSyncTimestamp.value = ts
+                    _cloudSyncMessage.value = UiText.cloudNoBackupUploadedLocal.get(lang)
+                },
+                onFailure = { e ->
+                    _cloudSyncMessage.value = CloudErrorMapper.resolve(
+                        e,
+                        lang,
+                        AppStrings.get(lang).cloudGenericBackupError
+                    )
                 }
-            } catch (_: Exception) {}
+            )
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            _cloudSyncMessage.value = CloudErrorMapper.resolve(
+                e,
+                lang,
+                AppStrings.get(lang).cloudGenericBackupError
+            )
+        } finally {
+            _isCloudSyncing.value = false
         }
     }
 
@@ -1270,7 +1327,7 @@ class ZikirViewModel(
         var id = syncPrefs.getString("device_id", null)
         if (id == null) {
             id = java.util.UUID.randomUUID().toString()
-            syncPrefs.edit().putString("device_id", id).apply()
+            syncPrefs.edit { putString("device_id", id) }
         }
         return id
     }
@@ -1278,7 +1335,7 @@ class ZikirViewModel(
     private fun getLocalRevision(): Long = syncPrefs.getLong("sync_revision", 0L)
     
     private fun setLocalRevision(revision: Long) {
-        syncPrefs.edit().putLong("sync_revision", revision).apply()
+        syncPrefs.edit { putLong("sync_revision", revision) }
     }
 
     private val _syncConflictState = kotlinx.coroutines.flow.MutableStateFlow<com.example.data.cloud.CloudBackupData?>(null)
@@ -1299,6 +1356,11 @@ class ZikirViewModel(
                     slots = backupData.reminderSlots,
                     history = backupData.history
                 )
+                alignSelectionAfterRestore(
+                    zikirs = backupData.zikirs,
+                    history = backupData.history,
+                    backedUpSelection = backupData.settings.selectedZikirId
+                )
                 setLocalRevision(backupData.syncMetadata?.revision ?: 0L)
                 _lastCloudSyncTimestamp.value = backupData.lastSyncedAt
                 val strings = AppStrings.get(_uiState.value.settings.lang)
@@ -1306,7 +1368,7 @@ class ZikirViewModel(
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 val strings = AppStrings.get(_uiState.value.settings.lang)
-                val msg = e.localizedMessage ?: strings.cloudGenericRestoreError
+                val msg = CloudErrorMapper.resolve(e, _uiState.value.settings.lang, strings.cloudGenericRestoreError)
                 _cloudSyncMessage.value = msg
             }
         }
@@ -1408,7 +1470,7 @@ class ZikirViewModel(
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 val strings = AppStrings.get(_uiState.value.settings.lang)
-                val msg = e.localizedMessage ?: strings.cloudGenericRestoreError
+                val msg = CloudErrorMapper.resolve(e, _uiState.value.settings.lang, strings.cloudGenericRestoreError)
                 _cloudSyncMessage.value = msg
             }
         }
@@ -1456,12 +1518,12 @@ class ZikirViewModel(
                             remoteDataResult.onSuccess { remoteData ->
                                 _syncConflictState.value = remoteData
                             }
-                            val msg = "Senkronizasyon çakışması algılandı."
+                            val msg = UiText.syncConflictDetected.get(_uiState.value.settings.lang)
                             _cloudSyncMessage.value = msg
                             _isCloudSyncing.value = false
                             withContext(Dispatchers.Main) { onComplete(false, msg) }
                         } else {
-                            val msg = error.localizedMessage ?: strings.cloudGenericBackupError
+                            val msg = CloudErrorMapper.resolve(error, _uiState.value.settings.lang, strings.cloudGenericBackupError)
                             _cloudSyncMessage.value = msg
                             _isCloudSyncing.value = false
                             withContext(Dispatchers.Main) { onComplete(false, msg) }
@@ -1471,7 +1533,7 @@ class ZikirViewModel(
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 _isCloudSyncing.value = false
-                val msg = e.localizedMessage ?: strings.cloudGenericBackupError
+                val msg = CloudErrorMapper.resolve(e, _uiState.value.settings.lang, strings.cloudGenericBackupError)
                 _cloudSyncMessage.value = msg
                 withContext(Dispatchers.Main) { onComplete(false, msg) }
             }
@@ -1499,10 +1561,15 @@ class ZikirViewModel(
                         val isSameDevice = remoteDeviceId == getDeviceId()
 
                         if (!isSameDevice && remoteRev > 0 && localRev > 0 && remoteRev != localRev) {
+                            // ÇAKIŞMA: hiçbir şey yüklenmedi, karar kullanıcıya bırakıldı.
+                            // Eskiden burada onComplete(true) dönülüyordu; bu, veriler
+                            // yüklenmediği halde "başarılı" demekti ve kullanıcı
+                            // neden hiçbir şey olmadığını anlayamıyordu.
+                            val conflictMsg = UiText.syncConflictDetected.get(_uiState.value.settings.lang)
                             _syncConflictState.value = backupData
-                            _cloudSyncMessage.value = "Senkronizasyon çakışması algılandı."
+                            _cloudSyncMessage.value = conflictMsg
                             _isCloudSyncing.value = false
-                            withContext(Dispatchers.Main) { onComplete(true, null) }
+                            withContext(Dispatchers.Main) { onComplete(false, conflictMsg) }
                             return@launch
                         }
 
@@ -1512,6 +1579,11 @@ class ZikirViewModel(
                             slots = backupData.reminderSlots,
                             history = backupData.history
                         )
+                        alignSelectionAfterRestore(
+                            zikirs = backupData.zikirs,
+                            history = backupData.history,
+                            backedUpSelection = backupData.settings.selectedZikirId
+                        )
                         setLocalRevision(remoteRev)
                         _lastCloudSyncTimestamp.value = backupData.lastSyncedAt
                         _cloudSyncMessage.value = strings.cloudRestoreSuccess
@@ -1519,7 +1591,7 @@ class ZikirViewModel(
                         withContext(Dispatchers.Main) { onComplete(true, null) }
                     },
                     onFailure = { error ->
-                        val msg = error.localizedMessage ?: strings.cloudGenericRestoreError
+                        val msg = CloudErrorMapper.resolve(error, _uiState.value.settings.lang, strings.cloudGenericRestoreError)
                         _cloudSyncMessage.value = msg
                         _isCloudSyncing.value = false
                         withContext(Dispatchers.Main) { onComplete(false, msg) }
@@ -1528,29 +1600,47 @@ class ZikirViewModel(
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 _isCloudSyncing.value = false
-                val msg = e.localizedMessage ?: strings.cloudGenericRestoreError
+                val msg = CloudErrorMapper.resolve(e, _uiState.value.settings.lang, strings.cloudGenericRestoreError)
                 _cloudSyncMessage.value = msg
                 withContext(Dispatchers.Main) { onComplete(false, msg) }
             }
         }
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        authManager.cleanup()
-        flushPendingIncrements()
+    /**
+     * Buluttan tam geri yukleme sonrasi ekranda "en son cekilen" zikrin
+     * acilmasini saglar.
+     *
+     * Neden gerekli: combine blogu cozulen id'yi savedStateHandle'a geri
+     * yaziyor ve savedId, settings.selectedZikirId'yi GOLGELIYOR. Taze
+     * kurulumda ilk emission 1 yazdigi icin restore sonrasi ekran hep ilk
+     * zikiri gostermeye basliyordu. Burada hem savedStateHandle hem DB
+     * settings guncellenir; boylece hem bu oturumda hem sonraki acilista
+     * dogru basamak gorunur.
+     */
+    private suspend fun alignSelectionAfterRestore(
+        zikirs: List<Zikir>,
+        history: List<ZikirHistory>,
+        backedUpSelection: Int
+    ) {
+        val lastRecited = history.maxByOrNull { it.timestamp }?.zikirId
+        val frontier = SelectedZikirResolver.firstIncompleteId(zikirs)
+        val candidate = lastRecited ?: backedUpSelection
+        val finalId = when {
+            candidate in 1..SelectedZikirResolver.TOTAL_ZIKIRS &&
+                candidate > 1 &&
+                SelectedZikirResolver.isUnlocked(candidate, zikirs) -> candidate
+            else -> frontier
+        }.coerceIn(1, SelectedZikirResolver.TOTAL_ZIKIRS)
+
+        savedStateHandle["selectedZikirId"] = finalId
+        updateSettingsSafely { it.copy(selectedZikirId = finalId) }
     }
 
-    private fun flushPendingIncrements() {
-        val pending = mutableListOf<PendingOperation>()
-        while (true) {
-            val req = increments.tryReceive().getOrNull() ?: break
-            pending.add(req)
-        }
-        if (pending.isNotEmpty()) {
-            com.example.NefsApplication.applicationScope.launch {
-                repository.applyBatchOperations(pending)
-            }
-        }
+    override fun onCleared() {
+        // super.onCleared() BILEREK yok: androidx.lifecycle.ViewModel
+        // icindeki varsayilan govde bos, yani cagri hicbir sey yapmiyordu
+        // (lint: EmptySuperCall). authManager.cleanup() asil temizlik.
+        authManager.cleanup()
     }
 }

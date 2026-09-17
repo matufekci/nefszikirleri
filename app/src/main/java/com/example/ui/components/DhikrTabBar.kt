@@ -18,9 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -48,6 +46,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -178,6 +178,16 @@ fun DhikrBottomBar(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null
                                     ) { onTabSelected(item.key) }
+                                    // ERISILEBILIRLIK DUZELTMESI: `selected`
+                                    // semantics'i daha once yalnizca yan
+                                    // sekmelere (asagidaki `else` dali)
+                                    // uygulanmisti; uygulamanin ANA sekmesi
+                                    // olan merkez Zikir butonu tasimiyordu.
+                                    // Sonuc: TalkBack aktif sekmede "secili"
+                                    // duyurmuyordu. Deseni yan sekmelerle
+                                    // birebir ayni tutuyoruz. Gorsel/etkilesim
+                                    // degisikligi YOK, yalnizca semantics.
+                                    .semantics { selected = isSelected }
                                     .testTag("tab_${item.key}")
                             ) {
                                 // Yükseltilmiş Belirgin Parlayan Halka
@@ -255,6 +265,7 @@ fun DhikrBottomBar(
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(tabBgColor)
                                 .clickable { onTabSelected(item.key) }
+                                .semantics { selected = isSelected }
                                 .testTag("tab_${item.key}"),
                             contentAlignment = Alignment.Center
                         ) {
@@ -372,7 +383,7 @@ fun DhikrNavRail(
                                     fontSize = 11.5.sp
                                 ),
                                 textAlign = TextAlign.Center,
-                                maxLines = 1
+                                maxLines = 2
                             )
                         }
                     } else {
@@ -403,7 +414,7 @@ fun DhikrNavRail(
                                     fontSize = 11.5.sp
                                 ),
                                 textAlign = TextAlign.Center,
-                                maxLines = 1
+                                maxLines = 2
                             )
                         }
                     }

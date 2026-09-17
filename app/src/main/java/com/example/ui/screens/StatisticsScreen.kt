@@ -32,11 +32,10 @@ fun StatisticsScreen(
     modifier: Modifier = Modifier
 ) {
     var chartRange by rememberSaveable { mutableStateOf(0) } // 0: 7 Gün, 1: 30 Gün, 2: 6 Ay
-    var chartExpanded by rememberSaveable { mutableStateOf(true) }
-    var heatmapExpanded by rememberSaveable { mutableStateOf(true) }
-    var timeDensityExpanded by rememberSaveable { mutableStateOf(true) }
-    var badgesExpanded by rememberSaveable { mutableStateOf(true) }
-    var logsExpanded by rememberSaveable { mutableStateOf(true) }
+    var chartExpanded by rememberSaveable { mutableStateOf(false) }
+    var heatmapExpanded by rememberSaveable { mutableStateOf(false) }
+    var badgesExpanded by rememberSaveable { mutableStateOf(false) }
+    var logsExpanded by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -114,17 +113,7 @@ fun StatisticsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 4. VAKİT YOĞUNLUK DAĞILIMI (Time of Day Heatmap)
-        DailyStatsCard(
-            timeSlots = state.timeSlots,
-            lang = state.settings.lang,
-            isExpanded = timeDensityExpanded,
-            onToggle = { timeDensityExpanded = !timeDensityExpanded }
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 5. MANEVİ İSTİKRAR ROZETLERİ, GEÇMİŞ LOGLARI VE SIFIRLAMA
+        // 4. MANEVİ İSTİKRAR ROZETLERİ, GEÇMİŞ LOGLARI VE SIFIRLAMA
         OverallStatsSection(
             state = state,
             badgesExpanded = badgesExpanded,

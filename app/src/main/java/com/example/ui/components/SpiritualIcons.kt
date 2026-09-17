@@ -7,15 +7,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.rounded.Stars
-import androidx.compose.material.icons.rounded.WorkspacePremium
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -25,10 +19,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Fill
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -46,8 +37,8 @@ import kotlin.math.sin
 fun RealisticSymbolBadge(
     symbol: ImageVector,
     tint: Color,
-    size: Dp = 32.dp,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    size: Dp = 32.dp
 ) {
     Box(
         modifier = modifier
@@ -167,73 +158,8 @@ fun SpiritualFlameIcon(
     )
 }
 
-@Composable
-fun SpiritualStarIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = Color(0xFFFFD700),
-    size: Dp = 22.dp
-) {
-    // 8 Köşeli İslami Selçuklu Yıldızı (Rub el Hizb) with precision multi-layer rendering
-    Box(
-        modifier = modifier.size(size),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(modifier = Modifier.size(size)) {
-            val center = Offset(this.size.width / 2f, this.size.height / 2f)
-            val outerRadius = this.size.minDimension / 2f - 1.dp.toPx()
-            val innerRadius = outerRadius * 0.48f
-            val numPoints = 8
 
-            val path = Path()
-            for (i in 0 until numPoints * 2) {
-                val r = if (i % 2 == 0) outerRadius else innerRadius
-                val angle = (i * PI / numPoints) - (PI / 2)
-                val x = center.x + (r * cos(angle)).toFloat()
-                val y = center.y + (r * sin(angle)).toFloat()
-                if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-            }
-            path.close()
 
-            // Ambient background glow
-            drawPath(path = path, color = tint.copy(alpha = 0.25f), style = Fill)
-            // Main star outline & body
-            drawPath(path = path, color = tint, style = Stroke(width = 1.4.dp.toPx()))
-            // Inner core medallion
-            drawCircle(color = tint.copy(alpha = 0.85f), radius = innerRadius * 0.55f, center = center)
-            // Specular jewel center
-            drawCircle(color = Color.White.copy(alpha = 0.9f), radius = innerRadius * 0.25f, center = center)
-        }
-    }
-}
-
-@Composable
-fun SpiritualTrophyIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = Color(0xFFFFD700),
-    size: Dp = 24.dp
-) {
-    RealisticSymbolBadge(
-        symbol = Icons.Rounded.EmojiEvents,
-        tint = tint,
-        size = size,
-        modifier = modifier
-    )
-}
-
-@Composable
-fun SpiritualShareIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = Color.Unspecified,
-    size: Dp = 20.dp,
-    contentDescription: String? = null
-) {
-    Icon(
-        imageVector = Icons.Rounded.Share,
-        contentDescription = contentDescription,
-        tint = tint,
-        modifier = modifier.size(size)
-    )
-}
 
 @Composable
 fun SpiritualLockIcon(
@@ -265,18 +191,4 @@ fun SpiritualCheckIcon(
     )
 }
 
-@Composable
-fun SpiritualGearIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = Color.Unspecified,
-    size: Dp = 16.dp,
-    contentDescription: String? = null
-) {
-    Icon(
-        imageVector = Icons.Rounded.Settings,
-        contentDescription = contentDescription,
-        tint = tint,
-        modifier = modifier.size(size)
-    )
-}
 

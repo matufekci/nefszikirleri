@@ -55,7 +55,8 @@ fun CompletionPage(
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
     lang: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    message: String? = null
 ) {
     val colors = LocalAppColors.current
     val strings = AppStrings.get(lang)
@@ -223,6 +224,25 @@ fun CompletionPage(
                             },
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
                         )
+                    }
+                    // Giris sonucu / hata mesaji artik ekranda gorunur:
+                    // butona basip "hicbir sey olmuyor" hissi yasamaz.
+                    if (!message.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = colors.error.copy(alpha = 0.12f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = message,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.error,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 18.sp,
+                                modifier = Modifier.padding(10.dp)
+                            )
+                        }
                     }
                 } else {
                     Surface(

@@ -19,6 +19,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,22 +49,23 @@ fun DhikrCircle(
     displayCount: Long,
     targetCount: Long,
     isCountdownMode: Boolean,
-    remainingLabel: String,
     arabicText: String,
     transliteration: String,
+    modifier: Modifier = Modifier,
     lang: String = "tr",
     isZenMode: Boolean = false,
-    onTap: () -> Unit,
-    modifier: Modifier = Modifier
+    onTap: () -> Unit
 ) {
     val theme = LocalAppColors.current
     val palette = remember(theme.id) { LuxuryCirclePalettes.get(theme) }
 
     val actualCount = if (isCountdownMode) (targetCount - displayCount).coerceAtLeast(0L) else displayCount
-    val hasStarted = actualCount > 0L || progress > 0.0001f
+    // hasStarted daima GERÇEK çekilen sayıya bakar; geri sayım modunda
+    // actualCount başta target olduğu için "başladı" sanılmasın.
+    val hasStarted = displayCount > 0L || progress > 0.0001f
 
     // Reduced Motion / Zen Mode algılaması
-    val shouldReduceMotion = rememberShouldReduceMotion(isZenMode)
+    val shouldReduceMotion = rememberShouldReduceMotion()
 
     // Animasyon Durumları
     val animState = rememberDhikrCircleAnimations(
@@ -71,6 +73,16 @@ fun DhikrCircle(
         onTap = onTap,
         shouldReduceMotion = shouldReduceMotion
     )
+    // Sayaç HER ARTIŞTA tap nabzını oynat — çember dışı dokunuşlar
+    // (zen modda ekranın herhangi bir yeri, manuel ekleme) dahil.
+    val prevDisplayCount = remember { mutableStateOf(displayCount) }
+    androidx.compose.runtime.LaunchedEffect(displayCount) {
+        if (displayCount > prevDisplayCount.value) {
+            animState.playTapPulse()
+        }
+        prevDisplayCount.value = displayCount
+    }
+
     val animatedProgress by animState.animatedProgress
     val breathingAura by animState.breathingAura
     val bezelShimmerAngle by animState.bezelShimmerAngle
@@ -111,7 +123,10 @@ fun DhikrCircle(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) {
-                    animState.triggerTap()
+                    // Tap animasyonu çembere özel değil: sayı her nereden
+                    // artarsa artsın (çember, zen her-yer, manuel) aşağıdaki
+                    // LaunchedEffect nabzı tetikler.
+                    onTap()
                 }
                 .testTag("giant_tap_button"),
             contentAlignment = Alignment.Center
@@ -296,9 +311,9 @@ fun DhikrCircle(
 
                 Spacer(modifier = Modifier.height(if (isExtremeFontScale) 1.dp else 4.dp))
 
-                // BÜYÜK DİJİTAL SAYAÇ
+                // BÜYÜK DİJİTAL SAYAÇ — geri sayım modunda kalan (hedef − çekilen) azalır
                 Text(
-                    text = NumberFormatter.format(displayCount, lang),
+                    text = NumberFormatter.format(actualCount, lang),
                     style = when {
                         isExtremeFontScale -> MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold,
@@ -325,7 +340,9 @@ fun DhikrCircle(
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = if (isCountdownMode) remainingLabel else "/ ${NumberFormatter.format(targetCount, lang)}",
+                        // Geri sayımda büyük sayı zaten "kalan"ı gösterdiği için
+                        // alt etiket her iki modda da hedefi gösterir.
+                        text = "/ ${NumberFormatter.format(targetCount, lang)}",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.SemiBold,
                             color = palette.subText,
@@ -362,33 +379,3 @@ fun DhikrCircle(
 /**
  * Geriye dönük uyumluluk için takma ad (Alias)
  */
-@Composable
-fun LuxuryDhikrCircle(
-    ringSize: Dp,
-    progress: Float,
-    displayCount: Long,
-    targetCount: Long,
-    isCountdownMode: Boolean,
-    remainingLabel: String,
-    arabicText: String,
-    transliteration: String,
-    lang: String = "tr",
-    isZenMode: Boolean = false,
-    onTap: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    DhikrCircle(
-        ringSize = ringSize,
-        progress = progress,
-        displayCount = displayCount,
-        targetCount = targetCount,
-        isCountdownMode = isCountdownMode,
-        remainingLabel = remainingLabel,
-        arabicText = arabicText,
-        transliteration = transliteration,
-        lang = lang,
-        isZenMode = isZenMode,
-        onTap = onTap,
-        modifier = modifier
-    )
-}

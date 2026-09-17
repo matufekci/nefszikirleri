@@ -3,15 +3,31 @@ name: CI - Build & Test & Room Schema
 on:
   push:
     branches: [ main, arena/** ]
-  pull_request:
-    branches: [ main ]
+  # Gun sonu tam regresyon: 20:00 UTC = 23:00 Istanbul.
+  schedule:
+    - cron: '0 20 * * *'
+  # Istek uzerine tam regresyon (Actions -> Run workflow).
+  workflow_dispatch:
+
+# Aynı dal için push + pull_request çift tetikleme çakışmasın:
+# iki event da aynı concurrency grubuna düşer (pull_request'te head_ref,
+# push'ta ref_name = dal adı), ikincisi birinciyi iptal eder ve dal başına
+# tek aktif run kalır. Yeni push, eski in-progress run'ı da iptal eder.
+concurrency:
+  group: ci-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
-    continue-on-error: true
+    # Tam test+lint yalnız gün sonu / manuel / main push'ında koşar;
+    # dal push'larında hızlı kapı (build-apk-only) yeterlidir.
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full]') }}
+    # NOT: job seviyesinde `continue-on-error` YOK. Testler patladiginda run
+    # KIRMIZI olmali; yoksa sahte yesil olusuyor (2026-09-14'te yasandi:
+    # OnboardingA11yLabelTest patladi ama run "success" dondu).
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -20,29 +36,26 @@ jobs:
           java-version: 17
           cache: gradle
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Setup Android SDK (imajdaki kurulu SDK)
+        # android-actions/setup-android@v4 Google'in kaldirdigi bir
+        # cmdline-tools zip'ini indirmeye calisip 404 ile dusuyordu
+        # (setup-android#536). Imajdaki kurulu SDK kullaniliyor.
+        run: bash .github/scripts/setup-android-sdk.sh
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Create dummy google-services.json for CI
-        run: |
-          if [ -f app/ci-dummy-google-services.json ]; then
-            cp app/ci-dummy-google-services.json app/google-services.json
-            echo "Using ci-dummy-google-services.json"
-          elif [ ! -f app/google-services.json ]; then
-            cp app/google-services.json.example app/google-services.json || echo '{"project_info":{}}' > app/google-services.json
-          fi
-          cat app/google-services.json
+      - name: Prepare google-services.json (gercek Firebase yapilandirmasi)
+        run: bash .github/scripts/prepare-google-services.sh
 
       - name: Create .env from example for CI
         run: |
           if [ ! -f .env ] && [ -f .env.example ]; then cp .env.example .env; fi
           if [ ! -f app/.env ] && [ -f app/.env.example ]; then cp app/.env.example app/.env; fi
           if [ ! -f .env ] && [ -f app/.env.example ]; then cp app/.env.example .env; fi
+          # Guvenlik: .env icerigi LOGA BASILMAZ (secret sizintisi onleme).
+          # Yalnizca dosyanin varligi dogrulanir.
           ls -la .env 2>&1 || true
-          cat .env
 
       - name: Check Room schema exists
         run: |
@@ -56,13 +69,35 @@ jobs:
         run: ./gradlew testDebugUnitTest --stacktrace --continue 2>&1 | tee unit-test.log
         continue-on-error: true
 
+      - name: Report unit test results
+        if: always()
+        # Bu adimda `continue-on-error` BILERE YOK: script failure/error
+        # gordugunde exit 1 veriyor ve job'u kirmiziya ceviriyor. Test adimi
+        # (ustteki) continue-on-error ile calisiyor ki bu adim her durumda
+        # calisip annotations uretebilsin; enforcement ise burada.
+        run: ./.github/scripts/report-unit-tests.sh app/build/test-results/testDebugUnitTest
+
       - name: Run Android lint
         run: ./gradlew lintDebug --stacktrace 2>&1 | tee lint.log
         continue-on-error: true
 
+      - name: Report lint results
+        if: always()
+        # continue-on-error BILERE YOK: lint hic calismazsa (rapor uretilmezse)
+        # job kirmizi olmali. Aksi halde lint'in patlamasi sahte yesil olur --
+        # unit testlerde yasanan deligin aynisi.
+        run: ./.github/scripts/report-lint.sh app/build/reports/lint-results-debug.xml
+
+      - name: Report Gradle failures from logs
+        if: always()
+        # Teshis adimi: KSP/derleme hatalari `--continue` yuzunden job'u
+        # kirmiziya cevirmiyor ve loglar disaridan indirilemedigi icin
+        # gorunmuyordu. Hangi gorevin patladigini annotation'a yaziyoruz.
+        run: ./.github/scripts/report-gradle-failures.sh unit-test.log lint.log
+
       - name: Upload test reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-reports
           path: |
@@ -73,10 +108,9 @@ jobs:
 
   build-debug:
     runs-on: ubuntu-latest
-    if: always()
-    needs: unit-tests
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full]') }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -85,21 +119,17 @@ jobs:
           java-version: 17
           cache: gradle
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Setup Android SDK (imajdaki kurulu SDK)
+        # android-actions/setup-android@v4 Google'in kaldirdigi bir
+        # cmdline-tools zip'ini indirmeye calisip 404 ile dusuyordu
+        # (setup-android#536). Imajdaki kurulu SDK kullaniliyor.
+        run: bash .github/scripts/setup-android-sdk.sh
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Create dummy google-services.json for CI
-        run: |
-          if [ -f app/ci-dummy-google-services.json ]; then
-            cp app/ci-dummy-google-services.json app/google-services.json
-            echo "Using ci-dummy-google-services.json for APK build"
-          elif [ ! -f app/google-services.json ]; then
-            cp app/google-services.json.example app/google-services.json || echo '{"project_info":{}}' > app/google-services.json
-          fi
-          cat app/google-services.json
+      - name: Prepare google-services.json (gercek Firebase yapilandirmasi)
+        run: bash .github/scripts/prepare-google-services.sh
 
       - name: Create .env from example for CI
         run: |
@@ -111,21 +141,36 @@ jobs:
         run: ./gradlew assembleDebug --stacktrace 2>&1 | tee build-debug.log
         continue-on-error: true
 
+      - name: Compose BOM surumunu oku (APK adina islenir)
+        if: always()
+        id: bom
+        run: echo "v=$(sed -n -E 's/^composeBom = "([^"]+)".*/\1/p' gradle/libs.versions.toml)" >> "$GITHUB_OUTPUT"
+
       - name: Upload debug APK
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: debug-apk
+          name: debug-apk-compose-${{ steps.bom.outputs.v }}
           path: |
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/debug/output-metadata.json
             build-debug.log
 
+      - name: Fail loudly if no APK was produced
+        if: always()
+        run: ./.github/scripts/assert-apk.sh app/build/outputs/apk/debug build-debug.log debug-apk
+
+      - name: Report APK signing certificate (Firebase SHA-1 kaniti)
+        if: always()
+        run: bash .github/scripts/report-apk-signer.sh
+
   build-apk-only:
     runs-on: ubuntu-latest
-    if: always()
+    # Hızlı derleme kapısı: her push'ta koşar (~8-10 dk), derleme kırılmasını
+    # ve kurulabilir debug APK'yı anında verir.
+    if: ${{ github.event_name == 'push' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -134,32 +179,394 @@ jobs:
           java-version: 17
           cache: gradle
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Setup Android SDK (imajdaki kurulu SDK)
+        # android-actions/setup-android@v4 Google'in kaldirdigi bir
+        # cmdline-tools zip'ini indirmeye calisip 404 ile dusuyordu
+        # (setup-android#536). Imajdaki kurulu SDK kullaniliyor.
+        run: bash .github/scripts/setup-android-sdk.sh
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Create dummy google-services.json for CI (valid structure)
-        run: |
-          cp app/ci-dummy-google-services.json app/google-services.json
-          echo "Using valid dummy google-services.json"
-          cat app/google-services.json
+      - name: Prepare google-services.json (gercek Firebase yapilandirmasi)
+        run: bash .github/scripts/prepare-google-services.sh
 
       - name: Create .env from example
         run: |
           cp .env.example .env
-          cat .env
+          # Guvenlik: .env icerigi loga basilmaz; yalnizca varlik dogrulanir.
+          ls -la .env 2>&1 || true
 
       - name: Build debug APK (no tests)
         run: ./gradlew assembleDebug -x test --stacktrace 2>&1 | tee build-apk-only.log
         continue-on-error: true
 
+      # Log/artifact depolari erisilemez oldugunda derleyici hatalari
+      # annotation olarak da gorunur (check-runs API'sinden okunabilir).
+      - name: Derleyici hatalarini annotation olarak bildir
+        if: always()
+        run: |
+          if [ -f build-apk-only.log ]; then
+            grep -E "^e: " build-apk-only.log | head -30 | while IFS= read -r line; do
+              echo "::error::${line}"
+            done
+          fi
+
+      - name: Compose BOM surumunu oku (APK adina islenir)
+        if: always()
+        id: bom
+        run: echo "v=$(sed -n -E 's/^composeBom = "([^"]+)".*/\1/p' gradle/libs.versions.toml)" >> "$GITHUB_OUTPUT"
+
       - name: Upload debug APK
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: debug-apk-no-tests
+          name: debug-apk-no-tests-compose-${{ steps.bom.outputs.v }}
           path: |
             app/build/outputs/apk/debug/*.apk
             build-apk-only.log
+
+      - name: Fail loudly if no APK was produced
+        if: always()
+        run: ./.github/scripts/assert-apk.sh app/build/outputs/apk/debug build-apk-only.log debug-apk-no-tests
+
+      - name: Report APK signing certificate (Firebase SHA-1 kaniti)
+        if: always()
+        run: bash .github/scripts/report-apk-signer.sh
+
+  release-build:
+    # Release yolu (R8 minify + shrinkResources) CI'da HIC denenmemisti.
+    # Obfuscation/kaynak daraltma hatalari yalnizca release derlemesinde ortaya
+    # cikar; yani debug yesilken release cokuyor olabilirdi. Bu job bunu kapatir.
+    # Imza icin repodaki sabit debug.keystore kullanilir: boylece cikan APK
+    # kurulabilir ve Google girisi ayni SHA-1 ile calisir. Play'e cikacak
+    # surumde gercek release anahtari ortam degiskenleriyle verilmelidir.
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full]') }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Setup Android SDK (imajdaki kurulu SDK)
+        # android-actions/setup-android@v4 Google'in kaldirdigi bir
+        # cmdline-tools zip'ini indirmeye calisip 404 ile dusuyordu
+        # (setup-android#536). Imajdaki kurulu SDK kullaniliyor.
+        run: bash .github/scripts/setup-android-sdk.sh
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Prepare google-services.json (gercek Firebase yapilandirmasi)
+        run: bash .github/scripts/prepare-google-services.sh
+
+      - name: Create .env from example
+        run: |
+          cp .env.example .env
+
+      - name: Decode gercek release/upload keystore (secret varsa)
+        id: keys
+        env:
+          KS_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release-upload.keystore"
+            echo "path=$RUNNER_TEMP/release-upload.keystore" >> "$GITHUB_OUTPUT"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+            echo "Gercek release/upload keystore secret'tan cozuldu."
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "RELEASE KEYSTORE SECRET YOK -> release UNSIGNED uretilecek (Play icin secret ekleyin)."
+          fi
+
+      - name: Build release APK + AAB (R8 + kaynak daraltma)
+        env:
+          # Gercek keystore secret'tan gelir; yoksa bos -> unsigned build.
+          # debug.keystore ARTIK release imzasi olarak beslenemez (build.gradle fail-fast).
+          RELEASE_KEYSTORE_PATH: ${{ steps.keys.outputs.path }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease bundleRelease --stacktrace 2>&1 | tee build-release.log
+        continue-on-error: true
+
+      - name: Compose BOM surumunu oku (APK adina islenir)
+        if: always()
+        id: bom
+        run: echo "v=$(sed -n -E 's/^composeBom = "([^"]+)".*/\1/p' gradle/libs.versions.toml)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload release APK
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-apk-compose-${{ steps.bom.outputs.v }}
+          path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/bundle/release/*.aab
+            build-release.log
+
+      - name: Fail loudly if no release APK was produced
+        if: always()
+        run: ./.github/scripts/assert-apk.sh app/build/outputs/apk/release build-release.log release-apk
+
+      - name: Fail loudly if no AAB was produced
+        if: always()
+        run: |
+          aab=$(find app/build/outputs/bundle/release -maxdepth 1 -name '*.aab' -type f 2>/dev/null | head -n 1 || true)
+          if [ -n "$aab" ]; then
+            echo "::notice title=AAB OK::$aab ($(stat -c %s "$aab" 2>/dev/null || echo '?') bytes)"
+          else
+            echo "::error title=AAB uretilmedi::app/build/outputs/bundle/release icinde .aab yok"
+            exit 1
+          fi
+
+      - name: Report release APK signing certificate (Firebase SHA-1 kaniti)
+        # Yalnizca gercek keystore ile imzalandiginda anlamli; unsigned build'de atla.
+        if: ${{ always() && steps.keys.outputs.signed == 'true' }}
+        run: bash .github/scripts/report-apk-signer.sh app/build/outputs/apk/release/app-release.apk
+
+  # ============================================================
+  # EMULATOR TESTLERI (Prompt 13.1)
+  # ============================================================
+  # Neden var: Robolectric birim testleri JVM'de kosuyor; gercek Compose
+  # penceresi, gercek dokunma, gercek Activity recreation ve gercek TalkBack
+  # semantics agaci URETMİYOR. Dolayisiyla "dokununca sayac artiyor mu",
+  # "recreation sonrasi durum korunuyor mu", "secili sekme semantics'e
+  # aktariliyor mu" sorulari bugune kadar hic cihazda dogrulanmamisti.
+  #
+  # Bu job gercek bir Android emulatoru baslatir ve `connectedDebugAndroidTest`
+  # ile app/src/androidTest altindaki testleri KOŞAR. Basarisizlik job'u
+  # kirmiziya cevirir (report-unit-tests.sh exit 1 verir).
+  #
+  # Gate bilerek ayni: her push'ta kosmaz (emulator ~10-15 dk), yalnizca tam
+  # regresyon kosularinda calisir.
+  emulator-tests:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full]') }}
+    timeout-minutes: 70
+    steps:
+      - name: Run actions/checkout@v7
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Setup Android SDK (imajdaki kurulu SDK)
+        run: bash .github/scripts/setup-android-sdk.sh
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Prepare google-services.json (gercek Firebase yapilandirmasi)
+        run: bash .github/scripts/prepare-google-services.sh
+
+      - name: Create .env from example
+        run: |
+          if [ ! -f .env ]; then cp .env.example .env; fi
+
+      - name: KVM'i etkinlestir (hizlandirilmis emulator icin sart)
+        # GitHub'in Linux kosucularinda /dev/kvm mevcut ama varsayilan olarak
+        # kvm grubuna yazma izni yok. Bu kural olmadan emulator yazilim
+        # emulasyonuna duser ve boot dakikalarca surer / zaman asimina ugrar.
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          if [ ! -e /dev/kvm ]; then
+            echo "::warning::/dev/kvm yok; emulator yazilim emulasyonuna dusebilir (yavas)"
+          else
+            ls -l /dev/kvm
+          fi
+
+      - name: Sistem imajini kur (36 -> 35 -> 34 fallback)
+        # Fallback bilerek var: tek bir API seviyesine sabitlemek, Google o
+        # imaji yayindan kaldirirsa job'u sebebsiz kirmiziya ceviriyor
+        # (setup-android action'inda yasanan 404 senaryosunun aynisi).
+        id: img
+        run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKM="$(ls -d "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -1 || true)"
+          if [ -z "$SDKM" ]; then echo "::error::sdkmanager bulunamadi"; exit 1; fi
+          yes 2>/dev/null | "$SDKM" --install emulator >/dev/null 2>&1 || true
+          API=""
+          for level in 36 35 34; do
+            pkg="system-images;android-${level};google_apis;x86_64"
+            echo "deneniyor: $pkg"
+            if yes 2>/dev/null | timeout 900 "$SDKM" --install "$pkg" >/dev/null 2>&1; then
+              API="$level"
+              break
+            fi
+          done
+          if [ -z "$API" ]; then
+            echo "::error::Hicbir sistem imaji kurulamadi (36/35/34)"
+            exit 1
+          fi
+          echo "Kurulacak emulator: android-$API (google_apis, x86_64)"
+          echo "api=$API" >> "$GITHUB_OUTPUT"
+
+      - name: Emulatorde connected testleri kos
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ steps.img.outputs.api }}
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          disable-animations: true
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          # POST_NOTIFICATIONS hakkinda ONEMLI NOT (run 35100282128 logcat
+          # kaniti): asagidaki `adb shell pm grant` satiri ISE YARAMIYOR,
+          # cunku connectedDebugAndroidTest uygulamayi bundan SONRA kuruyor;
+          # grant calisirken paket kurulu degil ve komut sessizce basarisiz
+          # oluyor. Izin verilmeyince MainApp.kt:90-98 acilista sistem izin
+          # dialogunu firlatiyor, dialog MainActivity'nin uzerinde kaldigi
+          # icin Activity hic cizilmiyor, Compose root pencereye baglanmiyor
+          # ve 4 test de "No compose hierarchies found" aliyordu. Gercek
+          # cozum testin icinde (UiAutomation ile grant); satir zararsiz
+          # oldugu icin birakildi.
+          #
+          # Sahte-yesil korumasi: `gradlew | tee` tek basina komutun degil
+          # tee'nin exit kodunu donduruyor (testler patlasa bile adim YESIL
+          # gorunur). pipefail ISE /usr/bin/sh (dash) altinda desteklenmiyor;
+          # bu yuzden pipe hic kullanilmiyor, cikis kodu dogrudan aliniyor.
+          # continue-on-error ile job suruyor; kesin karari asagidaki
+          # raporlama adimi XML'lerden veriyor (unit-tests job'i deseni).
+          script: |
+            # emulator-runner bu blogu `sh -e` (errexit) ile kosuyor: gradlew
+            # hata verince script O SATIRDA OLUYORDU. Kanit: emulator-test.log
+            # redirect sayesinde olusurken, hemen sonrasindaki `adb logcat -d`
+            # ve `tail` hic calismadi (run 35096776682: "Logcat yok"). Bu
+            # yuzden errexit kapatiliyor ve gradlew'in kodu `|| VAR=$?` ile
+            # yakalaniyor (errexit altinda `$?` okumak ise yaramaz).
+            set +e
+            adb shell pm grant com.aistudio.nefszikir.kdhrmq android.permission.POST_NOTIFICATIONS || true
+            # ONEMLI: emulator-runner `script` blogunu /usr/bin/sh (dash) ile
+            # kosuyor ve dash `set -o pipefail` DESTEKLEMIYOR. Onceki turda
+            # (run 35081870564) tam bu satirda "Illegal option" ile exit code 2
+            # alindi; Gradle HIC kosmadi. Yani pipefail'i eklerken sahte-yesil'i
+            # sahte-kirmizi'ya cevirmis oldum. POSIX-uyumlu cozum: pipe yok,
+            # Gradle'in cikis kodu dogrudan yakalaniyor.
+            adb logcat -c 2>/dev/null || true
+            GRADLE_STATUS=0
+            ./gradlew connectedDebugAndroidTest --stacktrace > emulator-test.log 2>&1 || GRADLE_STATUS=$?
+            adb logcat -d -v time > emulator-logcat.log 2>/dev/null || true
+            tail -n 60 emulator-test.log 2>/dev/null || true
+            exit $GRADLE_STATUS
+        continue-on-error: true
+
+      - name: Logcat teshisi (crash / Activity acilisi)
+        if: always()
+        # Testler artik KOSUYOR ama 4'u de "No compose hierarchies found in
+        # the app" ile patliyor: setContent cagiran Activity hic olusmamis.
+        # Bunun nedeni yalnizca logcat'te gorunur. Artifact/log indirme bu
+        # sandbox'tan mumkun olmadigi icin (blob storage HTTP 000) kritik
+        # logcat satirlari annotation'a tasiniyor. Bu adim job'i KIRMIZI
+        # YAPMAZ; karari asagidaki raporlama adimi verir.
+        run: |
+          if [ ! -f emulator-logcat.log ]; then
+            echo "::warning title=Logcat yok::emulator-logcat.log olusmadi"
+            exit 0
+          fi
+          echo "logcat satir sayisi: $(wc -l < emulator-logcat.log)"
+          CRASH=$(grep -aE "FATAL EXCEPTION|AndroidRuntime:|Force finishing activity|am_crash|ANR in |has died|Shutting down VM" emulator-logcat.log | tail -n 25 | sed 's/%/%25/g; s/\r//g' | awk '{printf "%s%%0A", $0}')
+          if [ -n "$CRASH" ]; then
+            echo "::warning title=Logcat CRASH izleri::$CRASH"
+          else
+            echo "::notice title=Logcat::FATAL/crash satiri bulunamadi"
+          fi
+          DISP=$(grep -aE "Displayed com\.|ActivityTaskManager: Displayed|ActivityManager: Displayed" emulator-logcat.log | tail -n 5 | sed 's/%/%25/g; s/\r//g' | awk '{printf "%s%%0A", $0}')
+          if [ -n "$DISP" ]; then
+            echo "::notice title=Activity acilis izi (Displayed)::$DISP"
+          else
+            echo "::warning title=Activity hic Displayed olmadi::MainActivity ekrana hic gelmedi, dolayisiyla setContent hic calismadi"
+          fi
+          PROC=$(grep -aE "Start proc .*com\.aistudio|Killing .*com\.aistudio|Process com\.aistudio" emulator-logcat.log | tail -n 10 | sed 's/%/%25/g; s/\r//g' | awk '{printf "%s%%0A", $0}')
+          if [ -n "$PROC" ]; then
+            echo "::notice title=Surec yasam dongusu::$PROC"
+          fi
+
+      - name: Emulator test sonuclarini raporla
+        if: always()
+        # Connected sonuclar AGP surumune gore farkli yola yaziliyor ve bu
+        # job'da sabit yol (`app/build/outputs/androidTest-results`) BOS
+        # dondu; testler kosmus olmasina ragmen "sonuc yok" diye kirmizi
+        # olduk. Bu yuzden artik app/build ALTINDA TEST-*.xml araniyor
+        # (birim test sonuclari haric tutularak) ve bulunamazsa gercek dizin
+        # agaci annotation'a yaziliyor ki yol bir daha tahmin edilmesin.
+        run: |
+          rm -rf emulator-results && mkdir -p emulator-results
+          # DUZLESTIRME: report-unit-tests.sh dosyalari `TEST-*.xml` globu ile
+          # ariyor, bu yuzden hedef ad TEST- ile BASLAMAK ZORUNDA. Onceki
+          # duzeltmede yolu ada gomdum ('outputs_..._TEST-...') ve glob
+          # eslesmedigi icin 'sonuc yok' kirmizisi aldim (run 35113325459).
+          # Cozum: orijinal ad korunur, cakisma olursa basina sayac eklenir.
+          find app/build -name 'TEST-*.xml' -not -path '*/test-results/*' 2>/dev/null | while IFS= read -r f; do
+            base="$(basename "$f")"
+            dest="emulator-results/$base"
+            n=1
+            while [ -e "$dest" ]; do
+              # Sayac 'TEST-' ONEKINDEN SONRA ekleniyor: onekin onune
+              # konursa ('1_TEST-...') report-unit-tests.sh'in TEST-*.xml
+              # glob'u eslesmiyor. (Yerel testle yakalandi.)
+              dest="emulator-results/TEST-${n}_${base#TEST-}"
+              n=$((n + 1))
+            done
+            cp "$f" "$dest" 2>/dev/null || true
+          done
+          echo "Bulunan connected XML'ler:"
+          ls -1 emulator-results/ 2>/dev/null || true
+          FOUND=$(ls -1 emulator-results/ 2>/dev/null | sed 's/%/%25/g; s/\r//g' | awk '{printf "%s%%0A", $0}')
+          if [ -n "$FOUND" ]; then
+            echo "::notice title=Bulunan connected XML dosyalari::$FOUND"
+          fi
+          # Hangi testlerin GERCEKTEN kostugunu kesinlestirmek icin testcase
+          # adlari da annotation'a yaziliyor. Gerek: androidTest kaynaklarinda
+          # 5 @Test var ama rapor 4 test gosterdi; dosya sayisi tek oldugu
+          # icin cakisma aciklamasi elendi, gercek liste burada gorunecek.
+          CASES=$(grep -oh 'testcase name="[^"]*"' emulator-results/*.xml 2>/dev/null | sed 's/testcase name=//; s/"//g' | sed 's/%/%25/g; s/\r//g' | awk '{printf "%s%%0A", $0}')
+          if [ -n "$CASES" ]; then
+            echo "::notice title=Kosan connected testler::$CASES"
+          fi
+          if [ -z "$(ls -A emulator-results 2>/dev/null)" ]; then
+            echo "Teshis: app/build altinda androidTest ile ilgili xml/dizinler:"
+            find app/build -iname '*.xml' -path '*androidTest*' 2>/dev/null | head -20 || true
+            find app/build/outputs app/build/reports -maxdepth 3 -type d 2>/dev/null | head -30 || true
+            # Annotation BU sandbox'tan okunabilen TEK kanal: artifact/log
+            # indirme blob storage'a erisemedigi icin (HTTP 000) Gradle
+            # hatasinin ozeti dogrudan annotation'a yaziliyor. Aksi halde
+            # "neden kosmadi" sorusu bir tur daha bilinmez kaliyor.
+            if [ -f emulator-test.log ]; then
+              DETAIL=$(grep -aE "^e: |error:|FAILED|Execution failed|What went wrong|Caused by:|BUILD (SUCCESSFUL|FAILED)|INSTALL_|Unable to |No connected devices|Could not determine" emulator-test.log | tail -n 25 | sed 's/%/%25/g; s/\r//g' | awk '{printf "%s%%0A", $0}')
+              if [ -n "$DETAIL" ]; then
+                echo "::error title=Connected test ayrintisi (Gradle log ozeti)::$DETAIL"
+              else
+                echo "::error title=Gradle logunda hata satiri yok::emulator-test.log var ama bilinen hata kaliplari eslesmedi (log kuyrugu adim cikisinda)"
+              fi
+            else
+              echo "::error title=Gradle logu olusmadi::emulator-test.log yok; script calisma dizini workspace olmayabilir (pwd=$(pwd))"
+            fi
+            echo "::error title=Emulator testi sonucu bulunamadi::TEST-*.xml yok; connected testler hic kosmadi ya da sonuc yolu degisti (teshis listesine bak)"
+            exit 1
+          fi
+          ./.github/scripts/report-unit-tests.sh emulator-results
+
+      - name: Upload emulator test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: emulator-test-reports
+          path: |
+            app/build/outputs/androidTest-results/
+            app/build/reports/androidTests/
+            emulator-test.log
+            emulator-logcat.log

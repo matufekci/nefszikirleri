@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="tr" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nefs Zikirleri — Hesap Silme</title>
+<meta name="description" content="Nefs Zikirleri hesabını ve verilerini silme. Account deletion / Konto löschen / Suppression du compte / حذف الحساب">
+<!--
+  ============================================================================
+  SAYFADA DOLDURULACAK TEK YER:
+  Asagidaki CONTACT_EMAIL sabitini kendi gercek e-posta adresinle degistir.
+  (Gizlilik politikasindaki sabitle AYNI olmali.)
+  "destek@example.com" bir YER TUTUCUDUR ve posta teslim etmez.
+  ============================================================================
+-->
+<style>
+  :root { --fg:#16202b; --mut:#5b6b7b; --line:#e3e9ef; --bg:#fff; --acc:#0f6b52; --soft:#f4f7f9; --warn:#8a4b00; --warnbg:#fff7ec; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:16px/1.7 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans","Noto Sans Arabic",sans-serif; }
+  .wrap { max-width:46rem; margin:0 auto; padding:2rem 1.25rem 5rem; }
+  header { border-bottom:1px solid var(--line); padding-bottom:1.25rem; margin-bottom:2rem; }
+  h1 { font-size:1.65rem; margin:0 0 .35rem; letter-spacing:-.01em; }
+  .app { color:var(--acc); font-weight:600; }
+  .meta { color:var(--mut); font-size:.85rem; margin:0; }
+  h2 { font-size:1.12rem; margin:2.25rem 0 .5rem; letter-spacing:-.01em; }
+  p, li { margin:.4rem 0; }
+  ol, ul { padding-inline-start:1.25rem; margin:.4rem 0; }
+  a { color:var(--acc); }
+  .langs { display:flex; flex-wrap:wrap; gap:.4rem; margin:1rem 0 0; }
+  .langs button { font:inherit; font-size:.82rem; padding:.3rem .7rem; cursor:pointer;
+                  border:1px solid var(--line); border-radius:999px; background:var(--soft); color:var(--fg); }
+  .langs button[aria-pressed="true"] { background:var(--acc); border-color:var(--acc); color:#fff; }
+  .note { background:var(--soft); border-inline-start:3px solid var(--acc);
+          padding:.75rem 1rem; border-radius:0 6px 6px 0; margin:1rem 0; font-size:.93rem; }
+  .warn { background:var(--warnbg); border-inline-start:3px solid var(--warn);
+          padding:.75rem 1rem; border-radius:0 6px 6px 0; margin:1rem 0; font-size:.93rem; }
+  .card { border:1px solid var(--line); border-radius:8px; padding:1rem 1.15rem; margin:1rem 0; }
+  .card h3 { margin:0 0 .35rem; font-size:1rem; }
+  .tag { display:inline-block; font-size:.72rem; letter-spacing:.03em; text-transform:uppercase;
+         background:var(--acc); color:#fff; border-radius:999px; padding:.1rem .5rem; vertical-align:middle; }
+  table { width:100%; border-collapse:collapse; margin:.75rem 0; font-size:.92rem; }
+  th,td { text-align:start; border:1px solid var(--line); padding:.5rem .6rem; vertical-align:top; }
+  th { background:var(--soft); font-weight:600; }
+  .btn { display:inline-block; margin-top:.5rem; padding:.55rem 1rem; border-radius:6px;
+         background:var(--acc); color:#fff; text-decoration:none; font-weight:600; font-size:.93rem; }
+  footer { margin-top:3rem; padding-top:1.25rem; border-top:1px solid var(--line);
+           color:var(--mut); font-size:.85rem; }
+  @media print { .langs, .btn { display:none; } body { font-size:12pt; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="title"></h1>
+    <p class="app">Nefs Zikirleri</p>
+    <p class="meta" id="meta"></p>
+    <nav class="langs" id="langs" aria-label="Language / Dil"></nav>
+  </header>
+  <main id="body"></main>
+  <footer id="foot"></footer>
+</div>
+
+<script>
+var CONTACT_EMAIL = "destek@example.com";   // <-- BURAYI DEGISTIR
+var PRIVACY_PATH  = "../privacy/";
+var EFFECTIVE     = "2026-09-17";
+var SLA_DAYS      = 30;
+
+var LANGS = ["tr","ar","en","de","fr"];
+
+var T = {
+tr: {
+  dir:"ltr", name:"Türkçe",
+  title:"Hesap Silme",
+  meta:"Son güncelleme: " + EFFECTIVE,
+  intro:"Nefs Zikirleri hesabını ve buluttaki tüm verilerini silmek için üç yol var. En hızlısı ve önerileni uygulama içinden silmedir; bu işlem anında tamamlanır.",
+  warnTitle:"Bu işlem geri alınamaz",
+  warn:"Hesabın silindiğinde buluttaki zikirlerin, geçmişin, ayarların ve anlık görüntülerin kalıcı olarak silinir ve geri getirilemez. Devam etmeden önce uygulama içinden şifreli yedek almanı öneririz.",
+  ways:[
+    { tag:"Önerilen", h:"1. Uygulama içinden silme", steps:[
+      "Uygulamayı aç ve Ayarlar sekmesine git.",
+      "Hesap bölümünü aç (bu bölüm yalnızca Google ile giriş yaptıysan görünür).",
+      "Hesabı Sil düğmesine dokun.",
+      "Onay isteğine 3 saniye basılı tutarak yanıt ver.",
+      "Firestore'daki tüm kayıtların ve Firebase hesabın silinir."
+    ]},
+    { tag:"Web", h:"2. Bu sayfa üzerinden talep", steps:[
+      "Aşağıdaki adrese, hesabınla giriş yaptığın Google e-posta adresinden bir e-posta gönder.",
+      "Konu satırına “Hesap silme talebi — Nefs Zikirleri” yaz.",
+      "Kimlik doğrulaması için talebin hesabınla kayıtlı e-posta adresinden gelmesi gerekir.",
+      "Talebin en geç " + SLA_DAYS + " gün içinde işleme alınır ve sonuç sana e-posta ile bildirilir."
+    ]},
+    { tag:"Yerel", h:"3. Yalnızca cihazındaki veriler", steps:[
+      "Uygulamayı telefondan kaldırman, cihazdaki tüm yerel verileri (sayaçlar, geçmiş, ayarlar) siler.",
+      "Google ile giriş yaptıysan buluttaki kopya durmaya devam eder; onu silmek için 1. veya 2. yolu kullan."
+    ]}
+  ],
+  hWhat:"Ne silinir, ne kalır",
+  tbl:{ head:["Veri","Akıbeti"], rows:[
+    ["Firestore: zikirler, sayaçlar, turlar","Silinir"],
+    ["Firestore: günlük geçmiş ve anlık görüntüler","Silinir"],
+    ["Firestore: uygulama ayarların ve hatırlatma saatlerin","Silinir"],
+    ["Firebase Authentication hesabın","Silinir"],
+    ["Cihazındaki yerel veritabanı","Uygulamayı kaldırınca silinir"],
+    ["Aldığın şifreli yedek dosyaları","Sende kalır — kendin silmelisin"],
+    ["Google hesabının kendisi","Google hesap ayarlarından yönetilir"]
+  ]},
+  hNote:"Not",
+  note:[
+    "Uygulama içinde ayrı bir “hesabı kapat ama veriyi sakla” seçeneği yok; silme kalıcıdır.",
+    "Silme tamamlandıktan sonra aynı Google hesabıyla yeniden giriş yaparsan boş bir başlangıç görürsün.",
+    "Veri işleme hakkında ayrıntı için: "
+  ],
+  hContact:"Talep adresi",
+  foot:"Nefs Zikirleri — Hesap Silme · Son güncelleme " + EFFECTIVE
+},
+
+en: {
+  dir:"ltr", name:"English",
+  title:"Account Deletion",
+  meta:"Last updated: " + EFFECTIVE,
+  intro:"There are three ways to delete your Nefs Zikirleri account and all cloud data. The fastest and recommended way is deleting from inside the app; it completes immediately.",
+  warnTitle:"This cannot be undone",
+  warn:"Once your account is deleted, your cloud dhikr, history, settings and snapshots are permanently removed and cannot be recovered. We recommend taking an encrypted backup from within the app before you continue.",
+  ways:[
+    { tag:"Recommended", h:"1. Delete from inside the app", steps:[
+      "Open the app and go to the Settings tab.",
+      "Open the account section (visible only if you signed in with Google).",
+      "Tap Delete account.",
+      "Confirm by holding for 3 seconds.",
+      "All your Firestore records and your Firebase account are deleted."
+    ]},
+    { tag:"Web", h:"2. Request via this page", steps:[
+      "Send an e-mail to the address below from the Google e-mail address you used to sign in.",
+      "Use the subject “Account deletion request — Nefs Zikirleri”.",
+      "For identity verification the request must come from the e-mail address registered to your account.",
+      "Requests are processed within " + SLA_DAYS + " days at the latest and the outcome is sent to you by e-mail."
+    ]},
+    { tag:"Local", h:"3. Device data only", steps:[
+      "Uninstalling the app removes all local data on your device (counters, history, settings).",
+      "If you signed in with Google, the cloud copy remains; use option 1 or 2 to delete it."
+    ]}
+  ],
+  hWhat:"What is deleted and what remains",
+  tbl:{ head:["Data","Outcome"], rows:[
+    ["Firestore: dhikr, counters, rounds","Deleted"],
+    ["Firestore: daily history and snapshots","Deleted"],
+    ["Firestore: your app settings and reminder times","Deleted"],
+    ["Your Firebase Authentication account","Deleted"],
+    ["Local database on your device","Deleted when you uninstall the app"],
+    ["Encrypted backup files you exported","Kept by you — delete them yourself"],
+    ["Your Google account itself","Managed from your Google account settings"]
+  ]},
+  hNote:"Notes",
+  note:[
+    "There is no “deactivate but keep data” option in the app; deletion is permanent.",
+    "If you sign in again with the same Google account after deletion, you will start from an empty state.",
+    "For details on data processing see: "
+  ],
+  hContact:"Where to send a request",
+  foot:"Nefs Zikirleri — Account Deletion · Last updated " + EFFECTIVE
+},
+
+de: {
+  dir:"ltr", name:"Deutsch",
+  title:"Konto löschen",
+  meta:"Zuletzt aktualisiert: " + EFFECTIVE,
+  intro:"Es gibt drei Wege, dein Nefs-Zikirleri-Konto und alle Cloud-Daten zu löschen. Am schnellsten und empfohlen ist die Löschung in der App; sie ist sofort abgeschlossen.",
+  warnTitle:"Dieser Schritt ist endgültig",
+  warn:"Nach der Kontolöschung werden deine Dhikr, dein Verlauf, deine Einstellungen und Snapshots in der Cloud dauerhaft entfernt und können nicht wiederhergestellt werden. Wir empfehlen, vorher in der App eine verschlüsselte Sicherung zu erstellen.",
+  ways:[
+    { tag:"Empfohlen", h:"1. In der App löschen", steps:[
+      "Öffne die App und gehe zum Tab Einstellungen.",
+      "Öffne den Kontobereich (nur sichtbar, wenn du mit Google angemeldet bist).",
+      "Tippe auf Konto löschen.",
+      "Bestätige, indem du 3 Sekunden lang gedrückt hältst.",
+      "Alle Firestore-Datensätze und dein Firebase-Konto werden gelöscht."
+    ]},
+    { tag:"Web", h:"2. Anfrage über diese Seite", steps:[
+      "Sende eine E-Mail an die unten genannte Adresse — von der Google-Adresse, mit der du dich angemeldet hast.",
+      "Verwende den Betreff „Kontolöschung — Nefs Zikirleri“.",
+      "Zur Identitätsprüfung muss die Anfrage von der im Konto hinterlegten Adresse kommen.",
+      "Anfragen werden spätestens innerhalb von " + SLA_DAYS + " Tagen bearbeitet; du erhältst das Ergebnis per E-Mail."
+    ]},
+    { tag:"Lokal", h:"3. Nur Gerätedaten", steps:[
+      "Die Deinstallation der App entfernt alle lokalen Daten (Zähler, Verlauf, Einstellungen).",
+      "Warst du mit Google angemeldet, bleibt die Cloud-Kopie erhalten; nutze dafür Weg 1 oder 2."
+    ]}
+  ],
+  hWhat:"Was gelöscht wird und was bleibt",
+  tbl:{ head:["Daten","Ergebnis"], rows:[
+    ["Firestore: Dhikr, Zähler, Runden","Gelöscht"],
+    ["Firestore: täglicher Verlauf und Snapshots","Gelöscht"],
+    ["Firestore: App-Einstellungen und Erinnerungszeiten","Gelöscht"],
+    ["Dein Firebase-Authentication-Konto","Gelöscht"],
+    ["Lokale Datenbank auf deinem Gerät","Gelöscht bei Deinstallation"],
+    ["Exportierte verschlüsselte Sicherungen","Bleiben bei dir — bitte selbst löschen"],
+    ["Dein Google-Konto selbst","Wird in den Google-Kontoeinstellungen verwaltet"]
+  ]},
+  hNote:"Hinweise",
+  note:[
+    "Es gibt in der App keine Option „deaktivieren, aber Daten behalten“; die Löschung ist endgültig.",
+    "Meldest du dich nach der Löschung erneut mit demselben Google-Konto an, beginnst du mit einem leeren Stand.",
+    "Einzelheiten zur Datenverarbeitung: "
+  ],
+  hContact:"Anfrageadresse",
+  foot:"Nefs Zikirleri — Konto löschen · Zuletzt aktualisiert " + EFFECTIVE
+},
+
+fr: {
+  dir:"ltr", name:"Français",
+  title:"Suppression du compte",
+  meta:"Dernière mise à jour : " + EFFECTIVE,
+  intro:"Il existe trois façons de supprimer ton compte Nefs Zikirleri et toutes tes données cloud. La plus rapide et recommandée est la suppression depuis l'application ; elle est immédiate.",
+  warnTitle:"Cette action est irréversible",
+  warn:"Une fois le compte supprimé, tes dhikr, ton historique, tes réglages et tes instantanés cloud sont définitivement effacés et ne peuvent pas être récupérés. Nous te conseillons de faire une sauvegarde chiffrée depuis l'application avant de continuer.",
+  ways:[
+    { tag:"Recommandé", h:"1. Supprimer depuis l'application", steps:[
+      "Ouvre l'application et va dans l'onglet Paramètres.",
+      "Ouvre la section compte (visible uniquement si tu es connecté avec Google).",
+      "Appuie sur Supprimer le compte.",
+      "Confirme en maintenant pendant 3 secondes.",
+      "Tous tes enregistrements Firestore et ton compte Firebase sont supprimés."
+    ]},
+    { tag:"Web", h:"2. Demande via cette page", steps:[
+      "Envoie un e-mail à l'adresse ci-dessous depuis l'adresse Google utilisée pour te connecter.",
+      "Objet : « Demande de suppression de compte — Nefs Zikirleri ».",
+      "Pour la vérification d'identité, la demande doit provenir de l'adresse enregistrée sur ton compte.",
+      "Les demandes sont traitées sous " + SLA_DAYS + " jours au plus tard et le résultat t'est envoyé par e-mail."
+    ]},
+    { tag:"Local", h:"3. Données de l'appareil uniquement", steps:[
+      "Désinstaller l'application supprime toutes les données locales (compteurs, historique, réglages).",
+      "Si tu étais connecté avec Google, la copie cloud subsiste ; utilise la méthode 1 ou 2."
+    ]}
+  ],
+  hWhat:"Ce qui est supprimé et ce qui reste",
+  tbl:{ head:["Données","Résultat"], rows:[
+    ["Firestore : dhikr, compteurs, tours","Supprimé"],
+    ["Firestore : historique quotidien et instantanés","Supprimé"],
+    ["Firestore : réglages et heures de rappel","Supprimé"],
+    ["Ton compte Firebase Authentication","Supprimé"],
+    ["Base locale sur ton appareil","Supprimée à la désinstallation"],
+    ["Sauvegardes chiffrées exportées","Conservées par toi — à supprimer toi-même"],
+    ["Ton compte Google lui-même","Géré depuis les paramètres de ton compte Google"]
+  ]},
+  hNote:"Remarques",
+  note:[
+    "Il n'existe pas d'option « désactiver mais conserver les données » ; la suppression est définitive.",
+    "Si tu te reconnectes avec le même compte Google après suppression, tu repars d'un état vide.",
+    "Pour le détail du traitement des données : "
+  ],
+  hContact:"Adresse pour une demande",
+  foot:"Nefs Zikirleri — Suppression du compte · Dernière mise à jour " + EFFECTIVE
+},
+
+ar: {
+  dir:"rtl", name:"العربية",
+  title:"حذف الحساب",
+  meta:"آخر تحديث: " + EFFECTIVE,
+  intro:"هناك ثلاث طرق لحذف حسابك في «أنفس الأذكار» وجميع بياناتك السحابية. أسرعها والموصى بها هي الحذف من داخل التطبيق، ويتم فورًا.",
+  warnTitle:"لا يمكن التراجع عن هذا الإجراء",
+  warn:"بعد حذف الحساب تُحذف أذكارك وسجلك وإعداداتك ولقطاتك السحابية نهائيًا ولا يمكن استعادتها. ننصح بأخذ نسخة احتياطية مشفّرة من داخل التطبيق قبل المتابعة.",
+  ways:[
+    { tag:"موصى به", h:"١. الحذف من داخل التطبيق", steps:[
+      "افتح التطبيق وانتقل إلى تبويب الإعدادات.",
+      "افتح قسم الحساب (يظهر فقط إذا سجّلت الدخول عبر Google).",
+      "اضغط على «حذف الحساب».",
+      "أكّد بالضغط المطوّل لمدة ٣ ثوانٍ.",
+      "تُحذف جميع سجلاتك في Firestore وحساب Firebase الخاص بك."
+    ]},
+    { tag:"ويب", h:"٢. الطلب عبر هذه الصفحة", steps:[
+      "أرسل بريدًا إلى العنوان أدناه من عنوان Google الذي سجّلت به الدخول.",
+      "اجعل الموضوع: «طلب حذف حساب — أنفس الأذكار».",
+      "للتحقق من الهوية يجب أن يصل الطلب من البريد المسجّل في حسابك.",
+      "تُعالج الطلبات خلال " + SLA_DAYS + " يومًا كحد أقصى ويُرسل إليك الناتج بالبريد."
+    ]},
+    { tag:"محلي", h:"٣. بيانات الجهاز فقط", steps:[
+      "إلغاء تثبيت التطبيق يحذف جميع البيانات المحلية (العدّادات، السجل، الإعدادات).",
+      "إن كنت مسجّلًا عبر Google فتبقى النسخة السحابية؛ استخدم الطريقة ١ أو ٢ لحذفها."
+    ]}
+  ],
+  hWhat:"ما يُحذف وما يبقى",
+  tbl:{ head:["البيانات","النتيجة"], rows:[
+    ["Firestore: الأذكار والعدّادات والجولات","تُحذف"],
+    ["Firestore: السجل اليومي واللقطات","تُحذف"],
+    ["Firestore: إعداداتك وأوقات التذكير","تُحذف"],
+    ["حساب Firebase Authentication","يُحذف"],
+    ["قاعدة البيانات المحلية على جهازك","تُحذف عند إلغاء التثبيت"],
+    ["ملفات النسخ الاحتياطي المشفّرة التي صدّرتها","تبقى لديك — احذفها بنفسك"],
+    ["حساب Google نفسه","يُدار من إعدادات حسابك في Google"]
+  ]},
+  hNote:"ملاحظات",
+  note:[
+    "لا يوجد خيار «تعطيل مع حفظ البيانات» داخل التطبيق؛ الحذف نهائي.",
+    "إذا سجّلت الدخول مجددًا بالحساب نفسه بعد الحذف فستبدأ من حالة فارغة.",
+    "لتفاصيل معالجة البيانات انظر: "
+  ],
+  hContact:"عنوان تقديم الطلب",
+  foot:"أنفس الأذكار — حذف الحساب · آخر تحديث " + EFFECTIVE
+}
+};
+
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function linkify(s){
+  return esc(s).replace(/(https?:\/\/[^\s،]+)/g, function(u){
+    return '<a href="'+u+'" rel="noopener">'+u+'</a>';
+  });
+}
+
+function render(lang){
+  var t = T[lang] || T.tr;
+  document.documentElement.lang = lang;
+  document.documentElement.dir = t.dir;
+  document.getElementById("title").textContent = t.title;
+  document.getElementById("meta").textContent = t.meta;
+  document.title = "Nefs Zikirleri — " + t.title;
+
+  var out = '<p class="note">'+linkify(t.intro)+'</p>';
+  out += '<div class="warn"><strong>'+esc(t.warnTitle)+'.</strong> '+linkify(t.warn)+'</div>';
+
+  t.ways.forEach(function(w){
+    out += '<div class="card"><h3><span class="tag">'+esc(w.tag)+'</span> &nbsp;'+esc(w.h)+'</h3><ol>'
+         + w.steps.map(function(s){ return '<li>'+linkify(s)+'</li>'; }).join('')
+         + '</ol>';
+    if (w === t.ways[1]) {
+      out += '<a class="btn" href="mailto:'+CONTACT_EMAIL
+           + '?subject='+encodeURIComponent('Account deletion request — Nefs Zikirleri')
+           +'">'+esc(CONTACT_EMAIL)+'</a>';
+    }
+    out += '</div>';
+  });
+
+  out += '<h2>'+esc(t.hWhat)+'</h2><table><thead><tr>'
+       + t.tbl.head.map(function(h){ return '<th>'+esc(h)+'</th>'; }).join('')
+       + '</tr></thead><tbody>'
+       + t.tbl.rows.map(function(r){ return '<tr>'+r.map(function(c){ return '<td>'+esc(c)+'</td>'; }).join('')+'</tr>'; }).join('')
+       + '</tbody></table>';
+
+  out += '<h2>'+esc(t.hNote)+'</h2><ul>'
+       + t.note.slice(0,-1).map(function(x){ return '<li>'+linkify(x)+'</li>'; }).join('')
+       + '<li>'+linkify(t.note[t.note.length-1])+' <a href="'+PRIVACY_PATH+'">'+esc(t.dir==="rtl"?"سياسة الخصوصية":(lang==="en"?"Privacy Policy":(lang==="de"?"Datenschutzerklärung":(lang==="fr"?"Politique de confidentialité":"Gizlilik Politikası"))))+'</a></li>'
+       + '</ul>';
+
+  out += '<h2>'+esc(t.hContact)+'</h2><p><a href="mailto:'+CONTACT_EMAIL+'">'+esc(CONTACT_EMAIL)+'</a></p>';
+
+  document.getElementById("body").innerHTML = out;
+  document.getElementById("foot").textContent = t.foot;
+
+  Array.prototype.forEach.call(document.querySelectorAll("#langs button"), function(b){
+    b.setAttribute("aria-pressed", b.dataset.lang === lang ? "true" : "false");
+  });
+  try { localStorage.setItem("nefs_deletion_lang", lang); } catch(e){}
+}
+
+(function(){
+  var nav = document.getElementById("langs");
+  LANGS.forEach(function(l){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.dataset.lang = l;
+    b.textContent = T[l].name;
+    b.addEventListener("click", function(){ render(l); });
+    nav.appendChild(b);
+  });
+  var saved = null;
+  try { saved = localStorage.getItem("nefs_deletion_lang"); } catch(e){}
+  var guess = saved || (navigator.language || "tr").slice(0,2).toLowerCase();
+  render(LANGS.indexOf(guess) >= 0 ? guess : "tr");
+})();
+</script>
+</body>
+</html>

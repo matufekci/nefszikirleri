@@ -70,11 +70,8 @@
 -keep class javax.crypto.** { *; }
 -keep class java.security.** { *; }
 
-# --- OkHttp / Retrofit (if used) ---
--dontwarn okhttp3.**
+# --- okio (Moshi'nin alt katmani) ---
 -dontwarn okio.**
--dontwarn retrofit2.**
--keep class retrofit2.** { *; }
 
 # --- Remove logging in release ---
 -assumenosideeffects class android.util.Log {

@@ -30,7 +30,7 @@ class ZikirRepository(
     private val globalFence = java.util.concurrent.atomic.AtomicLong(0L)
     private val zikirFences = java.util.concurrent.ConcurrentHashMap<Int, Long>()
 
-    fun getEffectiveFence(zikirId: Int): Long {
+    private fun getEffectiveFence(zikirId: Int): Long {
         val zFence = zikirFences[zikirId] ?: 0L
         val gFence = globalFence.get()
         return maxOf(zFence, gFence)
@@ -116,7 +116,6 @@ class ZikirRepository(
     val recentHistory: Flow<List<ZikirHistory>> = historyDao.observeRecentHistory(50)
     val distinctActiveDates: Flow<List<String>> = historyDao.observeDistinctActiveDates()
     val totalRecited: Flow<Long> = historyDao.observeTotalRecited()
-    val allSlots: Flow<List<ReminderSlot>> = reminderDao.getAllSlots()
     val settings: Flow<AppSettings?> = settingsDao.getSettings()
 
     fun observeDailyStats(fromTimestamp: Long): Flow<List<DailyAggregate>> =
@@ -134,24 +133,12 @@ class ZikirRepository(
     suspend fun getAllHistoryDirect(): List<ZikirHistory> =
         getAllHistoryInChunksDirect()
 
-    suspend fun getAllHistoryInChunksDirect(chunkSize: Int = 2000): List<ZikirHistory> = database.withTransaction {
-        val totalCount = historyDao.getHistoryCountDirect()
-        if (totalCount <= chunkSize) {
-            return@withTransaction historyDao.getAllHistoryDirect()
-        }
-        val result = ArrayList<ZikirHistory>(totalCount)
-        var offset = 0
-        while (offset < totalCount) {
-            val chunk = historyDao.getHistoryPagedDirect(limit = chunkSize, offset = offset)
-            if (chunk.isEmpty()) break
-            result.addAll(chunk)
-            offset += chunk.size
-        }
-        result
-    }
+    suspend fun getAllHistoryInChunksDirect(chunkSize: Int = 2000): List<ZikirHistory> =
+        database.withTransaction { getAllHistoryInChunksDirectInternal(chunkSize) }
 
-    suspend fun getAllHistoryInChunksDirectInternal(chunkSize: Int = 2000): List<ZikirHistory> {
-        // Internal non-transactional version for use inside existing transactions
+    private suspend fun getAllHistoryInChunksDirectInternal(chunkSize: Int = 2000): List<ZikirHistory> {
+        // Islemsiz (non-transactional) surum: zaten bir islem icinde cagrilir.
+        // Sayfalama mantigi yalnizca burada durur; islemli surum bunu sarar.
         val totalCount = historyDao.getHistoryCountDirect()
         if (totalCount <= chunkSize) {
             return historyDao.getAllHistoryDirect()
@@ -501,21 +488,5 @@ class ZikirRepository(
             )
             settingsDao.insertOrUpdate(finalSettings)
         }
-    }
-
-    suspend fun getAllSlotsList(): List<ReminderSlot> {
-        return reminderDao.getAllSlotsList()
-    }
-
-    suspend fun addReminderSlot(hour: Int, minute: Int) {
-        reminderDao.insert(ReminderSlot(hour = hour, minute = minute, isEnabled = true))
-    }
-
-    suspend fun updateReminderSlot(slot: ReminderSlot) {
-        reminderDao.update(slot)
-    }
-
-    suspend fun removeReminderSlot(id: Long) {
-        reminderDao.deleteById(id)
     }
 }

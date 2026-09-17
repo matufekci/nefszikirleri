@@ -9,7 +9,12 @@ plugins {
 
 android {
   namespace = "com.example"
-  compileSdk { version = release(36) { minorApiLevel = 1 } }
+  // compileSdk 37: androidx.core 1.19.0 / core-ktx 1.19.0 AAR metadata'si
+  // "compile against version 37 or later" ve "AGP 9.1.0 or higher" istiyor
+  // (AGP'miz 9.1.1). targetSdk BILEREK 36'da: targetSdk uygulamayi yeni
+  // calisma zamani davranislarina sokar, compileSdk yalnizca derleme
+  // yuzeyini genisletir. minSdk 24 de degismedi.
+  compileSdk { version = release(37) }
 
   defaultConfig {
     applicationId = "com.aistudio.nefszikir.kdhrmq"
@@ -24,8 +29,17 @@ android {
   signingConfigs {
     val debugKeystoreFile = file("${rootDir}/debug.keystore")
     if (debugKeystoreFile.exists()) {
+      // Keystore tipini dosyanin magic baytlarindan tespit et.
+      // JKS dosyalari FEEDFEED ile, PKCS12 (DER) dosyalari 3082 ile baslar.
+      // Yanlis storeType verilirse imzalama adimi "keystore was tampered with /
+      // not found" gibi yaniltici hatalarla patlar. Repodaki debug.keystore PKCS12.
+      val magic = debugKeystoreFile.inputStream().use { it.readNBytes(4) }
+      val isJksKeystore = magic.size >= 4 &&
+        magic[0] == 0xFE.toByte() && magic[1] == 0xED.toByte() &&
+        magic[2] == 0xFE.toByte() && magic[3] == 0xED.toByte()
       create("debugConfig") {
         storeFile = debugKeystoreFile
+        storeType = if (isJksKeystore) "jks" else "PKCS12"
         storePassword = "android"
         keyAlias = "androiddebugkey"
         keyPassword = "android"
@@ -70,20 +84,25 @@ android {
       isShrinkResources = true
 
       val releaseSigning = signingConfigs.findByName("release")
-      val isReleaseBuild = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) } || 
-                           gradle.startParameter.taskRequests.toString().contains("Release", ignoreCase = true)
-                           
-      if (isReleaseBuild && releaseSigning == null) {
-          val msg = """
-              |CONFIGURATION FAILED: Release signing configuration is missing.
-              |Expected env vars: RELEASE_KEYSTORE_PATH, RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD
-              |Or: KEYSTORE_PATH, STORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
-              |For CI: ensure debug build works, release requires real keystore.
-              |To bypass in CI for non-release tasks, don't run :assembleRelease.
-          """.trimMargin()
-          throw GradleException(msg)
+
+      // FAIL-FAST: release build ASLA debug keystore ile imzalanamaz.
+      // Gecmiste CI, debug.keystore'i RELEASE_KEYSTORE_PATH olarak besleyip
+      // release'i debug anahtariyla imzaliyordu. Bunu tamamen engelliyoruz:
+      // gercek upload keystore CI secret'indan gelmelidir.
+      val debugKeystorePath = file("${rootDir}/debug.keystore").absolutePath
+      val releaseStorePath = releaseSigning?.storeFile?.absolutePath
+      if (releaseSigning != null &&
+          (releaseStorePath == debugKeystorePath || releaseSigning.keyAlias == "androiddebugkey")) {
+          throw GradleException(
+              "RELEASE IMZA REDDEDILDI: debug keystore release imzasi olarak KULLANILAMAZ. " +
+              "Gercek upload keystore'unu CI secret olarak saglayin " +
+              "(RELEASE_KEYSTORE_BASE64 + RELEASE_STORE_PASSWORD + RELEASE_KEY_ALIAS + RELEASE_KEY_PASSWORD). " +
+              "Play App Signing key Google'da, upload key CI'da yonetilir."
+          )
       }
 
+      // Gercek keystore yoksa release UNSIGNED uretilir: assembleRelease/bundleRelease
+      // yine calisir ve artifact uretir; imza yalnizca gercek keystore saglaninca uygulanir.
       signingConfig = releaseSigning
 
       proguardFiles(
@@ -108,6 +127,16 @@ android {
   buildFeatures {
     compose = true
     buildConfig = true
+  }
+  lint {
+    // CI'daki "Report lint results" adimi XML raporu okuyup sayilari
+    // annotation'a ceviriyor; rapor uretilmezse job kirmizi oluyor. Boylece
+    // lint'in hic calismamasi sessizce yesil gorunmuyor.
+    xmlReport = true
+    htmlReport = true
+    // Lint bulgulari icin politika CI'da (report-lint.sh yalnizca FATAL'de
+    // kirmiziya cevirir); derleme burada kesilmiyor.
+    abortOnError = false
   }
   
   sourceSets {
@@ -158,13 +187,7 @@ dependencies {
   implementation(libs.androidx.fragment.ktx)
   
   implementation(platform(libs.androidx.compose.bom))
-  // implementation(platform(libs.firebase.bom))
-  // implementation(libs.accompanist.permissions)
   implementation(libs.androidx.activity.compose)
-  // implementation(libs.androidx.camera.camera2)
-  // implementation(libs.androidx.camera.core)
-  // implementation(libs.androidx.camera.lifecycle)
-  // implementation(libs.androidx.camera.view)
   implementation(libs.androidx.compose.material.icons.core)
   implementation(libs.androidx.compose.material.icons.extended)
   implementation(libs.androidx.compose.material3)
@@ -172,26 +195,14 @@ dependencies {
   implementation(libs.androidx.compose.ui.graphics)
   implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.core.ktx)
-  implementation(libs.androidx.core.splashscreen)
-  // implementation(libs.androidx.datastore.preferences)
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.lifecycle.viewmodel.compose)
-  // implementation(libs.androidx.navigation.compose)
   implementation(libs.androidx.room.ktx)
   implementation(libs.androidx.room.runtime)
-  // implementation(libs.coil.compose)
-  implementation(libs.converter.moshi)
-  // implementation(libs.firebase.ai)
-  // implementation(libs.firebase.firestore)
-  // implementation(libs.firebase.appcheck.recaptcha)
   implementation(libs.kotlinx.coroutines.android)
   implementation(libs.kotlinx.coroutines.core)
-  implementation(libs.logging.interceptor)
   implementation(libs.moshi.kotlin)
-  implementation(libs.okhttp)
-  // implementation(libs.play.services.location)
-  implementation(libs.retrofit)
   implementation(libs.androidx.work.runtime.ktx)
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
@@ -200,7 +211,7 @@ dependencies {
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.robolectric)
   testImplementation(libs.androidx.room.testing)
-  testImplementation("androidx.work:work-testing:2.10.0")
+  testImplementation(libs.androidx.work.testing)
   testImplementation(libs.roborazzi)
   testImplementation(libs.roborazzi.compose)
   testImplementation(libs.roborazzi.junit.rule)
@@ -212,7 +223,6 @@ dependencies {
   debugImplementation(libs.androidx.compose.ui.test.manifest)
   debugImplementation(libs.androidx.compose.ui.tooling)
   "ksp"(libs.androidx.room.compiler)
-  "ksp"(libs.moshi.kotlin.codegen)
 }
 
 ksp {
