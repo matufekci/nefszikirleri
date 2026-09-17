@@ -416,6 +416,25 @@ class HistoryPreservationOnZikirUpdateTest {
 
     // ------------------------------------------- 6. restore atomiklik (kesinti)
 
+    /**
+     * Restore'un ORTASINDA kesinti simulasyonu: dogrulamadan gecen bir payload
+     * ile, yazim sirasinin ilerleyen bir adiminda (zikirs ve history yazildiktan
+     * SONRA) SQLite seviyesinde hata uretilir. Bunu bir trigger ile yapiyoruz:
+     * RAISE(ABORT) -> SQLiteConstraintException -> withTransaction rollback.
+     * Beklenen: zikirs/history/slots/settings tamamen ESKI haliyle kalir
+     * (yarim yazilmis veritabani yok).
+     */
+    private fun installCrashTrigger(table: String, event: String) {
+        db.openHelper.writableDatabase.execSQL(
+            "CREATE TRIGGER IF NOT EXISTS test_crash_$table BEFORE $event ON $table " +
+                "BEGIN SELECT RAISE(ABORT, 'simulated crash during restore'); END"
+        )
+    }
+
+    private fun removeCrashTrigger(table: String) {
+        db.openHelper.writableDatabase.execSQL("DROP TRIGGER IF EXISTS test_crash_$table")
+    }
+
     @Test
     fun restoreFullLocalBackup_failsMidway_leavesDatabaseUntouched() = runBlocking {
         repository.addDhikrCount(1, 77L)
@@ -423,40 +442,69 @@ class HistoryPreservationOnZikirUpdateTest {
         val zikirsBefore = db.zikirDao().getAllZikirsDirect()
         val historyBefore = snapshotAll()
         val slotsBefore = db.reminderDao().getAllSlotsList()
+        val settingsBefore = db.settingsDao().getSettingsDirect()
 
         val (zikirs, history, slots) = fullSnapshot()
-        // Dogrulamadan GECEN ama DB yazimi sirasinda patlayan payload:
-        // ayni eventId iki kez -> UNIQUE index ihlali insertAll icinde firlar.
-        val duplicated = history + history.first().copy(timestamp = history.first().timestamp + 1)
+        // Yazim sirasi: replaceSnapshot(zikirs) -> history.insertAll -> reminder.insertAll -> settings
+        // Kesinti: reminder_slots insert'inde (zikirs + history ZATEN yazilmisken).
+        installCrashTrigger("reminder_slots", "INSERT")
         try {
-            repository.restoreFullLocalBackup(zikirs, duplicated, slots, AppSettings(id = 1), selectedZikirId = 1)
-            fail("duplicate eventId ile restore basarili olmamaliydi")
+            repository.restoreFullLocalBackup(zikirs, history, slots, AppSettings(id = 1, completedRounds = 9), selectedZikirId = 1)
+            fail("simule edilen kesintide restore basarili olmamaliydi")
         } catch (e: Exception) {
-            // beklenen: SQLiteConstraintException (UNIQUE)
+            // beklenen: SQLiteConstraintException (RAISE ABORT)
+        } finally {
+            removeCrashTrigger("reminder_slots")
         }
 
-        // Transaction geri alinmis olmali: zikirs, history ve slots eski haliyle
-        assertEquals(zikirsBefore, db.zikirDao().getAllZikirsDirect())
-        assertEquals(historyBefore, snapshotAll())
-        assertEquals(slotsBefore, db.reminderDao().getAllSlotsList())
+        // Transaction geri alinmis olmali: hicbir tablo yarim kalmamali
+        assertEquals("zikirs eski haliyle kalmali", zikirsBefore, db.zikirDao().getAllZikirsDirect())
+        assertEquals("history eski haliyle kalmali (snapshot'taki ev-* satirlari YOK)", historyBefore, snapshotAll())
+        assertEquals("slots eski haliyle kalmali", slotsBefore, db.reminderDao().getAllSlotsList())
+        assertEquals("settings eski haliyle kalmali", settingsBefore, db.settingsDao().getSettingsDirect())
+
+        // Kesinti kalkinca ayni payload ile restore sorunsuz tamamlanmali
+        repository.restoreFullLocalBackup(zikirs, history, slots, AppSettings(id = 1, completedRounds = 9), selectedZikirId = 1)
+        assertRestoredStateMatches(zikirs, history)
     }
 
     @Test
     fun restoreFullCloudBackup_failsMidway_leavesDatabaseUntouched() = runBlocking {
         repository.addDhikrCount(2, 55L)
+        seedHistory(zikirId = 2, count = 2)
         val zikirsBefore = db.zikirDao().getAllZikirsDirect()
         val historyBefore = snapshotAll()
+        val settingsBefore = db.settingsDao().getSettingsDirect()
 
         val (zikirs, history, slots) = fullSnapshot()
-        val duplicated = history + history.last().copy(amount = 5L)
+        // Kesinti EN SON adimda (app_settings yazimi): zikirs+history+slots yazilmisken.
+        installCrashTrigger("app_settings", "INSERT")
         try {
-            repository.restoreFullCloudBackup(zikirs, AppSettings(id = 1), slots, duplicated)
-            fail("duplicate eventId ile restore basarili olmamaliydi")
+            repository.restoreFullCloudBackup(zikirs, AppSettings(id = 1, completedRounds = 4), slots, history)
+            fail("simule edilen kesintide restore basarili olmamaliydi")
         } catch (e: Exception) {
             // beklenen
+        } finally {
+            removeCrashTrigger("app_settings")
         }
         assertEquals(zikirsBefore, db.zikirDao().getAllZikirsDirect())
         assertEquals(historyBefore, snapshotAll())
+        assertEquals(settingsBefore, db.settingsDao().getSettingsDirect())
+    }
+
+    @Test
+    fun restore_duplicateEventIdInPayload_isDeduplicatedNotDoubled() = runBlocking {
+        // HistoryDao.insert/insertAll REPLACE'tir ve zikir_history'nin BAGIMLI
+        // tablosu yoktur: ayni eventId payload'da iki kez gelirse crash olmaz,
+        // tek satir kalir (idempotent restore). Bu, sync tekrarlarina karsi
+        // bilincli davranistir; sayi ASLA ikiye katlanmamali.
+        val (zikirs, history, slots) = fullSnapshot()
+        val duplicated = history + history.first().copy(amount = history.first().amount)
+        repository.restoreFullLocalBackup(zikirs, duplicated, slots, AppSettings(id = 1), selectedZikirId = 1)
+
+        val dbHistory = db.historyDao().getAllHistoryDirect()
+        assertEquals("tekrar eden eventId tek satira inmeli", history.size, dbHistory.size)
+        assertEquals(dbHistory.size, dbHistory.map { it.eventId }.toSet().size)
     }
 
     @Test
