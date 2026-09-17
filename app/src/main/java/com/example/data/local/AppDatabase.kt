@@ -40,7 +40,9 @@ abstract class AppDatabase : RoomDatabase() {
                 // Version 2 and 3 have the same schema in production.
                 // This migration exists purely to handle version bumps that occurred
                 // without actual schema changes. No SQL commands are needed.
-                android.util.Log.i("AppDatabase", "Migrating from v2 to v3: Schema unchanged.")
+                if (com.example.BuildConfig.DEBUG) {
+                    android.util.Log.i("AppDatabase", "Migrating from v2 to v3: Schema unchanged.")
+                }
             }
         }
 

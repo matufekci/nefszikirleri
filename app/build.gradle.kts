@@ -67,6 +67,27 @@ android {
         !keyAliasEnv.isNullOrBlank() &&
         !keyPasswordEnv.isNullOrBlank()
 
+    // YARIM YAPILANDIRMA = HATA. Degiskenlerin bir kismi verilmis ama tamami
+    // degilse (ornegin secret adi yanlis yazilmis) release SESSIZCE unsigned
+    // uretiliyordu ve bu "imzali" sanilabiliyordu. Artik acik hata veriyoruz.
+    // Hicbiri yoksa (yerel gelistirici / secret'siz CI) unsigned build serbest.
+    // Guvenlik: hata mesajinda degisken DEGERLERI degil yalnizca ADLARI yazilir.
+    val providedSigningVars = listOfNotNull(
+      keystorePath?.takeIf { it.isNotBlank() }?.let { "RELEASE_KEYSTORE_PATH" },
+      storePasswordEnv?.takeIf { it.isNotBlank() }?.let { "RELEASE_STORE_PASSWORD" },
+      keyAliasEnv?.takeIf { it.isNotBlank() }?.let { "RELEASE_KEY_ALIAS" },
+      keyPasswordEnv?.takeIf { it.isNotBlank() }?.let { "RELEASE_KEY_PASSWORD" }
+    )
+    if (providedSigningVars.isNotEmpty() && !isReleaseSigningConfigured) {
+      val missing = listOf("RELEASE_KEYSTORE_PATH", "RELEASE_STORE_PASSWORD", "RELEASE_KEY_ALIAS", "RELEASE_KEY_PASSWORD") - providedSigningVars.toSet()
+      val fileProblem = if (!keystorePath.isNullOrBlank() && !file(keystorePath).exists()) " (RELEASE_KEYSTORE_PATH dosyasi bulunamadi)" else ""
+      throw GradleException(
+        "RELEASE IMZA YAPILANDIRMASI EKSIK: verilen=${providedSigningVars.joinToString()}; " +
+          "eksik=${missing.joinToString()}$fileProblem. Ya 4 degiskenin tamamini verin ya da hicbirini " +
+          "(o zaman release bilerek UNSIGNED uretilir)."
+      )
+    }
+
     if (isReleaseSigningConfigured) {
       create("release") {
         storeFile = file(keystorePath!!)
@@ -103,7 +124,16 @@ android {
 
       // Gercek keystore yoksa release UNSIGNED uretilir: assembleRelease/bundleRelease
       // yine calisir ve artifact uretir; imza yalnizca gercek keystore saglaninca uygulanir.
+      // Bu durum SESSIZ kalmaz: asagidaki uyari + CI'daki "Release imza durumu" adimi
+      // (ci.yml) bunu gorunur kilar. Play'e yalnizca imzali AAB yuklenebilir.
       signingConfig = releaseSigning
+      if (releaseSigning == null) {
+        logger.warn(
+          "UYARI: RELEASE IMZASIZ (unsigned) uretilecek - RELEASE_KEYSTORE_PATH/STORE_PASSWORD/" +
+            "KEY_ALIAS/KEY_PASSWORD tanimli degil. Cikan app-release-unsigned.apk / .aab " +
+            "Play Store'a YUKLENEMEZ ve cihaza kurulamaz."
+        )
+      }
 
       proguardFiles(
           getDefaultProguardFile("proguard-android-optimize.txt"),

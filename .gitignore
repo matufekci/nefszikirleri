@@ -13,13 +13,23 @@ local.properties
 *.hprof
 
 # Keystore & Secrets
+# NOT: debug.keystore BILINCLI olarak repoda (asagida !debug.keystore).
+# Sadece gelistirme/CI debug imzasi icindir; Firebase'de kayitli sabit SHA-1
+# bu anahtara aittir. Release imzasi ASLA repoya girmez: CI secret'tan
+# ($RUNNER_TEMP) cozulur; build.gradle.kts debug.keystore'u release icin reddeder.
 *.jks
 *.keystore
 !debug.keystore
+# scripts/generate-release-keystore.sh ciktilari (base64 keystore + yedekler)
+*.keystore.b64
+*.b64
+*.keystore.bak.*
+release.keystore*
 .env
 .env.local
 google-services.json
 !app/google-services.json.example
+!app/ci-dummy-google-services.json
 secrets.properties
 
 # OS

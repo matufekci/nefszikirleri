@@ -67,7 +67,9 @@ class DailyEvaluationWorker(
                 db.pendingOperationDao().cleanupOldApplied(weekAgo)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                Log.w(TAG, "Failed to cleanup old pending operations", e)
+                if (com.example.BuildConfig.DEBUG) {
+                    Log.w(TAG, "Failed to cleanup old pending operations", e)
+                }
             }
 
             // 0b. Cleanup temporary backup files
@@ -75,7 +77,9 @@ class DailyEvaluationWorker(
                 com.example.data.backup.BackupManager(context).cleanupTemporaryBackups()
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                Log.w(TAG, "Failed to cleanup temp backups", e)
+                if (com.example.BuildConfig.DEBUG) {
+                    Log.w(TAG, "Failed to cleanup temp backups", e)
+                }
             }
 
             // 1. Tempo matematiği: 1.140.000 zikir / 6 ay hedefi.
@@ -91,24 +95,34 @@ class DailyEvaluationWorker(
                 repo.processUnappliedOperations()
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                Log.w(TAG, "Failed to process unapplied ops in worker", e)
+                if (com.example.BuildConfig.DEBUG) {
+                    Log.w(TAG, "Failed to process unapplied ops in worker", e)
+                }
             }
 
             return Result.success()
         } catch (e: CancellationException) {
-            Log.d(TAG, "DailyEvaluationWorker execution was cancelled")
+            if (com.example.BuildConfig.DEBUG) {
+                Log.d(TAG, "DailyEvaluationWorker execution was cancelled")
+            }
             throw e
         } catch (e: Throwable) {
             if (isTransientFailure(e)) {
                 if (runAttemptCount < MAX_RETRIES) {
-                    Log.w(TAG, "Transient failure encountered in DailyEvaluationWorker (attempt: $runAttemptCount). Retrying...", e)
+                    if (com.example.BuildConfig.DEBUG) {
+                        Log.w(TAG, "Transient failure encountered in DailyEvaluationWorker (attempt: $runAttemptCount). Retrying...", e)
+                    }
                     return Result.retry()
                 } else {
-                    Log.e(TAG, "DailyEvaluationWorker exceeded max retry limit ($MAX_RETRIES). Failing.")
+                    if (com.example.BuildConfig.DEBUG) {
+                        Log.e(TAG, "DailyEvaluationWorker exceeded max retry limit ($MAX_RETRIES). Failing.")
+                    }
                     return Result.failure()
                 }
             } else {
-                Log.e(TAG, "Permanent or unrecoverable error in DailyEvaluationWorker. Failing immediately.", e)
+                if (com.example.BuildConfig.DEBUG) {
+                    Log.e(TAG, "Permanent or unrecoverable error in DailyEvaluationWorker. Failing immediately.", e)
+                }
                 return Result.failure()
             }
         }
@@ -165,7 +179,11 @@ class DailyEvaluationWorker(
             return null
         }
 
-        Log.d(TAG, "Pace eval: remaining=$remaining elapsed=$elapsedDays need=$needDaily avg7=$avg7 band=$band")
+        // Kisisel ibadet verisi (kalan/ortalama zikir) production loguna yazilmaz;
+        // yalnizca debug build'de ve sadece band tanisi.
+        if (com.example.BuildConfig.DEBUG) {
+            Log.d(TAG, "Pace eval: band=$band elapsedDays=$elapsedDays")
+        }
         return band
     }
 

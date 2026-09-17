@@ -333,7 +333,9 @@ class ZikirRepository(
                         startedAt = if (zikir.startedAt == null || zikir.startedAt == 0L) now else zikir.startedAt,
                         completedAt = zikir.completedAt ?: now
                     )
-                    zikirDao.insert(updated)
+                    // @Update (UPDATE ... WHERE id): satir silinmez, CASCADE tetiklenmez.
+                    // Eskiden insert(REPLACE) idi ve bu zikrin TUM gecmisini siliyordu.
+                    zikirDao.update(updated)
 
                     val historyEntry = ZikirHistory(
                         zikirId = id,
@@ -346,11 +348,10 @@ class ZikirRepository(
                 }
             }
 
-            // Ensure the target zikir is marked as started if not already
-            val targetZikir = zikirDao.getZikirById(clampedTargetId)
-            if (targetZikir != null && (targetZikir.startedAt == null || targetZikir.startedAt == 0L)) {
-                zikirDao.insert(targetZikir.copy(startedAt = now))
-            }
+            // Ensure the target zikir is marked as started if not already.
+            // Yerinde UPDATE: startedAt doluysa SQL kosulu zaten dokunmaz;
+            // satir silinmedigi icin hedef zikrin gecmisi korunur.
+            zikirDao.markStarted(clampedTargetId, now)
 
             val currentSettings = settingsDao.getSettingsDirect() ?: AppSettings()
             settingsDao.insertOrUpdate(currentSettings.copy(
@@ -381,11 +382,12 @@ class ZikirRepository(
         database.withTransaction {
             val zikir = zikirDao.getZikirById(zikirId) ?: return@withTransaction
             val clampedTarget = newTarget.coerceIn(100L, 5000000L)
-            val updated = zikir.copy(
-                target = clampedTarget,
-                completedAt = if (zikir.count >= clampedTarget) zikir.completedAt ?: System.currentTimeMillis() else null
-            )
-            zikirDao.insert(updated)
+            val completedAt = if (zikir.count >= clampedTarget) zikir.completedAt ?: System.currentTimeMillis() else null
+            // Yerinde UPDATE (target + completedAt). Eskiden insert(REPLACE) idi:
+            // SQLite satiri silip yeniden ekliyor, ON DELETE CASCADE bu zikrin
+            // TUM zikir_history kayitlarini sessizce yok ediyordu (istatistik,
+            // seri, gunluk toplam kaybi). Hesaplama mantigi birebir ayni.
+            zikirDao.updateTarget(zikirId, clampedTarget, completedAt)
         }
     }
 
@@ -397,6 +399,20 @@ class ZikirRepository(
         return settingsDao.getSettingsDirect()
     }
 
+    /**
+     * ESKI FORMAT (legacy, sifresiz metin/JSON) yerel yedek geri yukleme.
+     *
+     * Bu format yalnizca zikir sayaclarini ve completedRounds'u tasir; icinde
+     * history YOKTUR. `replaceSnapshot` -> `deleteAll` CASCADE ile mevcut
+     * zikir_history'yi bosaltir. Bu BILINCLIDIR: snapshot semantigi geregi
+     * cihazdaki durum yedektekiyle tamamen degistirilir; eski sayaclara ait
+     * gecmis satirlari tutulsaydi istatistikler (gunluk toplam, seri) yeni
+     * sayaclarla celisirdi. Tum adimlar tek transaction'da: yarida kesilirse
+     * (crash, kill) hicbir degisiklik kalici olmaz.
+     *
+     * Modern akislar icin bkz. [restoreFullLocalBackup] ve
+     * [restoreFullCloudBackup]; onlar history'yi eventId ile birlikte geri yazar.
+     */
     suspend fun restoreBackup(zikirs: List<Zikir>, completedRounds: Int?) = zikirMutex.withLock {
         com.example.data.model.DhikrDataValidator.validateFullSnapshotStrict(
             zikirs = zikirs
@@ -417,6 +433,14 @@ class ZikirRepository(
         }
     }
 
+    /**
+     * BULUT snapshot geri yukleme (Firestore). Sira BILINCLI:
+     *  1. history/slots temizlenir, 2. `replaceSnapshot` zikirs'i deleteAll+insert
+     *  ile degistirir (CASCADE zaten bos history'yi etkilemez), 3. history
+     *  eventId/timestamp/dateKey birebir korunarak geri yazilir (Room PK `id`
+     *  autoGenerate; cagiran taraf id=0 gonderir).
+     * Tamami tek `withTransaction`: yarida kesilirse DB eski haliyle kalir.
+     */
     suspend fun restoreFullCloudBackup(zikirs: List<Zikir>, settings: AppSettings, slots: List<ReminderSlot>, history: List<ZikirHistory>) = zikirMutex.withLock {
         // Restore başlamadan önce tüm snapshot doğrulanmalı (fail-fast, no database modification)
         com.example.data.model.DhikrDataValidator.validateFullSnapshotStrict(
@@ -448,6 +472,11 @@ class ZikirRepository(
         }
     }
 
+    /**
+     * YEREL dosya (.edb / JSON) tam geri yukleme. Semantik [restoreFullCloudBackup]
+     * ile ayni: snapshot cihazdaki durumu TAMAMEN degistirir, history eventId
+     * korunarak geri yazilir, tamami tek transaction'dir (atomik).
+     */
     suspend fun restoreFullLocalBackup(
         zikirs: List<Zikir>,
         history: List<ZikirHistory>,

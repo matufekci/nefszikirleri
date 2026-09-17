@@ -238,9 +238,13 @@ jobs:
     # Release yolu (R8 minify + shrinkResources) CI'da HIC denenmemisti.
     # Obfuscation/kaynak daraltma hatalari yalnizca release derlemesinde ortaya
     # cikar; yani debug yesilken release cokuyor olabilirdi. Bu job bunu kapatir.
-    # Imza icin repodaki sabit debug.keystore kullanilir: boylece cikan APK
-    # kurulabilir ve Google girisi ayni SHA-1 ile calisir. Play'e cikacak
-    # surumde gercek release anahtari ortam degiskenleriyle verilmelidir.
+    #
+    # IMZA: Release ASLA debug.keystore ile imzalanmaz (build.gradle.kts fail-fast).
+    # Gercek upload keystore yalnizca RELEASE_KEYSTORE_BASE64 + RELEASE_STORE_PASSWORD
+    # + RELEASE_KEY_ALIAS + RELEASE_KEY_PASSWORD secret'larindan gelir. Secret yoksa
+    # artifact UNSIGNED uretilir ve bu "Release imza durumu" adiminda ACIKCA uyari
+    # olarak gorunur: job yesil olsa bile Play'e hazir olmadigi belli olur.
+    # Secret varsa imza dogrulanir; imzasiz/debug-imzali cikarsa job kirmizi olur.
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full]') }}
     steps:
@@ -273,12 +277,30 @@ jobs:
         id: keys
         env:
           KS_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          # Degerler LOGLANMAZ; yalnizca dolu/bos oldugu kontrol edilir.
+          HAS_STORE_PW: ${{ secrets.RELEASE_STORE_PASSWORD != '' }}
+          HAS_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS != '' }}
+          HAS_KEY_PW: ${{ secrets.RELEASE_KEY_PASSWORD != '' }}
         run: |
           if [ -n "$KS_B64" ]; then
-            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release-upload.keystore"
+            # Yarim secret seti = acik hata (build.gradle.kts de ayni kontrolu yapar).
+            # Eskiden eksik parola/alias sessizce unsigned build'e dusuyordu.
+            missing=""
+            [ "$HAS_STORE_PW" = "true" ] || missing="$missing RELEASE_STORE_PASSWORD"
+            [ "$HAS_ALIAS" = "true" ]    || missing="$missing RELEASE_KEY_ALIAS"
+            [ "$HAS_KEY_PW" = "true" ]   || missing="$missing RELEASE_KEY_PASSWORD"
+            if [ -n "$missing" ]; then
+              echo "::error title=Release secret seti eksik::RELEASE_KEYSTORE_BASE64 var ama eksik:$missing. Dort secret birlikte tanimlanmali."
+              exit 1
+            fi
+            if ! echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release-upload.keystore" 2>/dev/null; then
+              echo "::error title=Keystore cozulemedi::RELEASE_KEYSTORE_BASE64 gecerli base64 degil (tek satir, bosluksuz olmali)."
+              exit 1
+            fi
+            chmod 600 "$RUNNER_TEMP/release-upload.keystore"
             echo "path=$RUNNER_TEMP/release-upload.keystore" >> "$GITHUB_OUTPUT"
             echo "signed=true" >> "$GITHUB_OUTPUT"
-            echo "Gercek release/upload keystore secret'tan cozuldu."
+            echo "Gercek release/upload keystore secret'tan cozuldu ($RUNNER_TEMP altinda, artifact'a girmez)."
           else
             echo "signed=false" >> "$GITHUB_OUTPUT"
             echo "RELEASE KEYSTORE SECRET YOK -> release UNSIGNED uretilecek (Play icin secret ekleyin)."
@@ -325,10 +347,22 @@ jobs:
             exit 1
           fi
 
+      - name: Release imza durumu (signed/unsigned, debug anahtari reddi)
+        # HER ZAMAN kosar. Secret varsa: APK+AAB imzali olmali ve imza
+        # debug.keystore'a AIT OLMAMALI, yoksa job kirmizi. Secret yoksa:
+        # "UNSIGNED - Play'e hazir DEGIL" uyarisi basilir (job kirmizi olmaz).
+        # Secret degerleri hicbir sekilde loglanmaz.
+        if: always()
+        run: bash .github/scripts/assert-release-signing.sh "${{ steps.keys.outputs.signed || 'false' }}"
+
       - name: Report release APK signing certificate (Firebase SHA-1 kaniti)
         # Yalnizca gercek keystore ile imzalandiginda anlamli; unsigned build'de atla.
         if: ${{ always() && steps.keys.outputs.signed == 'true' }}
         run: bash .github/scripts/report-apk-signer.sh app/build/outputs/apk/release/app-release.apk
+
+      - name: Keystore temizligi (runner diskinde kalmasin)
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release-upload.keystore" 2>/dev/null || true
 
   # ============================================================
   # EMULATOR TESTLERI (Prompt 13.1)
