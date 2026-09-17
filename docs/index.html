@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="tr" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nefs Zikirleri</title>
+<meta name="description" content="Nefs Zikirleri — Kadiri 15 Nefs Zikri için manevi takip. 15 dhikr tracker / 15 Dhikr Tracker / 15 Dhikr-Verfolgung / Suivi des 15 dhikr / تتبع 15 ذكرًا">
+<style>
+  :root { --fg:#16202b; --mut:#5b6b7b; --line:#e3e9ef; --bg:#fff; --acc:#0f6b52; --soft:#f4f7f9; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:16px/1.7 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans","Noto Sans Arabic",sans-serif; }
+  .wrap { max-width:46rem; margin:0 auto; padding:2rem 1.25rem 5rem; }
+  header { border-bottom:1px solid var(--line); padding-bottom:1.25rem; margin-bottom:2rem; }
+  h1 { font-size:1.75rem; margin:0 0 .35rem; letter-spacing:-.02em; }
+  .app { color:var(--acc); font-weight:700; font-size:1.05rem; margin:.15rem 0; }
+  .meta { color:var(--mut); font-size:.85rem; margin:0; }
+  h2 { font-size:1.12rem; margin:2.25rem 0 .5rem; letter-spacing:-.01em; }
+  p, li { margin:.4rem 0; }
+  ul { padding-inline-start:1.25rem; margin:.4rem 0; }
+  a { color:var(--acc); }
+  .langs { display:flex; flex-wrap:wrap; gap:.4rem; margin:1rem 0 0; }
+  .langs button { font:inherit; font-size:.82rem; padding:.3rem .7rem; cursor:pointer;
+                  border:1px solid var(--line); border-radius:999px; background:var(--soft); color:var(--fg); }
+  .langs button[aria-pressed="true"] { background:var(--acc); border-color:var(--acc); color:#fff; }
+  .note { background:var(--soft); border-inline-start:3px solid var(--acc);
+          padding:.75rem 1rem; border-radius:0 6px 6px 0; margin:1rem 0; font-size:.93rem; }
+  .grid { display:grid; gap:1rem; grid-template-columns:1fr; margin:1.25rem 0; }
+  @media(min-width:600px){ .grid{ grid-template-columns:1fr 1fr; } }
+  .card { border:1px solid var(--line); border-radius:10px; padding:1rem 1.15rem; background:#fff; }
+  .card h3 { margin:0 0 .35rem; font-size:1.02rem; }
+  .card p { margin:.25rem 0 .6rem; font-size:.92rem; color:var(--mut); }
+  .btn { display:inline-block; padding:.5rem .9rem; border-radius:6px;
+         background:var(--acc); color:#fff; text-decoration:none; font-weight:600; font-size:.9rem; }
+  .btn.sec { background:var(--soft); color:var(--fg); border:1px solid var(--line); }
+  footer { margin-top:3rem; padding-top:1.25rem; border-top:1px solid var(--line);
+           color:var(--mut); font-size:.85rem; }
+  .mono { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:.85em; }
+  @media print { .langs { display:none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="title"></h1>
+    <p class="app">Nefs Zikirleri</p>
+    <p class="meta" id="meta"></p>
+    <nav class="langs" id="langs" aria-label="Language / Dil"></nav>
+  </header>
+  <main id="body"></main>
+  <footer id="foot"></footer>
+</div>
+
+<script>
+var CONTACT_EMAIL = "nefszikirleri@gmail.com";
+var PRIVACY_PATH = "./privacy/";
+var DELETION_PATH = "./account-deletion/";
+var EFFECTIVE = "2026-09-17";
+var APP_ID = "com.aistudio.nefszikir.kdhrmq";
+
+var LANGS = ["tr","ar","en","de","fr"];
+
+var T = {
+tr: {
+  dir:"ltr", name:"Türkçe",
+  title:"Nefs Zikirleri",
+  meta:"Kadiri 15 Nefs Zikri için manevi takip uygulaması · Son güncelleme: " + EFFECTIVE,
+  intro:"Nefs Zikirleri, 15 sabit zikri tertip emniyetiyle takip etmen için geliştirilmiş, varsayılan olarak tamamen çevrimdışı çalışan bir Android uygulamasıdır. Bulut senkronizasyonu yalnızca Google ile giriş yapmayı seçersen devreye girer.",
+  hPages:"Sayfalar",
+  cards:[
+    { h:"Gizlilik Politikası", p:"Hangi verilerin işlendiğini, nasıl korunduğunu ve haklarını açıklar.", href: PRIVACY_PATH, btn:"Gizlilik Politikası" },
+    { h:"Hesap Silme", p:"Buluttaki hesabını ve verilerini silmenin 3 yolu: uygulama içi (anında), web talebi ve yerel silme.", href: DELETION_PATH, btn:"Hesap Silme" }
+  ],
+  hAbout:"Uygulama hakkında",
+  about:[
+    "15 sabit zikir: Kelime-i Tevhid, Allah, Hu, Ya Hak, Ya Hay, Ya Kayyum, Ya Kahhar, Ya Vahid, Ya Aziz, Ya Vedud, Ya Vahhab, Ya Müheymin, Ya Basıt, Ya Rahman, Ya Rahim.",
+    "Tertip emniyeti: sıra zorunlu, önceki bitmeden sonrakine geçiş yok.",
+    "Sayaç, istatistik, hatırlatıcı (günde en fazla 3 + 3 gün sessizlikte 1), şifreli yedek (AES/GCM + GZIP).",
+    "Reklam yok, analitik yok, konum/rehber/kamera/mikrofon izni yok."
+  ],
+  hInfo:"Teknik bilgiler",
+  info:[
+    "Uygulama kimliği: " + APP_ID,
+    "Destek e-postası: " + CONTACT_EMAIL,
+    "Hesap silme adresi (Play Console veri güvenliği formu için): https://matufekci.github.io/nefszikirleri/account-deletion/"
+  ],
+  hContact:"İletişim",
+  contact:"Soruların için: ",
+  foot:"Nefs Zikirleri · Son güncelleme " + EFFECTIVE + " · " + APP_ID
+},
+en: {
+  dir:"ltr", name:"English",
+  title:"Nefs Zikirleri",
+  meta:"Spiritual tracker for the 15 Nafs Dhikr of the Qadiri path · Last updated: " + EFFECTIVE,
+  intro:"Nefs Zikirleri is an Android app that helps you follow 15 fixed dhikr in strict order. It works fully offline by default; cloud sync is enabled only if you choose to sign in with Google.",
+  hPages:"Pages",
+  cards:[
+    { h:"Privacy Policy", p:"What data is processed, how it is protected and what rights you have.", href: PRIVACY_PATH, btn:"Privacy Policy" },
+    { h:"Account Deletion", p:"Three ways to delete your cloud account and data: in-app (instant), web request, and local uninstall.", href: DELETION_PATH, btn:"Account Deletion" }
+  ],
+  hAbout:"About the app",
+  about:[
+    "15 fixed dhikr: Kalima Tawhid, Allah, Hu, Ya Haqq, Ya Hayy, Ya Qayyum, Ya Qahhar, Ya Wahid, Ya Aziz, Ya Wadud, Ya Wahhab, Ya Muhaymin, Ya Basit, Ya Rahman, Ya Rahim.",
+    "Order enforcement: you cannot move to the next before finishing the previous.",
+    "Counter, statistics, reminders (up to 3 per day + 1 after 3 days of silence), encrypted backup (AES/GCM + GZIP).",
+    "No ads, no analytics, no location/contacts/camera/microphone permission."
+  ],
+  hInfo:"Technical info",
+  info:[
+    "Application ID: " + APP_ID,
+    "Support e-mail: " + CONTACT_EMAIL,
+    "Account deletion URL (for Play Console Data safety form): https://matufekci.github.io/nefszikirleri/account-deletion/"
+  ],
+  hContact:"Contact",
+  contact:"For questions: ",
+  foot:"Nefs Zikirleri · Last updated " + EFFECTIVE + " · " + APP_ID
+},
+de: {
+  dir:"ltr", name:"Deutsch",
+  title:"Nefs Zikirleri",
+  meta:"Spiritueller Tracker für die 15 Nafs-Dhikr des Qadiri-Weges · Zuletzt aktualisiert: " + EFFECTIVE,
+  intro:"Nefs Zikirleri ist eine Android-App, die dir hilft, 15 feste Dhikr in strikter Reihenfolge zu verfolgen. Sie funktioniert standardmäßig vollständig offline; Cloud-Sync nur bei Google-Anmeldung.",
+  hPages:"Seiten",
+  cards:[
+    { h:"Datenschutzerklärung", p:"Welche Daten verarbeitet werden, wie sie geschützt sind und welche Rechte du hast.", href: PRIVACY_PATH, btn:"Datenschutzerklärung" },
+    { h:"Konto löschen", p:"Drei Wege zur Löschung deines Cloud-Kontos: in der App (sofort), per Web-Anfrage und lokal.", href: DELETION_PATH, btn:"Konto löschen" }
+  ],
+  hAbout:"Über die App",
+  about:[
+    "15 feste Dhikr: Kalima Tawhid, Allah, Hu, Ya Haqq, Ya Hayy, Ya Qayyum, Ya Qahhar, Ya Wahid, Ya Aziz, Ya Wadud, Ya Wahhab, Ya Muhaymin, Ya Basit, Ya Rahman, Ya Rahim.",
+    "Reihenfolgepflicht: kein Weitergehen vor Abschluss des vorherigen.",
+    "Zähler, Statistik, Erinnerungen (bis zu 3 pro Tag + 1 nach 3 Tagen Stille), verschlüsselte Sicherung (AES/GCM + GZIP).",
+    "Keine Werbung, keine Analyse, keine Standort-/Kontakte-/Kamera-/Mikrofon-Berechtigung."
+  ],
+  hInfo:"Technische Infos",
+  info:[
+    "Anwendungs-ID: " + APP_ID,
+    "Support-E-Mail: " + CONTACT_EMAIL,
+    "URL zur Kontolöschung (für Play Console Datensicherheit): https://matufekci.github.io/nefszikirleri/account-deletion/"
+  ],
+  hContact:"Kontakt",
+  contact:"Für Fragen: ",
+  foot:"Nefs Zikirleri · Zuletzt aktualisiert " + EFFECTIVE + " · " + APP_ID
+},
+fr: {
+  dir:"ltr", name:"Français",
+  title:"Nefs Zikirleri",
+  meta:"Suivi spirituel des 15 dhikr Nafs de la voie Qadiri · Dernière mise à jour : " + EFFECTIVE,
+  intro:"Nefs Zikirleri est une application Android qui t'aide à suivre 15 dhikr fixes dans un ordre strict. Elle fonctionne entièrement hors ligne par défaut ; la synchro cloud seulement si tu te connectes avec Google.",
+  hPages:"Pages",
+  cards:[
+    { h:"Politique de confidentialité", p:"Quelles données sont traitées, comment elles sont protégées et tes droits.", href: PRIVACY_PATH, btn:"Politique de confidentialité" },
+    { h:"Suppression du compte", p:"Trois façons de supprimer ton compte cloud : dans l'app (instantané), demande web et désinstallation locale.", href: DELETION_PATH, btn:"Suppression du compte" }
+  ],
+  hAbout:"À propos de l'app",
+  about:[
+    "15 dhikr fixes : Kalima Tawhid, Allah, Hu, Ya Haqq, Ya Hayy, Ya Qayyum, Ya Qahhar, Ya Wahid, Ya Aziz, Ya Wadud, Ya Wahhab, Ya Muhaymin, Ya Basit, Ya Rahman, Ya Rahim.",
+    "Ordre obligatoire : impossible de passer au suivant avant de finir le précédent.",
+    "Compteur, statistiques, rappels (jusqu'à 3 par jour + 1 après 3 jours de silence), sauvegarde chiffrée (AES/GCM + GZIP).",
+    "Pas de pub, pas d'analytique, pas d'accès position/contacts/caméra/micro."
+  ],
+  hInfo:"Infos techniques",
+  info:[
+    "ID d'application : " + APP_ID,
+    "E-mail de support : " + CONTACT_EMAIL,
+    "URL de suppression de compte (pour formulaire Play Console Sécurité des données) : https://matufekci.github.io/nefszikirleri/account-deletion/"
+  ],
+  hContact:"Contact",
+  contact:"Pour toute question : ",
+  foot:"Nefs Zikirleri · Dernière mise à jour " + EFFECTIVE + " · " + APP_ID
+},
+ar: {
+  dir:"rtl", name:"العربية",
+  title:"أنفس الأذكار",
+  meta:"متتبع روحي لـ 15 ذكرًا نفسانيًا في الطريقة القادرية · آخر تحديث: " + EFFECTIVE,
+  intro:"«أنفس الأذكار» تطبيق أندرويد يساعدك على تتبع 15 ذكرًا ثابتًا بترتيب ملزم. يعمل افتراضيًا دون اتصال تمامًا؛ لا تُفعّل المزامنة السحابية إلا إذا اخترت تسجيل الدخول عبر Google.",
+  hPages:"الصفحات",
+  cards:[
+    { h:"سياسة الخصوصية", p:"ما البيانات التي نعالجها، كيف نحميها، وما حقوقك.", href: PRIVACY_PATH, btn:"سياسة الخصوصية" },
+    { h:"حذف الحساب", p:"ثلاث طرق لحذف حسابك السحابي: من داخل التطبيق (فوري)، طلب عبر الويب، وإلغاء التثبيت المحلي.", href: DELETION_PATH, btn:"حذف الحساب" }
+  ],
+  hAbout:"عن التطبيق",
+  about:[
+    "15 ذكرًا ثابتًا: كلمة التوحيد، الله، هو، يا حق، يا حي، يا قيوم، يا قهار، يا واحد، يا عزيز، يا ودود، يا وهاب، يا مهيمن، يا باسط، يا رحمن، يا رحيم.",
+    "أمان الترتيب: لا انتقال للذكر التالي قبل إتمام السابق.",
+    "عدّاد، إحصائيات، تذكيرات (حتى 3 يوميًا + 1 بعد 3 أيام صمت)، نسخ احتياطي مشفّر (AES/GCM + GZIP).",
+    "لا إعلانات، لا تحليلات، لا أذونات موقع/جهات اتصال/كاميرا/ميكروفون."
+  ],
+  hInfo:"معلومات تقنية",
+  info:[
+    "معرّف التطبيق: " + APP_ID,
+    "بريد الدعم: " + CONTACT_EMAIL,
+    "رابط حذف الحساب (لنموذج أمان البيانات في Play Console): https://matufekci.github.io/nefszikirleri/account-deletion/"
+  ],
+  hContact:"التواصل",
+  contact:"للأسئلة: ",
+  foot:"أنفس الأذكار — Nefs Zikirleri · آخر تحديث " + EFFECTIVE + " · " + APP_ID
+}
+};
+
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function linkify(s){
+  return esc(s).replace(/(https?:\/\/[^\s،]+)/g, function(u){
+    return '<a href="'+u+'" rel="noopener">'+u+'</a>';
+  });
+}
+
+function render(lang){
+  var t = T[lang] || T.tr;
+  document.documentElement.lang = lang;
+  document.documentElement.dir = t.dir;
+  document.getElementById("title").textContent = t.title;
+  document.getElementById("meta").textContent = t.meta;
+  document.title = t.title + " — " + (lang==="tr"?"Ana Sayfa":lang==="en"?"Home":lang==="de"?"Startseite":lang==="fr"?"Accueil":"الرئيسية");
+
+  var out = '<p class="note">'+esc(t.intro)+'</p>';
+  out += '<h2>'+esc(t.hPages)+'</h2>';
+  out += '<div class="grid">';
+  t.cards.forEach(function(c){
+    out += '<div class="card"><h3>'+esc(c.h)+'</h3><p>'+esc(c.p)+'</p><a class="btn" href="'+esc(c.href)+'">'+esc(c.btn)+'</a></div>';
+  });
+  out += '</div>';
+
+  out += '<h2>'+esc(t.hAbout)+'</h2><ul>';
+  t.about.forEach(function(x){ out += '<li>'+esc(x)+'</li>'; });
+  out += '</ul>';
+
+  out += '<h2>'+esc(t.hInfo)+'</h2><ul>';
+  t.info.forEach(function(x){ out += '<li>'+linkify(x)+'</li>'; });
+  out += '</ul>';
+
+  out += '<h2>'+esc(t.hContact)+'</h2><p>'+esc(t.contact)+'<a href="mailto:'+CONTACT_EMAIL+'">'+esc(CONTACT_EMAIL)+'</a></p>';
+
+  document.getElementById("body").innerHTML = out;
+  document.getElementById("foot").textContent = t.foot;
+
+  Array.prototype.forEach.call(document.querySelectorAll("#langs button"), function(b){
+    b.setAttribute("aria-pressed", b.dataset.lang === lang ? "true" : "false");
+  });
+  try { localStorage.setItem("nefs_home_lang", lang); } catch(e){}
+}
+
+(function(){
+  var nav = document.getElementById("langs");
+  LANGS.forEach(function(l){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.dataset.lang = l;
+    b.textContent = T[l].name;
+    b.addEventListener("click", function(){ render(l); });
+    nav.appendChild(b);
+  });
+  var saved = null;
+  try { saved = localStorage.getItem("nefs_home_lang"); } catch(e){}
+  var guess = saved || (navigator.language || "tr").slice(0,2).toLowerCase();
+  render(LANGS.indexOf(guess) >= 0 ? guess : "tr");
+})();
+</script>
+</body>
+</html>
